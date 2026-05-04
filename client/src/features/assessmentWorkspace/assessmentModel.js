@@ -49,7 +49,7 @@ export function getAssessmentStateBanner(state) {
 
 export function getStateChipClasses(state) {
   const chip = STATE_DESCRIPTORS[state]?.chip;
-  return chip ? `${chip.fg} ${chip.bg}` : "text-slate-600 bg-slate-100";
+  return chip ? `${chip.fg} ${chip.bg}` : "text-zinc-600 bg-zinc-100";
 }
 
 export function isAssessmentReadOnly({ state, actingRole, serverCanEditContent = false }) {
@@ -75,20 +75,51 @@ export function getSectionProgress(sections = SRA_SECTIONS, completedSectionIds 
   };
 }
 
-export function getWorkflowActionsForRole({ state, actingRole, isLeadAuthor = true }) {
+export function getWorkflowActionsForRole({
+  state,
+  actingRole,
+  isLeadAuthor = true,
+  reviewerState = null,
+  approverState = null,
+  pendingRecall = null
+} = {}) {
   const actions = [];
 
   if (actingRole === ROLES.AUTHOR && isLeadAuthor && state === ASSESSMENT_STATES.DRAFT) {
     actions.push({ id: "submit", label: "Submit for review", tone: "primary" });
   }
 
-  if (actingRole === ROLES.AUTHOR && state === ASSESSMENT_STATES.IN_REVIEW) {
-    actions.push({ id: "withdraw", label: "Withdraw", tone: "secondary" });
+  if (actingRole === ROLES.AUTHOR && state === ASSESSMENT_STATES.IN_REVIEW && !pendingRecall) {
+    if (reviewerState === "opened") {
+      actions.push({ id: "recall-request", label: "Request recall", tone: "secondary" });
+    } else {
+      actions.push({ id: "withdraw", label: "Withdraw", tone: "secondary" });
+    }
   }
 
   if (actingRole === ROLES.REVIEWER && state === ASSESSMENT_STATES.IN_REVIEW) {
     actions.push({ id: "review-complete", label: "Mark review complete", tone: "primary" });
     actions.push({ id: "send-back-author", label: "Send back to Author", tone: "warn" });
+  }
+
+  if (
+    actingRole === ROLES.REVIEWER &&
+    state === ASSESSMENT_STATES.AWAITING_APPROVAL &&
+    !pendingRecall
+  ) {
+    if (approverState === "opened") {
+      actions.push({
+        id: "recall-request-reviewer",
+        label: "Request recall from Approver",
+        tone: "secondary"
+      });
+    } else {
+      actions.push({
+        id: "withdraw-reviewer",
+        label: "Withdraw to In Review",
+        tone: "secondary"
+      });
+    }
   }
 
   if (actingRole === ROLES.APPROVER && state === ASSESSMENT_STATES.AWAITING_APPROVAL) {

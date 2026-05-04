@@ -1,31 +1,89 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, Lock, Shield, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
-import { demoSession } from "../../auth/session";
+import { ROLES, demoSession, getDemoPersona, isRoleMfaRequired } from "../../auth/session";
 import { Banner } from "../../components/Banner";
-import { FormField, Select, TextInput } from "../../components/FormField";
+import { FormField, TextInput } from "../../components/FormField";
 import { USERS } from "../../data/users";
 
-const STAGES = Object.freeze({ CREDENTIALS: "credentials", MFA: "mfa" });
+const PERSONA_HINTS = {
+  [ROLES.AUTHOR]: "Drafts and edits assessments; field mode and submissions.",
+  [ROLES.REVIEWER]: "Comments and locks during In Review.",
+  [ROLES.APPROVER]: "Final sign-off when Awaiting Approval (MFA required).",
+  [ROLES.HQ_EXECUTIVE]: "Portfolio view across facilities (MFA required).",
+  [ROLES.ADMIN]: "Configuration and audit access (MFA required).",
+  [ROLES.MITIGATION_OWNER]: "Tracks mitigations after approval only."
+};
+
+const STAGES = Object.freeze({
+  CREDENTIALS: "credentials",
+  ROLE_PICKER: "role-picker",
+  MFA: "mfa"
+});
+
+function buildSessionForRole(role) {
+  const persona = getDemoPersona(role);
+  const seed = USERS.find((user) => user.id === persona?.userId) || USERS[0];
+  const facilityIds = Array.from(new Set(seed.roles.map((r) => r.facilityId)));
+  const facilities = demoSession.facilities.filter((facility) =>
+    facilityIds.includes(facility.id)
+  );
+  return {
+    ...demoSession,
+    user: {
+      id: seed.id,
+      name: persona?.name || seed.name,
+      initials: persona?.initials || seed.initials,
+      email: persona?.email || seed.email,
+      title: persona?.title || seed.title,
+      mfaEnabled: persona?.mfaEnabled ?? seed.mfaEnabled
+    },
+    facility: facilities[0] || demoSession.facilities[0],
+    facilities: facilities.length ? facilities : demoSession.facilities,
+    roles: Array.from(new Set(seed.roles.map((r) => r.role))),
+    actingRole: role,
+    mfaSatisfied: !isRoleMfaRequired(role) ? true : Boolean(seed.mfaEnabled || persona?.mfaEnabled),
+    demo: true
+  };
+}
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [stage, setStage] = useState(STAGES.CREDENTIALS);
-  const [selectedUserId, setSelectedUserId] = useState(USERS[0].id);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [pendingRole, setPendingRole] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState(null);
-
-  const selectedUser = USERS.find((user) => user.id === selectedUserId) || USERS[0];
 
   function handleCredentials(event) {
     event.preventDefault();
     setError(null);
-    if (selectedUser.mfaEnabled) {
+    setStage(STAGES.ROLE_PICKER);
+  }
+
+  function pickRole(role) {
+    setPendingRole(role);
+    setError(null);
+    if (isRoleMfaRequired(role)) {
       setStage(STAGES.MFA);
       return;
     }
-    completeLogin();
+    completeLogin(role);
+  }
+
+  function completeLogin(role) {
+    const session = buildSessionForRole(role);
+    login(session);
+    const home =
+      role === ROLES.MITIGATION_OWNER
+        ? "/mitigations"
+        : role === ROLES.ADMIN
+          ? "/admin"
+          : "/dashboard";
+    navigate(home);
   }
 
   function handleMfa(event) {
@@ -34,163 +92,212 @@ export function LoginPage() {
       setError("Enter the 6-digit code from your authenticator.");
       return;
     }
+    if (!pendingRole) {
+      setStage(STAGES.ROLE_PICKER);
+      return;
+    }
     setError(null);
-    completeLogin();
-  }
-
-  function completeLogin() {
-    const facilityIds = Array.from(new Set(selectedUser.roles.map((r) => r.facilityId)));
-    const facilities = demoSession.facilities.filter((facility) =>
-      facilityIds.includes(facility.id)
-    );
-    const session = {
-      ...demoSession,
-      user: {
-        id: selectedUser.id,
-        name: selectedUser.name,
-        initials: selectedUser.initials,
-        email: selectedUser.email,
-        title: selectedUser.title,
-        mfaEnabled: selectedUser.mfaEnabled
-      },
-      facility: facilities[0] || demoSession.facilities[0],
-      facilities: facilities.length ? facilities : demoSession.facilities,
-      roles: Array.from(new Set(selectedUser.roles.map((r) => r.role))),
-      actingRole: selectedUser.actingRole,
-      mfaSatisfied: true
-    };
-    login(session);
-    navigate("/dashboard");
+    completeLogin(pendingRole);
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-vantage-navy px-4 py-10 text-white">
-      <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[1fr_minmax(0,420px)] lg:items-stretch">
-        <section className="hidden flex-col justify-between rounded-3xl border border-white/10 bg-vantage-ink p-10 lg:flex">
-          <header>
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-2xl font-bold text-white">
-              V
-            </span>
-            <h1 className="mt-6 text-4xl font-bold leading-tight">Vantage</h1>
-            <p className="mt-3 max-w-md text-base text-white/80">
-              Audit-defensible Security Risk Assessments for refineries, terminals, FPSOs, ports, and
-              critical infrastructure.
+    <main
+      className="flex min-h-screen items-center justify-center p-6 text-zinc-900"
+      style={{ background: "#F1F2F4", fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
+    >
+      <div className="w-full max-w-[400px]">
+        <div className="mb-10 flex items-center gap-2">
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-md"
+            style={{ background: "#1E3A5F" }}
+          >
+            <Shield size={15} strokeWidth={2.5} style={{ color: "#F59E0B" }} aria-hidden />
+          </div>
+          <div className="font-semibold tracking-tight" style={{ color: "#1E3A5F" }}>
+            Vantage
+          </div>
+          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+        </div>
+
+        {stage === STAGES.MFA ? (
+          <>
+            <h1
+              className="mb-1 text-[22px] font-semibold tracking-tight"
+              style={{ color: "#1E3A5F" }}
+            >
+              Multi-factor authentication
+            </h1>
+            <p className="mb-8 text-sm text-zinc-500">
+              Enter the 6-digit TOTP code to continue as {pendingRole}.
             </p>
-          </header>
-          <ul className="grid gap-3 text-sm text-white/80">
-            <li className="rounded-xl border border-white/10 bg-white/5 p-3">
-              Multi-role workflow: Author → Reviewer → Approver, with audited send-backs and rejections.
-            </li>
-            <li className="rounded-xl border border-white/10 bg-white/5 p-3">
-              Section 6 evaluations are linked to mitigations tracked via the Mitigation Owner workflow.
-            </li>
-            <li className="rounded-xl border border-white/10 bg-white/5 p-3">
-              Field mode with per-section checkout, offline PIN/biometric auth, and clean sync.
-            </li>
-          </ul>
-        </section>
 
-        <section className="rounded-3xl bg-white p-7 text-slate-900 shadow-elevated sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-wide text-vantage-blue">Vantage</p>
-          {stage === STAGES.CREDENTIALS ? (
-            <>
-              <h2 className="mt-2 text-2xl font-bold">Sign in</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Use platform credentials. Single sign-on via SAML / OIDC is intentionally out of scope.
-              </p>
+            <form className="space-y-3" onSubmit={handleMfa}>
+              <FormField label="Authentication code" htmlFor="mfa">
+                <TextInput
+                  id="mfa"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123 456"
+                  value={mfaCode}
+                  onChange={(event) => setMfaCode(event.target.value)}
+                  maxLength={7}
+                />
+              </FormField>
 
-              <form className="mt-6 grid gap-4" onSubmit={handleCredentials}>
-                <FormField
-                  label="Email"
-                  htmlFor="email"
-                  hint="Use the demo selector below to switch personas."
+              {error ? (
+                <Banner tone="danger" title="Code required">
+                  {error}
+                </Banner>
+              ) : null}
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setStage(STAGES.ROLE_PICKER);
+                    setError(null);
+                  }}
                 >
-                  <TextInput
-                    id="email"
-                    type="email"
-                    value={selectedUser.email}
-                    onChange={() => undefined}
-                    readOnly
-                  />
-                </FormField>
-
-                <FormField label="Password" htmlFor="password">
-                  <TextInput
-                    id="password"
-                    type="password"
-                    defaultValue="VantageDemo123!"
-                    autoComplete="current-password"
-                  />
-                </FormField>
-
-                <FormField label="Demo persona" htmlFor="persona" hint="For walkthrough purposes only.">
-                  <Select
-                    id="persona"
-                    value={selectedUserId}
-                    onChange={(event) => setSelectedUserId(event.target.value)}
-                  >
-                    {USERS.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} — {user.title}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-
-                <button type="submit" className="btn-primary mt-2 w-full">
-                  Continue
+                  Back
                 </button>
-                <p className="text-center text-xs text-slate-500">
-                  Forgot your password? Reset via email verification (server-driven).
-                </p>
-              </form>
-            </>
-          ) : (
-            <>
-              <h2 className="mt-2 text-2xl font-bold">Multi-factor authentication</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Enter the 6-digit TOTP code for {selectedUser.email}.
-              </p>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+                >
+                  Verify and continue
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <h1
+              className="mb-1 text-[22px] font-semibold tracking-tight"
+              style={{ color: "#1E3A5F" }}
+            >
+              Sign in to continue
+            </h1>
+            <p className="mb-8 text-sm text-zinc-500">
+              Use your Vantage credentials. Approver, HQ Executive, and Admin roles require MFA per policy.
+            </p>
 
-              <form className="mt-6 grid gap-4" onSubmit={handleMfa}>
-                <FormField label="Authentication code" htmlFor="mfa">
-                  <TextInput
-                    id="mfa"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="123 456"
-                    value={mfaCode}
-                    onChange={(event) => setMfaCode(event.target.value)}
-                    maxLength={7}
-                  />
-                </FormField>
+            <form className="space-y-3" onSubmit={handleCredentials}>
+              <div>
+                <label htmlFor="email" className="field-label mb-1.5 block">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="username"
+                  placeholder="you@company.com"
+                  className="field-control"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="field-label mb-1.5 block">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="field-control"
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-primary mt-2 w-full justify-center py-2.5"
+                style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+              >
+                Sign in
+              </button>
+            </form>
 
-                {error ? <Banner tone="danger" title="Code required">{error}</Banner> : null}
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-zinc-200" />
+              <span className="text-xs uppercase tracking-wider text-zinc-400">or</span>
+              <div className="h-px flex-1 bg-zinc-200" />
+            </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => {
-                      setStage(STAGES.CREDENTIALS);
-                      setError(null);
-                    }}
-                  >
-                    Back
-                  </button>
-                  <button type="submit" className="btn-primary">
-                    Verify and continue
-                  </button>
-                </div>
-                <p className="text-center text-xs text-slate-500">
-                  Approver, HQ Executive, and Admin roles require MFA per default policy.
-                </p>
-              </form>
-            </>
-          )}
-        </section>
+            <button
+              type="button"
+              onClick={() => setStage(STAGES.ROLE_PICKER)}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              <Sparkles size={14} className="text-zinc-500" aria-hidden />
+              Demo bypass — skip sign-in
+            </button>
+
+            <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+              <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
+              MFA is enforced per role. All sign-in attempts are logged to the immutable audit trail.
+            </div>
+          </>
+        )}
       </div>
+
+      {stage === STAGES.ROLE_PICKER ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl">
+            <div className="mb-1 flex items-start justify-between">
+              <h2 className="text-base font-semibold tracking-tight text-zinc-900">
+                Demo: choose a role
+              </h2>
+              <button
+                type="button"
+                onClick={() => setStage(STAGES.CREDENTIALS)}
+                className="rounded p-1 hover:bg-zinc-100"
+                aria-label="Close"
+              >
+                <X size={14} aria-hidden />
+              </button>
+            </div>
+            <p className="mb-5 text-sm text-zinc-500">
+              For the demo, pick the role you want to enter as. The platform shows different surfaces per
+              role.
+            </p>
+            <div className="space-y-2">
+              {Object.values(ROLES).map((role) => {
+                const persona = getDemoPersona(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => pickRole(role)}
+                    className="group w-full rounded-lg border border-zinc-200 p-3 text-left transition-colors hover:border-[#1E3A5F]/40 hover:bg-[#EFF4FB]/30"
+                  >
+                    <div className="mb-0.5 flex items-center justify-between">
+                      <span className="text-sm font-medium text-zinc-900">{role}</span>
+                      <ArrowRight
+                        size={14}
+                        className="text-zinc-400 transition-all group-hover:text-zinc-700"
+                        aria-hidden
+                      />
+                    </div>
+                    <span className="text-xs text-zinc-500">
+                      {persona?.name} — {PERSONA_HINTS[role]}
+                    </span>
+                    {isRoleMfaRequired(role) ? (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                        <Lock size={9} aria-hidden /> MFA required
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

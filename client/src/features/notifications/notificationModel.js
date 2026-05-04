@@ -16,7 +16,7 @@ export const NOTIFICATION_TYPES = Object.freeze([
 const SEVERITY_STYLES = Object.freeze({
   warn: "bg-amber-50 text-amber-900 border-amber-200",
   danger: "bg-red-50 text-red-900 border-red-200",
-  info: "bg-slate-50 text-slate-800 border-slate-200"
+  info: "bg-zinc-50 text-zinc-800 border-zinc-200"
 });
 
 export function getNotificationToneClasses(severity) {

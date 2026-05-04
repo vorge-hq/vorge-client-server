@@ -1,35 +1,67 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { Card, CardHeader } from "../../components/Card";
 import { Chip, RoleChip } from "../../components/Chip";
 import { FormField, Select, TextInput } from "../../components/FormField";
 import { PageHeader } from "../../components/PageHeader";
-import { AUDIT_LOG } from "../../data/auditLog";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import {
+  filterAuditEntriesForRole,
+  isAdminViewer,
+  visibleIp
+} from "../../features/audit/auditVisibility";
 
-const ACTION_FILTERS = [
+const BASE_ACTION_FILTERS = [
   "All",
-  "Submitted for review",
-  "Marked review complete",
-  "Comment added",
-  "Field locked",
-  "Mitigation status updated",
-  "AI call: Drafted summary",
-  "Configuration change",
-  "Section saved"
+  "edit",
+  "create",
+  "comment",
+  "flag",
+  "submit",
+  "approve",
+  "review-complete",
+  "lock",
+  "withdraw",
+  "send-back-to-author",
+  "send-back-to-reviewer",
+  "reject",
+  "mitigation-update"
 ];
 
+const ADMIN_ACTION_FILTERS = ["sign-in"];
+
+function formatTime(value) {
+  if (!value) return "—";
+  if (typeof value !== "string") return String(value);
+  const dt = value.length > 10 ? value : `${value}T00:00:00Z`;
+  const parsed = new Date(dt);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+}
+
 export function AuditPage() {
+  const { session } = useAuth();
+  const workspace = useWorkspace();
   const [actionFilter, setActionFilter] = useState("All");
   const [search, setSearch] = useState("");
 
+  const isAdmin = isAdminViewer(session.actingRole);
+  const actionFilters = isAdmin
+    ? [...BASE_ACTION_FILTERS, ...ADMIN_ACTION_FILTERS]
+    : BASE_ACTION_FILTERS;
+
   const filtered = useMemo(() => {
-    return AUDIT_LOG.filter((entry) =>
-      actionFilter === "All" ? true : entry.action === actionFilter
-    ).filter((entry) =>
-      search
-        ? `${entry.user} ${entry.detail} ${entry.assessment}`.toLowerCase().includes(search.toLowerCase())
-        : true
-    );
-  }, [actionFilter, search]);
+    const visible = filterAuditEntriesForRole(workspace.audit, session.actingRole);
+    return visible
+      .filter((entry) => (actionFilter === "All" ? true : entry.action === actionFilter))
+      .filter((entry) =>
+        search
+          ? `${entry.user} ${entry.detail} ${entry.assessment}`
+              .toLowerCase()
+              .includes(search.toLowerCase())
+          : true
+      );
+  }, [workspace.audit, actionFilter, search, session.actingRole]);
 
   return (
     <section className="grid gap-6">
@@ -51,8 +83,11 @@ export function AuditPage() {
             />
           </FormField>
           <FormField label="Action">
-            <Select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)}>
-              {ACTION_FILTERS.map((option) => (
+            <Select
+              value={actionFilter}
+              onChange={(event) => setActionFilter(event.target.value)}
+            >
+              {actionFilters.map((option) => (
                 <option key={option}>{option}</option>
               ))}
             </Select>
@@ -69,28 +104,39 @@ export function AuditPage() {
       </Card>
 
       <Card>
-        <CardHeader eyebrow="Entries" title={`${filtered.length} matching entries`} />
+        <CardHeader
+          eyebrow="Entries"
+          title={`${filtered.length} matching entries`}
+          description="Audit rows are append-only. No role can modify or delete an entry."
+        />
         <ul className="mt-4 grid gap-3">
           {filtered.map((entry) => (
-            <li key={entry.id} className="rounded-xl border border-slate-200 p-4">
+            <li key={entry.id} className="rounded-xl border border-zinc-200 p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{entry.action}</p>
-                  <p className="mt-1 text-sm text-slate-700">{entry.detail}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-zinc-900">{entry.action}</p>
+                  <p className="mt-1 text-sm text-zinc-700">{entry.detail}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                     <span>{entry.facility}</span>
-                    {entry.assessment !== "—" ? <span>· {entry.assessment}</span> : null}
-                    <Chip>{entry.section}</Chip>
+                    {entry.assessment && entry.assessment !== "—" ? (
+                      <span>· {entry.assessment}</span>
+                    ) : null}
+                    {entry.section ? <Chip>{entry.section}</Chip> : null}
                   </div>
                 </div>
                 <div className="flex flex-col items-start gap-1 sm:items-end">
-                  <span className="text-xs text-slate-500">
-                    {new Date(entry.timestamp).toLocaleString()}
+                  <span className="text-xs tabular-nums text-zinc-500">
+                    {formatTime(entry.timestamp || entry.ts)}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-700">{entry.user}</span>
+                    <span className="text-xs font-semibold text-zinc-700">{entry.user}</span>
                     <RoleChip role={entry.role} />
                   </div>
+                  {visibleIp(session.actingRole, entry.ip) ? (
+                    <span className="text-[10px] tabular-nums text-zinc-400">
+                      IP {entry.ip}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </li>

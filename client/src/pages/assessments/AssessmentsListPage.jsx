@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { Card, CardHeader } from "../../components/Card";
 import { StateChip } from "../../components/Chip";
 import { FormField, Select, TextInput } from "../../components/FormField";
-import { Icon } from "../../components/icons";
 import { PageHeader } from "../../components/PageHeader";
-import { ASSESSMENTS } from "../../data/assessments";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import { NewAssessmentModal } from "../../features/assessmentWorkspace/modals";
 import { FACILITIES } from "../../data/operators";
 import {
   ASSESSMENT_STATES,
@@ -21,9 +22,11 @@ function getFacilityName(facilityId) {
 
 export function AssessmentsListPage() {
   const { session } = useAuth();
+  const workspace = useWorkspace();
   const [stateFilter, setStateFilter] = useState("All");
   const [search, setSearch] = useState("");
-  const [facilityFilter, setFacilityFilter] = useState(session.facility.id);
+  const [facilityFilter, setFacilityFilter] = useState("All");
+  const [newOpen, setNewOpen] = useState(false);
 
   const accessibleFacilityIds = useMemo(
     () => session.facilities.map((facility) => facility.id),
@@ -31,7 +34,8 @@ export function AssessmentsListPage() {
   );
 
   const filtered = useMemo(() => {
-    return ASSESSMENTS.filter((assessment) => accessibleFacilityIds.includes(assessment.facilityId))
+    return Object.values(workspace.assessmentsById)
+      .filter((assessment) => accessibleFacilityIds.includes(assessment.facilityId))
       .filter((assessment) =>
         facilityFilter === "All" ? true : assessment.facilityId === facilityFilter
       )
@@ -40,7 +44,7 @@ export function AssessmentsListPage() {
         search ? assessment.name.toLowerCase().includes(search.toLowerCase()) : true
       )
       .sort((a, b) => (a.lastUpdated < b.lastUpdated ? 1 : -1));
-  }, [accessibleFacilityIds, facilityFilter, search, stateFilter]);
+  }, [accessibleFacilityIds, facilityFilter, search, stateFilter, workspace.assessmentsById]);
 
   const facilityOptions = useMemo(
     () => session.facilities.filter((facility) => accessibleFacilityIds.includes(facility.id)),
@@ -54,8 +58,13 @@ export function AssessmentsListPage() {
         title="All assessments"
         description="Filter by state, facility, or search by name. Cards show progress, residual risk, and your role."
         actions={
-          <button type="button" className="btn-primary">
-            <Icon name="plus" className="h-4 w-4" /> New assessment
+          <button
+            type="button"
+            onClick={() => setNewOpen(true)}
+            className="btn-primary inline-flex items-center gap-1.5"
+            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+          >
+            <Plus size={14} aria-hidden /> New assessment
           </button>
         }
       />
@@ -99,7 +108,7 @@ export function AssessmentsListPage() {
 
       <ul className="grid gap-3">
         {filtered.length === 0 ? (
-          <li className="surface-card p-6 text-center text-sm text-slate-500">
+          <li className="surface-card p-6 text-center text-sm text-zinc-500">
             No assessments match these filters.
           </li>
         ) : (
@@ -112,28 +121,32 @@ export function AssessmentsListPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StateChip state={assessment.state} />
-                      <span className="text-xs text-slate-500">Cycle {assessment.cycle}</span>
-                      <span className="text-xs text-slate-500">v{assessment.version}</span>
+                      <span className="text-xs text-zinc-500">Cycle {assessment.cycle}</span>
+                      <span className="text-xs text-zinc-500">{assessment.version}</span>
                     </div>
-                    <h3 className="mt-2 text-lg font-semibold text-slate-900">{assessment.name}</h3>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <h3 className="mt-2 text-lg font-semibold text-zinc-900">{assessment.name}</h3>
+                    <p className="mt-1 text-xs text-zinc-500">
                       Facility · {getFacilityName(assessment.facilityId)} · Updated {new Date(assessment.lastUpdated).toLocaleString()}
                     </p>
-                    <p className="mt-2 text-xs text-slate-600">{stateMeta?.description}</p>
+                    <p className="mt-2 text-xs text-zinc-600">{stateMeta?.description}</p>
                     <div className="mt-3 flex items-center gap-3">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100">
                         <div
                           className="h-full bg-vantage-navy"
                           style={{ width: `${completion}%` }}
                         />
                       </div>
-                      <span className="shrink-0 text-xs font-semibold text-slate-700">
+                      <span className="shrink-0 text-xs font-semibold text-zinc-700">
                         {completion}% complete
                       </span>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Link to={`/assessments/${assessment.id}/sections/1`} className="btn-primary">
+                    <Link
+                      to={`/assessments/${assessment.id}/sections/1`}
+                      className="btn-primary"
+                      style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+                    >
                       Open
                     </Link>
                   </div>
@@ -143,6 +156,16 @@ export function AssessmentsListPage() {
           })
         )}
       </ul>
+
+      {newOpen ? (
+        <NewAssessmentModal
+          onClose={() => setNewOpen(false)}
+          onCreate={() => {
+            setNewOpen(false);
+            workspace.showToast("New assessment created");
+          }}
+        />
+      ) : null}
     </section>
   );
 }

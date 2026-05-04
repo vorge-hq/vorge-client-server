@@ -2,86 +2,94 @@ import { ROLES } from "../auth/session";
 
 export const USERS = Object.freeze([
   {
-    id: "user-omar-haddad",
-    name: "Omar Haddad",
-    initials: "OH",
-    email: "omar.haddad@northstar.example",
-    title: "Lead Security Analyst",
-    mfaEnabled: true,
-    roles: [
-      { role: ROLES.AUTHOR, facilityId: "fac-bonny-refinery" },
-      { role: ROLES.AUTHOR, facilityId: "fac-coral-fpso" },
-      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-bonny-refinery" }
-    ],
-    actingRole: ROLES.AUTHOR,
-    actingFacilityId: "fac-bonny-refinery"
-  },
-  {
-    id: "user-sarah-okonkwo",
-    name: "Sarah Okonkwo",
-    initials: "SO",
-    email: "sarah.okonkwo@northstar.example",
-    title: "Senior Reviewer",
-    mfaEnabled: true,
-    roles: [
-      { role: ROLES.REVIEWER, facilityId: "fac-bonny-refinery" },
-      { role: ROLES.REVIEWER, facilityId: "fac-coral-fpso" }
-    ],
-    actingRole: ROLES.REVIEWER,
-    actingFacilityId: "fac-bonny-refinery"
-  },
-  {
-    id: "user-marcus-king",
-    name: "Marcus King",
-    initials: "MK",
-    email: "marcus.king@northstar.example",
-    title: "Facility Manager",
-    mfaEnabled: true,
-    roles: [{ role: ROLES.APPROVER, facilityId: "fac-bonny-refinery" }],
-    actingRole: ROLES.APPROVER,
-    actingFacilityId: "fac-bonny-refinery"
-  },
-  {
-    id: "user-elena-park",
-    name: "Elena Park",
-    initials: "EP",
-    email: "elena.park@northstar.example",
-    title: "VP Operations",
-    mfaEnabled: true,
-    roles: [
-      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-bonny-refinery" },
-      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-coral-fpso" }
-    ],
-    actingRole: ROLES.HQ_EXECUTIVE,
-    actingFacilityId: "fac-bonny-refinery"
-  },
-  {
-    id: "user-priya-rao",
-    name: "Priya Rao",
-    initials: "PR",
-    email: "priya.rao@alora.example",
-    title: "Platform Administrator",
-    mfaEnabled: true,
-    roles: [
-      { role: ROLES.ADMIN, facilityId: "fac-bonny-refinery" },
-      { role: ROLES.ADMIN, facilityId: "fac-coral-fpso" }
-    ],
-    actingRole: ROLES.ADMIN,
-    actingFacilityId: "fac-bonny-refinery"
-  },
-  {
-    id: "user-james-clark",
-    name: "James Clark",
-    initials: "JC",
-    email: "james.clark@vendor.example",
-    title: "Security Manager (Mitigation Owner)",
+    id: "user-demo-author",
+    name: "Demo Author",
+    initials: "DA",
+    email: "demo.author@vantage.local",
+    title: "Author",
     mfaEnabled: false,
     roles: [
-      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-bonny-refinery" },
-      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-coral-fpso" }
+      { role: ROLES.AUTHOR, facilityId: "fac-1" },
+      { role: ROLES.AUTHOR, facilityId: "fac-2" }
+    ],
+    actingRole: ROLES.AUTHOR,
+    actingFacilityId: "fac-1"
+  },
+  {
+    id: "user-a-reviewer",
+    name: "A. Reviewer",
+    initials: "AR",
+    email: "a.reviewer@vantage.local",
+    title: "Reviewer",
+    mfaEnabled: true,
+    roles: [
+      { role: ROLES.REVIEWER, facilityId: "fac-1" },
+      { role: ROLES.REVIEWER, facilityId: "fac-2" },
+      { role: ROLES.REVIEWER, facilityId: "fac-3" }
+    ],
+    actingRole: ROLES.REVIEWER,
+    actingFacilityId: "fac-1"
+  },
+  {
+    id: "user-m-approver",
+    name: "M. Approver",
+    initials: "MA",
+    email: "m.approver@vantage.local",
+    title: "Approver",
+    mfaEnabled: true,
+    roles: [
+      { role: ROLES.APPROVER, facilityId: "fac-1" },
+      { role: ROLES.APPROVER, facilityId: "fac-2" }
+    ],
+    actingRole: ROLES.APPROVER,
+    actingFacilityId: "fac-1"
+  },
+  {
+    id: "user-demo-exec",
+    name: "Demo Executive",
+    initials: "DE",
+    email: "demo.exec@vantage.local",
+    title: "HQ Executive",
+    mfaEnabled: true,
+    roles: [
+      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-1" },
+      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-2" },
+      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-3" },
+      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-4" },
+      { role: ROLES.HQ_EXECUTIVE, facilityId: "fac-5" }
+    ],
+    actingRole: ROLES.HQ_EXECUTIVE,
+    actingFacilityId: "fac-1"
+  },
+  {
+    id: "user-demo-admin",
+    name: "Demo Admin",
+    initials: "DA",
+    email: "demo.admin@vantage.local",
+    title: "Administrator",
+    mfaEnabled: true,
+    roles: [
+      { role: ROLES.ADMIN, facilityId: "fac-1" },
+      { role: ROLES.ADMIN, facilityId: "fac-2" },
+      { role: ROLES.ADMIN, facilityId: "fac-3" }
+    ],
+    actingRole: ROLES.ADMIN,
+    actingFacilityId: "fac-1"
+  },
+  {
+    id: "user-j-doe",
+    name: "J. Doe",
+    initials: "JD",
+    email: "j.doe@operator-a.com",
+    title: "IT Security",
+    mfaEnabled: false,
+    roles: [
+      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-1" },
+      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-2" },
+      { role: ROLES.MITIGATION_OWNER, facilityId: "fac-3" }
     ],
     actingRole: ROLES.MITIGATION_OWNER,
-    actingFacilityId: "fac-bonny-refinery"
+    actingFacilityId: "fac-1"
   }
 ]);
 

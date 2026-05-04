@@ -1,31 +1,54 @@
+import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Banner } from "../../../components/Banner";
-import { FormField, TextArea } from "../../../components/FormField";
 import { SectionShell } from "./SectionShell";
+import { ValidationSummary } from "./ValidationSummary";
 
-export function ExecutiveSummarySection({ assessment, readOnly }) {
+export function ExecutiveSummarySection({ assessment, readOnly, onOpenAIDraft, errors }) {
+  const [text, setText] = useState(assessment?.executiveSummary || "");
+  const wordCount = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
+
   return (
     <SectionShell
       number={1}
       title="Executive Summary"
-      description="A concise narrative typically authored at the end. AI drafting assists Authors when enabled."
+      description="A short, board-ready summary of methodology, scope, residual risk distribution, and key proposed mitigations."
       actions={
-        !readOnly ? (
-          <button type="button" className="btn-secondary">Generate AI draft</button>
-        ) : null
+        readOnly ? null : (
+          <button
+            type="button"
+            onClick={onOpenAIDraft}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#1E3A5F] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1E3A5F] hover:bg-[#EFF4FB]"
+          >
+            <Sparkles size={12} aria-hidden /> Draft with AI
+          </button>
+        )
+      }
+      footer={
+        <p className="text-[11px] text-zinc-500">
+          {wordCount} words · auto-saved · audit log captures every edit.
+        </p>
       }
     >
-      <Banner tone="info" title="AI drafting is optional">
-        AI-drafted text is clearly labelled and saved alongside the human-edited final version in the audit log.
+      <ValidationSummary errors={errors} />
+      <Banner tone="info" title="AI drafting available">
+        Sections 1 and 8 support AI-drafted summaries. Drafts are clearly labelled and audit-logged before
+        becoming final.
       </Banner>
 
-      <FormField label="Executive summary" hint="Markdown is supported. Autosave runs every save.">
-        <TextArea
-          rows={10}
-          defaultValue={assessment.executiveSummary}
-          disabled={readOnly}
-          placeholder="Capture facility purpose, residual risk, key mitigations, and Approver-relevant context."
+      {readOnly ? (
+        <article className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700 whitespace-pre-line">
+          {text || "Author has not yet drafted the Executive Summary."}
+        </article>
+      ) : (
+        <textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          rows={12}
+          className="field-control resize-y text-sm leading-relaxed"
+          placeholder="Draft an executive summary aligned to the methodology used."
         />
-      </FormField>
+      )}
     </SectionShell>
   );
 }

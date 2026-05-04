@@ -88,14 +88,14 @@ export function FieldModePage() {
               const checked = selected.has(option.id);
               return (
                 <li key={option.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-vantage-navy">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 p-3 hover:border-vantage-navy">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleScope(option.id)}
                       className="h-4 w-4"
                     />
-                    <span className="flex-1 text-sm text-slate-800">{option.label}</span>
+                    <span className="flex-1 text-sm text-zinc-800">{option.label}</span>
                     {checked ? <Chip tone="info">Selected</Chip> : null}
                   </label>
                 </li>
@@ -142,7 +142,7 @@ export function FieldModePage() {
               </button>
             </div>
           </div>
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-zinc-500">
             Failed-attempt threshold: 5. Your offline cache wipes on threshold breach. Audit entries
             push when you reconnect.
           </p>
@@ -150,13 +150,13 @@ export function FieldModePage() {
 
         <Card>
           <CardHeader eyebrow="Online-only" title="Features that stay online-only" />
-          <ul className="mt-4 grid gap-2 text-sm text-slate-700">
+          <ul className="mt-4 grid gap-2 text-sm text-zinc-700">
             {[
               ["approvals", "Approval workflow actions (submit, mark complete, approve, reject)"],
               ["hq-dashboard", "HQ Executive dashboards and cross-facility comparisons"],
               ["ai", "AI-drafted summaries, anomaly detection, and other AI features"]
             ].map(([id, label]) => (
-              <li key={id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+              <li key={id} className="flex items-center justify-between rounded-xl border border-zinc-200 p-3">
                 <span>{label}</span>
                 <Chip tone={isOnlineOnlyFeature(id) ? "warn" : "slate"}>
                   {isOnlineOnlyFeature(id) ? "Online only" : "Available offline"}
@@ -177,7 +177,7 @@ export function FieldModePage() {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">No pending changes. Sync queue is empty.</p>
+            <p className="mt-4 text-sm text-zinc-500">No pending changes. Sync queue is empty.</p>
           )}
           <button
             type="button"

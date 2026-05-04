@@ -1,59 +1,92 @@
 export const DEFAULT_ASSETS = Object.freeze([
   {
-    id: "asset-marine-loading",
-    name: "Marine Loading Terminal",
-    type: "Marine Loading Terminal",
-    description:
-      "Primary jetty and metering skids handling product loading to vessels. Supports up to 8,000 m3/h.",
-    dependencies: ["asset-control-room", "asset-utility-substation", "External: vessel traffic services"],
-    consequences:
-      "Loss-of-life potential, multi-day production stoppage, environmental release into estuary, regulatory loss-of-license risk.",
+    id: "a1",
+    name: "Asset 1",
+    type: "Process Unit",
+    description: "Primary processing facility handling main throughput operations.",
+    dependencies: "Asset 6 (power), Asset 3",
+    consequences: "Production halt, potential injury, environmental release",
     criticality: "Very High"
   },
   {
-    id: "asset-tank-farm",
-    name: "Storage Tank Farm",
+    id: "a2",
+    name: "Asset 2",
     type: "Storage Tank Farm",
-    description: "Eight floating-roof tanks storing finished product and intermediate fractions.",
-    dependencies: ["asset-control-room", "asset-utility-substation"],
-    consequences: "Major fire / loss-of-containment event with environmental and reputational impact.",
-    criticality: "Very High"
-  },
-  {
-    id: "asset-control-room",
-    name: "Central Control Room",
-    type: "Control Room",
-    description: "DCS / SCADA hub controlling 95% of plant operations on redundant servers.",
-    dependencies: ["asset-utility-substation", "External: telecom links"],
-    consequences:
-      "Total loss of operational control. Potential safety-system bypass exposure depending on fallback.",
-    criticality: "Very High"
-  },
-  {
-    id: "asset-utility-substation",
-    name: "Utility Substation",
-    type: "Utility Substation",
-    description: "33kV substation feeding all critical units with two redundant feeders.",
-    dependencies: ["External: national grid"],
-    consequences: "Loss of power across critical units; safety systems on UPS for limited duration.",
+    description: "Bulk storage tanks for finished and intermediate product.",
+    dependencies: "Asset 4",
+    consequences: "Loss of inventory, environmental damage, fire risk",
     criticality: "High"
   },
   {
-    id: "asset-fuel-skid",
-    name: "Fuel Loading Skid",
-    type: "Fuel Loading Skid",
-    description: "Truck-loading bays for downstream distribution including manual gantries.",
-    dependencies: ["asset-tank-farm"],
-    consequences: "Theft and diversion losses; spill risk during loading.",
-    criticality: "Medium"
+    id: "a3",
+    name: "Asset 3",
+    type: "Control Room",
+    description: "Centralised SCADA and process control systems.",
+    dependencies: "Asset 6",
+    consequences: "Loss of operational control, safety system failure",
+    criticality: "Very High"
   },
   {
-    id: "asset-admin-building",
-    name: "Administration Building",
+    id: "a4",
+    name: "Asset 4",
+    type: "Marine Loading Terminal",
+    description: "Jetty and marine loading arms for export shipments.",
+    dependencies: "Asset 2",
+    consequences: "Export disruption, vessel incident, marine pollution",
+    criticality: "High"
+  },
+  {
+    id: "a5",
+    name: "Asset 5",
     type: "Administration Building",
-    description: "Office building including HR, finance, and visitor reception.",
-    dependencies: ["External: corporate IT"],
-    consequences: "Information loss, business disruption, reputational damage.",
+    description: "Office facilities, meeting rooms, document storage.",
+    dependencies: "—",
+    consequences: "Minor disruption, document loss",
     criticality: "Low"
+  },
+  {
+    id: "a6",
+    name: "Asset 6",
+    type: "Utility Substation",
+    description: "Primary electrical substation feeding the facility.",
+    dependencies: "External grid",
+    consequences: "Total facility shutdown, safety system loss",
+    criticality: "Very High"
+  },
+  {
+    id: "a7",
+    name: "Asset 7",
+    type: "Fuel Loading Skid",
+    description: "Mobile fuel transfer skid used for routine bunkering operations.",
+    dependencies: "Asset 2",
+    consequences: "Potential fatality, major fire, environmental release",
+    criticality: "Medium"
   }
 ]);
+
+const SEVERE_KEYWORDS = [
+  "fatal",
+  "fatality",
+  "death",
+  "kill",
+  "major",
+  "massive",
+  "catastrophic",
+  "severe",
+  "environmental",
+  "shutdown",
+  "safety"
+];
+
+export function detectAssetAnomaly(asset) {
+  if (!asset || !asset.criticality || !asset.consequences) return null;
+  const text = String(asset.consequences).toLowerCase();
+  const matched = SEVERE_KEYWORDS.filter((k) => text.includes(k));
+  if (matched.length === 0) return null;
+  if (asset.criticality === "Low" || asset.criticality === "Medium") {
+    return `Criticality marked ${asset.criticality}, but consequences mention "${matched
+      .slice(0, 2)
+      .join('", "')}". Consider raising.`;
+  }
+  return null;
+}

@@ -1,5 +1,12 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { canAccessFacility, canSwitchToRole, demoSession, isRoleMfaRequired } from "./session";
+import {
+  canAccessFacility,
+  canDemoSwitchToRole,
+  canSwitchToRole,
+  demoSession,
+  getDemoPersona,
+  isRoleMfaRequired
+} from "./session";
 
 const AuthContext = createContext(null);
 
@@ -26,6 +33,44 @@ export function AuthProvider({ children, initialSession = demoSession }) {
     [session]
   );
 
+  const switchDemoRole = useCallback(
+    (role) => {
+      if (!session) return null;
+      if (!canDemoSwitchToRole(session, role)) return null;
+
+      const persona = getDemoPersona(role);
+      const targetHome = persona?.home || "/dashboard";
+
+      setSession((current) => {
+        const next = {
+          ...current,
+          actingRole: role,
+          mfaSatisfied: isRoleMfaRequired(role) ? Boolean(current.user?.mfaEnabled) : true
+        };
+
+        if (current.demo && persona) {
+          next.user = {
+            id: persona.userId,
+            name: persona.name,
+            initials: persona.initials,
+            email: persona.email,
+            title: persona.title,
+            mfaEnabled: persona.mfaEnabled
+          };
+          next.mfaSatisfied = !persona.mfaEnabled || Boolean(persona.mfaEnabled);
+          if (!current.roles.includes(role)) {
+            next.roles = [...current.roles, role];
+          }
+        }
+
+        return next;
+      });
+
+      return targetHome;
+    },
+    [session]
+  );
+
   const switchFacility = useCallback(
     (facilityId) => {
       if (!session) {
@@ -48,8 +93,8 @@ export function AuthProvider({ children, initialSession = demoSession }) {
   const login = useCallback((nextSession) => setSession(nextSession), []);
 
   const value = useMemo(
-    () => ({ session, switchRole, switchFacility, logout, login }),
-    [session, switchRole, switchFacility, logout, login]
+    () => ({ session, switchRole, switchDemoRole, switchFacility, logout, login }),
+    [session, switchRole, switchDemoRole, switchFacility, logout, login]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

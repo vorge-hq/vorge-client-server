@@ -3,7 +3,7 @@ const TONE_STYLES = {
   warn: "bg-amber-50 border-amber-200 text-amber-900",
   danger: "bg-red-50 border-red-200 text-red-900",
   success: "bg-emerald-50 border-emerald-200 text-emerald-900",
-  neutral: "bg-slate-100 border-slate-200 text-slate-700"
+  neutral: "bg-zinc-100 border-zinc-200 text-zinc-700"
 };
 
 export function Banner({ tone = "info", title, children, action, icon }) {

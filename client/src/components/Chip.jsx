@@ -4,7 +4,7 @@ import { ROLE_TONE } from "../auth/session";
 
 export function Chip({ children, tone = "slate", className = "" }) {
   const tones = {
-    slate: "bg-slate-100 text-slate-700 border border-slate-200",
+    slate: "bg-zinc-100 text-zinc-700 border border-zinc-200",
     info: "bg-blue-50 text-blue-800 border border-blue-200",
     success: "bg-emerald-50 text-emerald-800 border border-emerald-200",
     warn: "bg-amber-50 text-amber-900 border border-amber-200",
@@ -34,7 +34,7 @@ export function StateChip({ state, className = "" }) {
 
 export function RiskChip({ band, score, className = "" }) {
   const label = band ? (score != null ? `${band} (${score})` : band) : "—";
-  const classes = band ? getBandClasses(band) : "bg-slate-100 text-slate-600";
+  const classes = band ? getBandClasses(band) : "bg-zinc-100 text-zinc-600";
 
   return (
     <span
@@ -51,7 +51,7 @@ export function SeverityChip({ severity, className = "" }) {
 
 export function StatusChip({ status, className = "" }) {
   const styles = {
-    Open: "bg-slate-100 text-slate-700 border border-slate-200",
+    Open: "bg-zinc-100 text-zinc-700 border border-zinc-200",
     "In Progress": "bg-blue-50 text-blue-800 border border-blue-200",
     Done: "bg-emerald-50 text-emerald-800 border border-emerald-200"
   };
@@ -83,7 +83,7 @@ export function AgreedChip({ agreed, className = "" }) {
 export function RoleChip({ role, className = "" }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_TONE[role] || "bg-slate-100 text-slate-700 border border-slate-200"} ${className}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_TONE[role] || "bg-zinc-100 text-zinc-700 border border-zinc-200"} ${className}`}
     >
       {role}
     </span>

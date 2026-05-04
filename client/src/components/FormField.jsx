@@ -8,7 +8,7 @@ export function FormField({ label, hint, error, required, children, htmlFor }) {
         </label>
       ) : null}
       {children}
-      {hint && !error ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {hint && !error ? <p className="text-xs text-zinc-500">{hint}</p> : null}
       {error ? <p className="text-xs font-medium text-red-700">{error}</p> : null}
     </div>
   );

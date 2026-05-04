@@ -1,134 +1,376 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  AlertTriangle,
+  FileSearch,
+  FileText,
+  Lock,
+  MessageSquare,
+  Plus,
+  Smartphone,
+  Sparkles,
+  Tag,
+  Wand2
+} from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
-import { Banner } from "../../components/Banner";
-import { Card, CardHeader } from "../../components/Card";
-import { StateChip } from "../../components/Chip";
-import { Icon } from "../../components/icons";
-import { KpiCard } from "../../components/KpiCard";
-import { PageHeader } from "../../components/PageHeader";
-import { ASSESSMENTS } from "../../data/assessments";
-import { MITIGATIONS } from "../../data/mitigations";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
+import {
+  AIDraftModal,
+  AuditLogPanel,
+  FieldModeModal,
+  NewAssessmentModal
+} from "../../features/assessmentWorkspace/modals";
+import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 import { ASSESSMENT_STATES } from "../../features/assessmentWorkspace/assessmentModel";
+
+function StatCard({ label, value, sub, tone = "default" }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <div
+          className={`text-2xl font-semibold tabular-nums ${tone === "warn" ? "text-amber-700" : ""}`}
+        >
+          {value}
+        </div>
+      </div>
+      <div className="mt-0.5 text-[11px] text-zinc-500">{sub}</div>
+    </div>
+  );
+}
+
+function CapabilityRow({ icon: ItemIcon, label, state = "active", tooltip, onClick }) {
+  const [hover, setHover] = useState(false);
+  const isAddon = state === "addon";
+  const isActive = state === "active";
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        className={`flex w-full items-center justify-between rounded px-2 py-1 text-left transition-colors ${
+          isAddon ? "cursor-help hover:bg-amber-50/40" : "hover:bg-zinc-50"
+        }`}
+      >
+        <div className={`flex items-center gap-2 ${isAddon ? "text-zinc-600" : "text-zinc-700"}`}>
+          <span className={isAddon ? "text-zinc-400" : "text-zinc-500"}>
+            <ItemIcon size={11} />
+          </span>
+          {label}
+        </div>
+        {isActive ? (
+          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+            On
+          </span>
+        ) : null}
+        {isAddon ? (
+          <span
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+            style={{ background: "#FEF3C7", color: "#92400E" }}
+          >
+            <Lock size={9} aria-hidden /> Add-on
+          </span>
+        ) : null}
+      </button>
+
+      {isAddon && hover && tooltip ? (
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-md bg-zinc-900 p-3 text-[11px] leading-relaxed text-white shadow-xl">
+          <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+            <Lock size={9} aria-hidden /> Paid add-on
+          </div>
+          <div className="mb-2.5 text-white/90">{tooltip}</div>
+          <div className="border-t border-white/10 pt-2 font-medium text-amber-300">
+            Enquire to enable →
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StatusPill({ status }) {
+  const styles = {
+    Draft: "bg-zinc-100 text-zinc-700",
+    "In Review": "bg-blue-50 text-blue-800",
+    "Awaiting Approval": "bg-violet-50 text-violet-800",
+    Approved: "bg-emerald-50 text-emerald-800"
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${styles[status] || styles.Draft}`}
+    >
+      {status === "Approved" ? <Lock size={9} aria-hidden /> : null}
+      {status}
+    </span>
+  );
+}
 
 export function AuthorDashboard() {
   const { session } = useAuth();
-  const myAssessments = ASSESSMENTS.filter(
-    (assessment) =>
-      assessment.facilityId === session.facility.id ||
-      assessment.leadAuthorUserId === session.user.id
-  );
-  const drafts = myAssessments.filter((a) => a.state === ASSESSMENT_STATES.DRAFT);
-  const inReview = myAssessments.filter((a) => a.state === ASSESSMENT_STATES.IN_REVIEW);
-  const recent = myAssessments
-    .slice()
-    .sort((a, b) => (a.lastUpdated < b.lastUpdated ? 1 : -1))
-    .slice(0, 4);
+  const navigate = useNavigate();
+  const workspace = useWorkspace();
+  const [aiDraftOpen, setAiDraftOpen] = useState(false);
+  const [newAssessmentOpen, setNewAssessmentOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [fieldModeOpen, setFieldModeOpen] = useState(false);
 
-  const overdueMitigations = MITIGATIONS.filter(
-    (mitigation) =>
-      mitigation.status !== "Done" &&
-      new Date(mitigation.targetDate) < new Date()
-  );
+  const assessments = Object.values(workspace.assessmentsById);
+  const active = workspace.assessmentsById[workspace.activeAssessmentId];
+
+  const totalEvals = workspace.evaluations.length;
+  const highRisks = workspace.evaluations.filter((e) => {
+    const r = calculateRisk(e.consequenceR1, e.likelihoodR1);
+    return r && (r.band === "High" || r.band === "Very High");
+  }).length;
+
+  const visibleAssessments = assessments.slice(0, 4);
+  const recent = workspace.audit.slice(0, 5);
 
   return (
-    <section className="grid gap-6">
-      <PageHeader
-        eyebrow={`${session.facility.name} · ${session.facility.operator}`}
-        title={`Welcome back, ${session.user.name.split(" ")[0]}`}
-        description="Pick up where you left off, resolve outstanding feedback, and prepare assessments for submission."
-        actions={
-          <>
-            <Link to="/assessments" className="btn-secondary">
-              View all assessments
-            </Link>
-            <button type="button" className="btn-primary">
-              <Icon name="plus" className="h-4 w-4" /> New assessment
-            </button>
-          </>
-        }
-      />
-
-      {drafts.length === 0 && inReview.length === 0 ? (
-        <Banner tone="info" title="No active assessments">
-          Start a new SRA or clone last cycle's assessment for this facility.
-        </Banner>
-      ) : null}
+    <div className="grid gap-6">
+      <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Assessments</h1>
+          <p className="mt-0.5 text-sm text-zinc-500">
+            All SRAs assigned to you across facilities you have access to.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFieldModeOpen(true)}
+            className="btn-secondary inline-flex items-center gap-1.5"
+          >
+            <Smartphone size={13} aria-hidden /> Field app
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiDraftOpen(true)}
+            className="btn-secondary inline-flex items-center gap-1.5"
+          >
+            <Sparkles size={13} aria-hidden /> AI-draft summary
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewAssessmentOpen(true)}
+            className="btn-primary inline-flex items-center gap-1.5"
+            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+          >
+            <Plus size={14} aria-hidden /> New assessment
+          </button>
+        </div>
+      </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Active drafts" value={drafts.length} hint="Editable by you" />
-        <KpiCard label="In review" value={inReview.length} hint="Awaiting reviewer action" tone="info" />
-        <KpiCard label="Overdue mitigations" value={overdueMitigations.length} tone={overdueMitigations.length ? "warn" : "default"} />
-        <KpiCard label="Open AI flags" value={1} hint="From anomaly detection" />
+        <StatCard label="Active assessments" value={visibleAssessments.length} sub="Across your facilities" />
+        <StatCard label="Assets in catalogue" value={workspace.assets.length} sub="Section 3" />
+        <StatCard
+          label="Evaluations"
+          value={totalEvals}
+          sub={`${highRisks} High or Very High`}
+          tone={highRisks > 0 ? "warn" : "default"}
+        />
+        <StatCard
+          label="Sections complete"
+          value={`${active?.completedSectionIds?.length || 0}/9`}
+          sub="Active SRA"
+        />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader
-              eyebrow="Workspace"
-              title="Recent assessments"
-              description="Resume a draft, address review comments, or open a previously approved assessment."
-              action={
-                <Link to="/assessments" className="btn-secondary">
-                  See all
-                </Link>
-              }
-            />
-            <ul className="mt-4 grid gap-3">
-              {recent.map((assessment) => (
-                <li
-                  key={assessment.id}
-                  className="flex flex-col gap-2 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-900">{assessment.name}</p>
-                    <p className="text-xs text-slate-500">
-                      Updated {new Date(assessment.lastUpdated).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StateChip state={assessment.state} />
-                    <Link
-                      to={`/assessments/${assessment.id}/sections/1`}
-                      className="btn-secondary"
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+        <header className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/60 px-4 py-2.5">
+          <p className="text-[13px] font-medium text-zinc-700">All assessments</p>
+          <p className="text-[11px] text-zinc-500">Showing {visibleAssessments.length} of {assessments.length}</p>
+        </header>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              <th className="px-4 py-2 text-left font-medium">Name</th>
+              <th className="px-4 py-2 text-left font-medium">Status</th>
+              <th className="px-4 py-2 text-left font-medium">Completion</th>
+              <th className="px-4 py-2 text-left font-medium">Reviewer</th>
+              <th className="px-4 py-2 text-left font-medium">Updated</th>
+              <th className="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {visibleAssessments.map((assessment) => {
+              const completion = Math.round(
+                ((assessment.completedSectionIds?.length || 0) / 9) * 100
+              );
+              const isActive = assessment.id === workspace.activeAssessmentId;
+              return (
+                <tr key={assessment.id} className="group border-t border-zinc-100 hover:bg-zinc-50/60">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={14} className="text-zinc-400" />
+                      <span className="font-medium">{assessment.name}</span>
+                      {isActive ? (
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ background: "#FEF3C7", color: "#92400E" }}
+                        >
+                          You · Active
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill status={assessment.state} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-zinc-100">
+                        <div
+                          className="h-full rounded-full bg-zinc-700"
+                          style={{ width: `${completion}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-[11px] tabular-nums text-zinc-500">{completion}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600">A. Reviewer</td>
+                  <td className="px-4 py-3 text-[13px] text-zinc-500">
+                    {new Date(assessment.lastUpdated).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/assessments/${assessment.id}/sections/2`)}
+                      className="text-[13px] font-medium text-zinc-900 hover:underline"
                     >
-                      Open
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-        <Card className="flex flex-col gap-4">
-          <CardHeader
-            eyebrow="Tasks"
-            title="Today"
-            description="Inline reminders generated from comments, anomaly flags, and submission validation."
-          />
-          <ul className="grid gap-3 text-sm">
-            <li className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-              <p className="font-semibold">Resolve send-back on Section 8</p>
-              <p className="mt-1 text-xs">Reviewer requested clarification on Conclusion paragraph 2.</p>
-              <Link
-                to="/assessments/ass-bonny-2026/sections/8"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline"
-              >
-                Open Section 8 <Icon name="chevron-right" className="h-3 w-3" />
-              </Link>
-            </li>
-            <li className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-900">
-              <p className="font-semibold">2 anomaly flags awaiting acknowledgement</p>
-              <p className="mt-1 text-xs">
-                Severity vs criticality mismatch on the Coral FPSO assessment.
-              </p>
-              <Link to="/assessments/ass-coral-2026/sections/6" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline">
-                Open Section 6 <Icon name="chevron-right" className="h-3 w-3" />
-              </Link>
-            </li>
-          </ul>
-        </Card>
+                      Open →
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </section>
-    </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[13px] font-semibold text-zinc-700">Recent activity</h3>
+            <button
+              type="button"
+              onClick={() => setAuditOpen(true)}
+              className="text-[11px] text-zinc-500 hover:text-zinc-900"
+            >
+              View audit log →
+            </button>
+          </div>
+          <div className="space-y-2.5 text-[13px]">
+            {recent.map((row) => (
+              <div key={row.id} className="flex items-center gap-3 text-zinc-600">
+                <div className="w-16 shrink-0 text-[11px] tabular-nums text-zinc-400">
+                  {(row.timestamp || row.ts || "").slice(11, 16) || "—"}
+                </div>
+                <div className="flex-1">
+                  <span className="font-medium text-zinc-900">{row.user}</span>{" "}
+                  <span className="text-zinc-600">{row.action}</span>{" "}
+                  {row.detail ? (
+                    <span className="text-zinc-700">— {row.detail}</span>
+                  ) : null}
+                </div>
+                {row.action === "flag" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                    <AlertTriangle size={10} aria-hidden /> AI flag
+                  </span>
+                ) : null}
+                {row.action === "comment" ? (
+                  <MessageSquare size={12} className="text-zinc-400" aria-hidden />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-[#EFF4FB]">
+              <Sparkles size={11} className="text-[#1E3A5F]" />
+            </div>
+            <h3 className="text-[13px] font-semibold text-zinc-700">Active capabilities</h3>
+          </div>
+          <p className="mb-3 text-[12px] leading-relaxed text-zinc-500">
+            Capabilities available for this facility. AI output is advisory and requires human review.
+          </p>
+
+          <div className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+            Active
+          </div>
+          <div className="mb-3 space-y-1 text-[12px]">
+            <CapabilityRow icon={FileSearch} label="Semantic library search" state="active" />
+            <CapabilityRow icon={Wand2} label="AI-drafted summaries" state="active" />
+            <CapabilityRow icon={Tag} label="Smart tagging of scenarios" state="active" />
+          </div>
+
+          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+            Additional capabilities
+            <span className="text-zinc-300">·</span>
+            <span className="font-normal normal-case tracking-normal text-zinc-400">enquire to enable</span>
+          </div>
+          <div className="space-y-1 text-[12px]">
+            <CapabilityRow
+              icon={() => <Sparkles size={11} />}
+              label="Real-time anomaly detection"
+              state="addon"
+              tooltip="Inline warnings catch errors as analysts work — rating math that doesn't add up, scenarios that don't match the threat type, criticality vs. consequence mismatches."
+            />
+            <CapabilityRow
+              icon={() => <Sparkles size={11} />}
+              label="Cross-facility consistency flagging"
+              state="addon"
+              tooltip="Nightly comparison of risk ratings across your facility portfolio. Statistical outliers flagged on the HQ Executive dashboard."
+            />
+            <CapabilityRow
+              icon={() => <Smartphone size={11} />}
+              label="Offline field mode"
+              state="addon"
+              tooltip="Genuine offline editing for analysts at offshore platforms, remote terminals, low-connectivity sites."
+              onClick={() => setFieldModeOpen(true)}
+            />
+          </div>
+
+          <Link
+            to={`/assessments/${ACTIVE_ASSESSMENT_ID}/sections/6`}
+            className="mt-4 inline-block text-[12px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+          >
+            See evaluation drill-down →
+          </Link>
+        </div>
+      </section>
+
+      {aiDraftOpen ? (
+        <AIDraftModal
+          assets={workspace.assets}
+          evaluations={workspace.evaluations}
+          onClose={() => setAiDraftOpen(false)}
+        />
+      ) : null}
+      {newAssessmentOpen ? (
+        <NewAssessmentModal
+          onClose={() => setNewAssessmentOpen(false)}
+          onCreate={() => {
+            setNewAssessmentOpen(false);
+            workspace.showToast("New assessment created");
+          }}
+        />
+      ) : null}
+      {auditOpen ? (
+        <AuditLogPanel
+          entries={workspace.audit}
+          assessmentName={active?.name}
+          onClose={() => setAuditOpen(false)}
+        />
+      ) : null}
+      {fieldModeOpen ? <FieldModeModal onClose={() => setFieldModeOpen(false)} /> : null}
+    </div>
   );
 }

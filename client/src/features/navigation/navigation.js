@@ -1,38 +1,29 @@
 import { ROLES } from "../../auth/session";
+import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 
 const NAVIGATION = Object.freeze({
   [ROLES.AUTHOR]: [
-    { label: "Home", to: "/dashboard", icon: "home", showInMobileBar: true },
-    { label: "Assessments", to: "/assessments", icon: "list", showInMobileBar: true },
-    { label: "Tasks", to: "/notifications", icon: "tasks", showInMobileBar: true },
-    { label: "Field Mode", to: "/field-mode", icon: "wifi", showInMobileBar: false },
-    { label: "Audit", to: "/audit", icon: "audit", showInMobileBar: false }
+    { label: "Assessments", to: "/dashboard", icon: "home", showInMobileBar: true },
+    { label: "Active SRA", to: `/assessments/${ACTIVE_ASSESSMENT_ID}/sections/2`, icon: "list", showInMobileBar: true }
   ],
   [ROLES.REVIEWER]: [
-    { label: "Home", to: "/dashboard", icon: "home", showInMobileBar: true },
-    { label: "Review Queue", to: "/assessments", icon: "list", showInMobileBar: true },
-    { label: "Tasks", to: "/notifications", icon: "tasks", showInMobileBar: true },
-    { label: "Audit", to: "/audit", icon: "audit", showInMobileBar: false }
+    { label: "Review queue", to: "/dashboard", icon: "tasks", showInMobileBar: true },
+    { label: "Active review", to: `/assessments/${ACTIVE_ASSESSMENT_ID}/sections/1`, icon: "list", showInMobileBar: true }
   ],
   [ROLES.APPROVER]: [
-    { label: "Home", to: "/dashboard", icon: "home", showInMobileBar: true },
-    { label: "Approval Queue", to: "/assessments", icon: "list", showInMobileBar: true },
-    { label: "Audit", to: "/audit", icon: "audit", showInMobileBar: true },
-    { label: "Tasks", to: "/notifications", icon: "tasks", showInMobileBar: false }
+    { label: "Approval queue", to: "/dashboard", icon: "check", showInMobileBar: true },
+    { label: "Active approval", to: `/assessments/${ACTIVE_ASSESSMENT_ID}/sections/1`, icon: "list", showInMobileBar: true }
   ],
   [ROLES.HQ_EXECUTIVE]: [
-    { label: "Portfolio", to: "/dashboard", icon: "home", showInMobileBar: true },
-    { label: "Assessments", to: "/assessments", icon: "list", showInMobileBar: true },
-    { label: "Audit Summary", to: "/audit", icon: "audit", showInMobileBar: true }
+    { label: "Enterprise", to: "/dashboard", icon: "building", showInMobileBar: true },
+    { label: "Drill-down", to: `/assessments/${ACTIVE_ASSESSMENT_ID}/sections/6`, icon: "grid", showInMobileBar: true }
   ],
   [ROLES.ADMIN]: [
     { label: "Admin", to: "/admin", icon: "settings", showInMobileBar: true },
-    { label: "Audit", to: "/audit", icon: "audit", showInMobileBar: true },
-    { label: "Assessments", to: "/assessments", icon: "list", showInMobileBar: true }
+    { label: "Configuration", to: "/admin?tab=matrix", icon: "layers", showInMobileBar: true }
   ],
   [ROLES.MITIGATION_OWNER]: [
-    { label: "My Mitigations", to: "/mitigations", icon: "check", showInMobileBar: true },
-    { label: "Tasks", to: "/notifications", icon: "tasks", showInMobileBar: true }
+    { label: "My mitigations", to: "/mitigations", icon: "check", showInMobileBar: true }
   ]
 });
 

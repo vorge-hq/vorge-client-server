@@ -1,98 +1,163 @@
 export const ASSET_THREAT_LINKS = Object.freeze([
-  { assetId: "asset-marine-loading", threatId: "threat-organised-crime" },
-  { assetId: "asset-marine-loading", threatId: "threat-maritime" },
-  { assetId: "asset-marine-loading", threatId: "threat-terrorism" },
-  { assetId: "asset-tank-farm", threatId: "threat-organised-crime" },
-  { assetId: "asset-tank-farm", threatId: "threat-criminality" },
-  { assetId: "asset-tank-farm", threatId: "threat-terrorism" },
-  { assetId: "asset-control-room", threatId: "threat-cybercrime" },
-  { assetId: "asset-control-room", threatId: "threat-insider" },
-  { assetId: "asset-utility-substation", threatId: "threat-criminality" },
-  { assetId: "asset-utility-substation", threatId: "threat-cybercrime" },
-  { assetId: "asset-fuel-skid", threatId: "threat-criminality" },
-  { assetId: "asset-fuel-skid", threatId: "threat-organised-crime" },
-  { assetId: "asset-admin-building", threatId: "threat-cybercrime" },
-  { assetId: "asset-admin-building", threatId: "threat-insider" }
+  { assetId: "a1", threatId: "t2" },
+  { assetId: "a1", threatId: "t5" },
+  { assetId: "a1", threatId: "t6" },
+  { assetId: "a1", threatId: "t7" },
+  { assetId: "a2", threatId: "t2" },
+  { assetId: "a2", threatId: "t3" },
+  { assetId: "a2", threatId: "t5" },
+  { assetId: "a2", threatId: "t7" },
+  { assetId: "a3", threatId: "t5" },
+  { assetId: "a3", threatId: "t6" },
+  { assetId: "a3", threatId: "t7" },
+  { assetId: "a4", threatId: "t2" },
+  { assetId: "a4", threatId: "t5" },
+  { assetId: "a4", threatId: "t8" },
+  { assetId: "a4", threatId: "t7" },
+  { assetId: "a5", threatId: "t2" },
+  { assetId: "a5", threatId: "t3" },
+  { assetId: "a5", threatId: "t7" },
+  { assetId: "a6", threatId: "t2" },
+  { assetId: "a6", threatId: "t3" },
+  { assetId: "a6", threatId: "t5" },
+  { assetId: "a6", threatId: "t6" },
+  { assetId: "a6", threatId: "t7" }
 ]);
+
+export function buildMatrix(links = ASSET_THREAT_LINKS) {
+  const m = {};
+  links.forEach(({ assetId, threatId }) => {
+    m[`${assetId}|${threatId}`] = true;
+  });
+  return m;
+}
+
+export const SEED_MATRIX = buildMatrix();
 
 export const EVALUATIONS = Object.freeze([
   {
-    id: "eval-marine-organised",
-    assetId: "asset-marine-loading",
-    threatId: "threat-organised-crime",
-    scenario:
-      "Coordinated theft of finished product during night loading by collusion between vessel crew, surveyor, and shore-side staff.",
-    consequences: "Product loss; environmental risk during covert transfer; loss of customer confidence.",
+    id: "e1",
+    assetId: "a1",
+    threatId: "t2",
+    scenario: "Theft of materials from process area by external actor.",
+    consequences:
+      "Replacement cost, operations disruption, secondary damage from forced entry.",
     existingControls:
-      "Manned access control, two-person rule on metering, CCTV, surveyor independence policy.",
+      "Perimeter fencing, 24/7 security guards, CCTV at access points, vehicle inspection at gates.",
     vulnerabilities:
-      "CCTV blind spots near hose-handling pad; weak rotation policy on surveyors; no metering anomaly detection.",
-    consequenceScore: 4,
-    likelihoodScore: 3,
-    mitigation:
-      "Deploy automated metering anomaly detection; expand CCTV coverage; quarterly surveyor rotation.",
-    postConsequenceScore: 4,
-    postLikelihoodScore: 1,
-    library: "Scenarios"
+      "CCTV coverage gaps in north perimeter, access control card sharing observed in audit.",
+    proposedMitigation:
+      "Upgrade CCTV with analytics, replace card readers with biometric, enforce no-tailgating policy.",
+    consequenceR1: 3,
+    likelihoodR1: 4,
+    consequenceR2: 2,
+    likelihoodR2: 2,
+    consequenceScore: 3,
+    likelihoodScore: 4,
+    postConsequenceScore: 2,
+    postLikelihoodScore: 2
   },
   {
-    id: "eval-marine-maritime",
-    assetId: "asset-marine-loading",
-    threatId: "threat-maritime",
-    scenario:
-      "Hostile vessel approach during product transfer aiming to interrupt operations or board.",
-    consequences: "Operational shutdown, potential loss-of-life, regulatory escalation.",
-    existingControls: "Maritime exclusion zone, naval coordination, AIS monitoring.",
+    id: "e2",
+    assetId: "a2",
+    threatId: "t5",
+    scenario: "Coordinated attack on tank farm causing catastrophic release.",
+    consequences:
+      "Multiple fatalities, major environmental damage, prolonged production loss, severe reputational impact.",
+    existingControls: "Armed response, restricted access, blast barriers at perimeter.",
     vulnerabilities:
-      "Limited radar coverage on landward approach; reaction time of armed escort during shift change.",
+      "Vegetation overgrowth limits visibility, response drill frequency below standard.",
+    proposedMitigation:
+      "Clear vegetation buffer, increase drill frequency, deploy additional perimeter sensors, joint exercise with regional security.",
+    consequenceR1: 5,
+    likelihoodR1: 2,
+    consequenceR2: 4,
+    likelihoodR2: 1,
     consequenceScore: 5,
     likelihoodScore: 2,
-    mitigation: "Upgrade radar coverage; revise armed escort scheduling; quarterly drill with naval partners.",
-    postConsequenceScore: 5,
+    postConsequenceScore: 4,
     postLikelihoodScore: 1
   },
   {
-    id: "eval-control-cyber",
-    assetId: "asset-control-room",
-    threatId: "threat-cybercrime",
-    scenario:
-      "Targeted ransomware on engineering workstations leveraging stolen vendor credentials disrupts DCS.",
-    consequences: "Loss of operational control; potential safety-system trip; multi-day shutdown.",
-    existingControls: "Network segmentation, MFA on engineering workstations, monthly patch cycle.",
+    id: "e3",
+    assetId: "a4",
+    threatId: "t8",
+    scenario: "Pirates board supply vessel in transit and abduct crew.",
+    consequences: "Crew fatality risk, vessel damage, ransom exposure, route disruption.",
+    existingControls: "Vessel hardening, threat monitoring, scheduled escorts in high-risk waters.",
     vulnerabilities:
-      "Vendor remote access uses single shared account; backups stored on same network segment as DCS historian.",
+      "Inadequate watchkeeping during night transit, low freeboard on certain vessels.",
+    proposedMitigation:
+      "Mandatory two-person watch, intel link with naval authority, citadel installation on key vessels.",
+    consequenceR1: 5,
+    likelihoodR1: 3,
+    consequenceR2: 4,
+    likelihoodR2: 2,
     consequenceScore: 5,
-    likelihoodScore: 4,
-    mitigation:
-      "Implement per-vendor accounts with WebAuthn; isolate backups in air-gapped enclave; SOC playbook for OT incidents.",
-    postConsequenceScore: 5,
-    postLikelihoodScore: 2
-  },
-  {
-    id: "eval-tank-farm-criminality",
-    assetId: "asset-tank-farm",
-    threatId: "threat-criminality",
-    scenario: "Perimeter intrusion targeting copper cabling and fittings on tank farm boundary.",
-    consequences: "Equipment damage, ignition risk in worst case, response cost.",
-    existingControls: "Fence, lighting, foot patrols.",
-    vulnerabilities: "Lighting outages on north fence; patrol gaps between 03:00-05:00.",
-    consequenceScore: 3,
     likelihoodScore: 3,
-    mitigation: "Replace lighting and add thermal cameras; revise patrol schedule.",
-    postConsequenceScore: 3,
+    postConsequenceScore: 4,
     postLikelihoodScore: 2
   },
   {
-    id: "eval-utility-cyber",
-    assetId: "asset-utility-substation",
-    threatId: "threat-cybercrime",
-    scenario: "Compromise of substation HMI via remote vendor access leading to load shedding.",
-    consequences: "Plant-wide power loss; safety systems on limited UPS.",
-    existingControls: "VPN, MFA, vendor contract clauses.",
-    vulnerabilities: "Legacy HMI without secure boot; vendor maintenance laptop policy unverified.",
+    id: "e4",
+    assetId: "a3",
+    threatId: "t6",
+    scenario: "Cyber intrusion into SCADA via compromised vendor laptop.",
+    consequences:
+      "Loss of process control, potential safety system override, regulatory exposure.",
+    existingControls: "Network segmentation, endpoint AV, vendor access policy.",
+    vulnerabilities:
+      "Vendor laptops not consistently scanned at entry, segmentation gaps in OT/IT bridge.",
+    proposedMitigation:
+      "Mandatory laptop quarantine and scan, deploy unidirectional gateway, vendor access logging.",
+    consequenceR1: 4,
+    likelihoodR1: 3,
+    consequenceR2: 3,
+    likelihoodR2: 2,
     consequenceScore: 4,
     likelihoodScore: 3,
-    mitigation: "Replace HMI; enforce vendor laptop attestation; quarterly DR drill.",
+    postConsequenceScore: 3,
+    postLikelihoodScore: 2,
+    library: "Scenarios"
+  },
+  {
+    id: "e5",
+    assetId: "a6",
+    threatId: "t7",
+    scenario: "Disgruntled insider sabotages substation control wiring.",
+    consequences:
+      "Total facility shutdown, secondary safety incidents, recovery time 48–72 hours.",
+    existingControls: "Background checks, two-person access rule for substation.",
+    vulnerabilities:
+      "Two-person rule not enforced during shift handover, no tamper alarms on key cabinets.",
+    proposedMitigation:
+      "Tamper alarms on critical cabinets, enforce two-person rule with electronic logging, behavioural risk programme.",
+    consequenceR1: 4,
+    likelihoodR1: 2,
+    consequenceR2: 3,
+    likelihoodR2: 1,
+    consequenceScore: 4,
+    likelihoodScore: 2,
+    postConsequenceScore: 3,
+    postLikelihoodScore: 1
+  },
+  {
+    id: "e6",
+    assetId: "a1",
+    threatId: "t7",
+    scenario: "Insider tampers with process safety instrumentation.",
+    consequences: "Loss of life, major environmental release, prolonged shutdown.",
+    existingControls: "Two-person rule for safety system changes, change management approval.",
+    vulnerabilities:
+      "Documented change management not consistently followed for emergency repairs.",
+    proposedMitigation:
+      "Audit change management compliance, mandatory video review of safety system maintenance.",
+    consequenceR1: 5,
+    likelihoodR1: 2,
+    consequenceR2: 4,
+    likelihoodR2: 1,
+    consequenceScore: 5,
+    likelihoodScore: 2,
     postConsequenceScore: 4,
     postLikelihoodScore: 1
   }

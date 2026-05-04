@@ -3,11 +3,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        canvas: "#F1F2F4",
+        brand: {
+          DEFAULT: "#1E3A5F",
+          hover: "#16294A",
+          muted: "#EFF4FB",
+          "muted-border": "#C5D5E8",
+          accent: "#F59E0B"
+        },
         vantage: {
-          ink: "#0b1220",
-          navy: "#0f172a",
+          ink: "#16294A",
+          navy: "#1E3A5F",
           slate: "#1e293b",
-          blue: "#1d4ed8",
+          blue: "#1E3A5F",
           sky: "#0284c7",
           teal: "#0f766e",
           amber: "#b45309",
@@ -37,23 +45,23 @@ export default {
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "Geist",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
           "sans-serif"
-        ]
+        ],
+        mono: ["Geist Mono", "ui-monospace", "monospace"]
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.06)",
-        elevated:
-          "0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04)"
+        card: "0 1px 2px 0 rgba(24, 24, 27, 0.04), 0 1px 3px 0 rgba(24, 24, 27, 0.06)",
+        elevated: "0 10px 15px -3px rgba(24, 24, 27, 0.08), 0 4px 6px -4px rgba(24, 24, 27, 0.05)"
       },
       borderRadius: {
-        xl: "0.875rem",
-        "2xl": "1.125rem"
+        xl: "0.75rem",
+        "2xl": "0.875rem"
       }
     }
   },

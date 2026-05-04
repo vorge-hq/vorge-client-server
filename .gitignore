@@ -4,3 +4,9 @@ coverage/
 dist/
 .DS_Store
 npm-debug.log*
+
+# Cursor IDE local files
+.cursor/
+
+# Personal notes
+Notes.txt

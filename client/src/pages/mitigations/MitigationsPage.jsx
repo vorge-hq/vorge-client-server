@@ -1,290 +1,349 @@
 import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Info,
+  Lock,
+  X
+} from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { Banner } from "../../components/Banner";
-import { Card, CardHeader } from "../../components/Card";
-import {
-  AgreedChip,
-  Chip,
-  SeverityChip,
-  StatusChip,
-  StateChip
-} from "../../components/Chip";
-import { EmptyState } from "../../components/EmptyState";
-import { FormField, Select, TextArea } from "../../components/FormField";
-import { KpiCard } from "../../components/KpiCard";
-import { Modal } from "../../components/Modal";
-import { PageHeader } from "../../components/PageHeader";
-import { ASSESSMENTS } from "../../data/assessments";
-import { FACILITIES } from "../../data/operators";
-import { MITIGATIONS } from "../../data/mitigations";
-import { ASSESSMENT_STATES } from "../../features/assessmentWorkspace/assessmentModel";
-import {
-  MITIGATION_STATUSES,
-  getMitigationKpis,
-  validateMitigationUpdate
-} from "../../features/mitigationOwner/mitigationRules";
+import { AgreedChip, SeverityChip, StateChip, StatusChip } from "../../components/Chip";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import { getMitigationKpis } from "../../features/mitigationOwner/mitigationRules";
 
-function getAssessment(assessmentId) {
-  return ASSESSMENTS.find((a) => a.id === assessmentId);
-}
+const STATUS_OPTIONS = ["Open", "In Progress", "Done"];
 
-function getFacility(facilityId) {
-  return FACILITIES.find((f) => f.id === facilityId);
-}
-
-function MitigationDetailModal({ mitigation, assessment, onClose }) {
-  const isApproved = assessment?.state === ASSESSMENT_STATES.APPROVED;
+function MitigationDetailModal({ mitigation, onClose, onSave }) {
   const [status, setStatus] = useState(mitigation.status);
   const [note, setNote] = useState("");
-  const [submitted, setSubmitted] = useState(null);
-
-  const validation = validateMitigationUpdate({
-    currentStatus: mitigation.status,
-    nextStatus: status,
-    note,
-    assessmentState: assessment?.state
-  });
-
-  const buttonLabel =
-    status === MITIGATION_STATUSES.DONE && mitigation.status !== MITIGATION_STATUSES.DONE
-      ? "Mark as Done"
-      : status !== mitigation.status
-      ? "Update status"
-      : "Add note";
+  const [error, setError] = useState(null);
+  const isApproved = mitigation.assessmentState === "Approved";
+  const movingToDone = status === "Done";
 
   function handleSubmit(event) {
     event.preventDefault();
-    if (!validation.valid) {
+    setError(null);
+    if (!isApproved) {
+      setError("Mitigation progress can only be updated after the parent assessment is Approved.");
       return;
     }
-    setSubmitted({ status, note, timestamp: new Date().toISOString() });
+    if (movingToDone && !note.trim()) {
+      setError("A progress note is required when marking a mitigation Done.");
+      return;
+    }
+    if (mitigation.status === "Done" && status !== "Done") {
+      setError("Done is terminal and cannot be reopened.");
+      return;
+    }
+    onSave({ status, note: note.trim() });
   }
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={mitigation.description}
-      footer={
-        <>
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            Close
-          </button>
-          {isApproved && !submitted ? (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl border border-zinc-200 bg-white shadow-xl sm:rounded-xl">
+        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
+          <div>
             <button
-              type="submit"
-              form="mitigation-update"
-              className="btn-primary"
-              disabled={!validation.valid}
+              type="button"
+              onClick={onClose}
+              className="mb-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-zinc-900"
             >
-              {buttonLabel}
+              <ArrowLeft size={11} aria-hidden /> Back to my mitigations
             </button>
-          ) : null}
-        </>
-      }
-    >
-      <div className="grid gap-3 text-sm">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div>
-            <p className="section-eyebrow">Severity</p>
-            <SeverityChip severity={mitigation.severity} className="mt-1" />
+            <p className="text-[14px] font-semibold text-zinc-900">{mitigation.assetThreat}</p>
+            <p className="text-[11px] text-zinc-500">
+              {mitigation.facility} · {mitigation.cycle} · Assigned by {mitigation.assignedBy}
+            </p>
           </div>
-          <div>
-            <p className="section-eyebrow">Agreed</p>
-            <AgreedChip agreed={mitigation.agreed} className="mt-1" />
-          </div>
-          <div>
-            <p className="section-eyebrow">Target date</p>
-            <p className="mt-1 text-slate-700">{new Date(mitigation.targetDate).toLocaleDateString()}</p>
-          </div>
+          <button onClick={onClose} className="rounded p-1 hover:bg-zinc-100" aria-label="Close">
+            <X size={16} aria-hidden />
+          </button>
         </div>
 
-        <div className="rounded-xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold uppercase text-slate-500">Assessment</p>
-          <p className="mt-1 font-semibold text-slate-900">{assessment?.name}</p>
-          <div className="mt-1 flex items-center gap-2 text-xs">
-            <StateChip state={assessment?.state} />
-            <span className="text-slate-500">{getFacility(assessment?.facilityId)?.name}</span>
-          </div>
-        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[13px]">
+          <section className="grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Mitigation</p>
+              <p className="mt-1 text-zinc-800">{mitigation.description}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Severity & target</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <SeverityChip severity={mitigation.severity} />
+                <span className="text-[12px] text-zinc-700">Target {mitigation.targetDate}</span>
+                {mitigation.overdue ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                    Overdue
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Assessment state</p>
+              <div className="mt-1">
+                <StateChip state={mitigation.assessmentState} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Current status</p>
+              <div className="mt-1">
+                <StatusChip status={mitigation.status} />
+              </div>
+            </div>
+          </section>
 
-        {!isApproved ? (
-          <Banner tone="info" title="Read-only until approval">
-            You'll be able to update status and add progress notes once the assessment is approved.
-          </Banner>
-        ) : submitted ? (
-          <Banner tone="success" title="Update saved">
-            {submitted.status !== mitigation.status
-              ? `Status set to ${submitted.status}.`
-              : "Progress note added."}
-          </Banner>
-        ) : (
-          <form id="mitigation-update" onSubmit={handleSubmit} className="grid gap-3">
-            <FormField label="Status">
-              <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-                <option value={MITIGATION_STATUSES.OPEN}>Open</option>
-                <option value={MITIGATION_STATUSES.IN_PROGRESS}>In Progress</option>
-                <option value={MITIGATION_STATUSES.DONE}>Done</option>
-              </Select>
-            </FormField>
-            <FormField
-              label="Progress note"
-              required={status === MITIGATION_STATUSES.DONE && mitigation.status !== MITIGATION_STATUSES.DONE}
-              error={validation.errors[0]}
-              hint="Required when marking Done. Notes are append-only."
-            >
-              <TextArea value={note} onChange={(event) => setNote(event.target.value)} rows={4} />
-            </FormField>
-          </form>
-        )}
-
-        <div>
-          <p className="section-eyebrow">Progress timeline</p>
-          {mitigation.log?.length ? (
-            <ol className="mt-2 grid gap-2">
-              {mitigation.log.map((entry) => (
-                <li key={entry.id} className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>
-                      {entry.userName} · {entry.roleLabel}
-                    </span>
-                    <span>{new Date(entry.timestamp).toLocaleString()}</span>
-                  </div>
-                  <p className="mt-1 text-slate-800">{entry.text}</p>
-                  {entry.statusChange ? (
-                    <p className="mt-1 text-xs text-slate-600">
-                      Status: {entry.statusChange.from} → <strong>{entry.statusChange.to}</strong>
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
+          {!isApproved ? (
+            <Banner tone="info" title="Read-only until approved">
+              Mitigation progress is editable only after the parent assessment is Approved. You can review the
+              context now and add updates once approval is recorded.
+            </Banner>
           ) : (
-            <p className="mt-2 text-xs text-slate-500">No progress entries yet.</p>
+            <form onSubmit={handleSubmit} className="grid gap-3">
+              <label className="block">
+                <span className="field-label mb-1.5 block">Status</span>
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                  className="field-control text-[13px]"
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="field-label mb-1.5 block">
+                  Progress note {movingToDone ? <span className="text-red-600">*</span> : null}
+                </span>
+                <textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={4}
+                  className="field-control text-[13px]"
+                  placeholder={
+                    movingToDone
+                      ? "Justify why this mitigation can be marked Done. Note is appended to the immutable log."
+                      : "Optional progress update."
+                  }
+                />
+              </label>
+              {error ? <Banner tone="danger" title="Cannot save">{error}</Banner> : null}
+              <div className="flex items-center justify-end gap-2 border-t border-zinc-100 pt-3">
+                <button type="button" onClick={onClose} className="btn-secondary">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+                >
+                  {movingToDone ? "Mark as Done" : status === mitigation.status ? "Add note" : "Update status"}
+                </button>
+              </div>
+            </form>
           )}
+
+          <section>
+            <h3 className="mb-2 text-[12px] font-semibold text-zinc-700">Progress log</h3>
+            {mitigation.log?.length ? (
+              <ol className="grid gap-2 text-[12px]">
+                {mitigation.log.map((entry, idx) => (
+                  <li key={entry.id || idx} className="rounded-md border border-zinc-200 bg-white p-2">
+                    <p className="text-[10px] tabular-nums text-zinc-400">
+                      {entry.timestamp || entry.ts}
+                    </p>
+                    <p className="text-[12px] text-zinc-700">
+                      <span className="font-semibold">{entry.userName || entry.author}</span>{" "}
+                      <span className="text-[10px] text-zinc-500">
+                        ({entry.roleLabel || entry.authorRole})
+                      </span>{" "}
+                      — {entry.text}
+                    </p>
+                    {entry.statusChange ? (
+                      <p className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
+                        {entry.statusChange.from} → {entry.statusChange.to}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-3 py-4 text-center text-[12px] text-zinc-500">
+                No log entries yet. Add one to start tracking progress.
+              </p>
+            )}
+          </section>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 }
 
 export function MitigationsPage() {
   const { session } = useAuth();
-  const [filter, setFilter] = useState("All");
-  const [activeMitigation, setActiveMitigation] = useState(null);
+  const workspace = useWorkspace();
+  const [filter, setFilter] = useState("all");
+  const [activeId, setActiveId] = useState(null);
 
-  const myMitigations = useMemo(
-    () => MITIGATIONS.filter((m) => m.ownerUserId === session.user.id || m.ownerLabel === "Security Manager"),
-    [session.user.id]
+  const myMitigations = workspace.myMitigations.filter(
+    (m) => m.ownerUserId === session.user.id
   );
 
-  const kpis = getMitigationKpis(myMitigations);
-  const overdueCount = kpis.overdue;
-
   const filtered = useMemo(() => {
-    if (filter === "All") return myMitigations;
+    if (filter === "all") return myMitigations;
     return myMitigations.filter((m) => m.status === filter);
-  }, [filter, myMitigations]);
+  }, [myMitigations, filter]);
 
-  const pendingAssignments = myMitigations.filter((m) => {
-    const assessment = getAssessment(m.assessmentId);
-    return assessment?.state !== ASSESSMENT_STATES.APPROVED;
-  });
+  const kpis = getMitigationKpis(myMitigations);
+
+  const pending = myMitigations.filter((m) => m.assessmentState !== "Approved");
+  const active = activeId ? myMitigations.find((m) => m.id === activeId) : null;
 
   return (
-    <section className="grid gap-6">
-      <PageHeader
-        eyebrow={`Mitigation Owner · ${session.user.name}`}
-        title="My Mitigations"
-        description="Update status and add progress notes on approved mitigations. Pre-approval mitigations are read-only."
-      />
+    <div className="grid gap-5">
+      <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">My mitigations</h1>
+          <p className="mt-0.5 text-sm text-zinc-500">
+            Mitigations assigned to you across facilities. Updates apply only after the parent assessment is
+            Approved.
+          </p>
+        </div>
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+          style={{ background: "#FEF3C7", color: "#92400E" }}
+        >
+          <Lock size={10} aria-hidden /> Acting as Mitigation Owner
+        </span>
+      </header>
 
-      {pendingAssignments.length > 0 ? (
-        <Banner tone="info" title="Pending assignments">
-          You've been proposed as Owner on {pendingAssignments.length} mitigation
-          {pendingAssignments.length === 1 ? "" : "s"} in assessments that are not yet approved.
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Open</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums">{kpis.open}</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">In progress</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums">{kpis.inProgress}</div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Overdue</div>
+          <div
+            className="mt-1 text-2xl font-semibold tabular-nums"
+            style={{ color: kpis.overdue > 0 ? "#B91C1C" : undefined }}
+          >
+            {kpis.overdue}
+          </div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Done this year</div>
+          <div className="mt-1 text-2xl font-semibold tabular-nums">{kpis.doneThisYear}</div>
+        </div>
+      </section>
+
+      {pending.length ? (
+        <Banner tone="warn" title={`${pending.length} pending assignment${pending.length === 1 ? "" : "s"}`}>
+          These mitigations are assigned to you but the parent assessment is not yet Approved. They become
+          editable once approval is recorded.
         </Banner>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Open" value={kpis.open} />
-        <KpiCard label="In Progress" value={kpis.inProgress} tone="info" />
-        <KpiCard label="Overdue" value={overdueCount} tone={overdueCount ? "warn" : "default"} />
-        <KpiCard label="Done this year" value={kpis.doneThisYear} tone="success" />
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+        <header className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-4 py-2.5">
+          <span className="text-[13px] font-medium text-zinc-700">Assigned to me</span>
+          <select
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="field-control text-[12px] sm:w-44"
+          >
+            <option value="all">All statuses</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </header>
+        <ul className="divide-y divide-zinc-100">
+          {filtered.length === 0 ? (
+            <li className="px-4 py-8 text-center text-[13px] text-zinc-500">
+              No mitigations match this filter.
+            </li>
+          ) : null}
+          {filtered.map((mitigation) => (
+            <li key={mitigation.id} className="px-4 py-3 hover:bg-zinc-50/40">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SeverityChip severity={mitigation.severity} />
+                    <StatusChip status={mitigation.status} />
+                    <StateChip state={mitigation.assessmentState} />
+                    <AgreedChip agreed={mitigation.agreed} />
+                    {mitigation.overdue ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                        <AlertTriangle size={9} aria-hidden /> Overdue
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1.5 text-[13px] font-medium text-zinc-900">{mitigation.assetThreat}</p>
+                  <p className="mt-0.5 text-[12px] text-zinc-600">{mitigation.description}</p>
+                  <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-zinc-500">
+                    <Clock size={10} aria-hidden /> Target {mitigation.targetDate} · {mitigation.facility}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveId(mitigation.id)}
+                  className="btn-secondary inline-flex items-center gap-1 text-[12px]"
+                >
+                  {mitigation.assessmentState === "Approved" ? "Update" : "View"}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <Card>
-        <CardHeader
-          eyebrow="Filters"
-          title="Filter assigned mitigations"
-          action={
-            <Select value={filter} onChange={(event) => setFilter(event.target.value)}>
-              <option>All</option>
-              <option value={MITIGATION_STATUSES.OPEN}>Open</option>
-              <option value={MITIGATION_STATUSES.IN_PROGRESS}>In Progress</option>
-              <option value={MITIGATION_STATUSES.DONE}>Done</option>
-            </Select>
-          }
-        />
+      <div className="flex max-w-2xl items-start gap-2 text-[12px] text-zinc-500">
+        <Info size={12} className="mt-0.5 shrink-0" aria-hidden />
+        <span>
+          You only see assigned mitigations. Marking a mitigation Done requires a justifying note and is
+          terminal. Once Done, the entry remains visible but cannot be reopened.
+        </span>
+      </div>
 
-        {filtered.length === 0 ? (
-          <EmptyState
-            title="No mitigations match the filter"
-            description="Try clearing the filter or wait for new assignments."
-          />
-        ) : (
-          <ul className="mt-4 grid gap-3">
-            {filtered.map((mitigation) => {
-              const assessment = getAssessment(mitigation.assessmentId);
-              const facility = getFacility(mitigation.facilityId);
-              const overdue =
-                mitigation.status !== "Done" && new Date(mitigation.targetDate) < new Date();
-              return (
-                <li
-                  key={mitigation.id}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 lg:flex-row lg:items-start lg:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <SeverityChip severity={mitigation.severity} />
-                      <StatusChip status={mitigation.status} />
-                      <StateChip state={assessment?.state} />
-                      {overdue ? <Chip tone="warn">Overdue</Chip> : null}
-                    </div>
-                    <p className="mt-2 font-semibold text-slate-900">{mitigation.description}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {facility?.name} · {assessment?.name} · Target{" "}
-                      {new Date(mitigation.targetDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={
-                      assessment?.state === ASSESSMENT_STATES.APPROVED ? "btn-primary" : "btn-secondary"
-                    }
-                    onClick={() => setActiveMitigation(mitigation)}
-                  >
-                    {assessment?.state === ASSESSMENT_STATES.APPROVED ? "Update" : "View"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        <p className="mt-4 text-xs text-slate-500">
-          You can update Status and add progress notes only on mitigations in approved assessments. To
-          revise other fields, the assessment Author must run a new cycle.
-        </p>
-      </Card>
-
-      {activeMitigation ? (
+      {active ? (
         <MitigationDetailModal
-          mitigation={activeMitigation}
-          assessment={getAssessment(activeMitigation.assessmentId)}
-          onClose={() => setActiveMitigation(null)}
+          mitigation={active}
+          onClose={() => setActiveId(null)}
+          onSave={({ status, note }) => {
+            const result = workspace.dispatchMitigationUpdate({
+              mitigationId: active.id,
+              status,
+              note,
+              userName: session.user.name,
+              roleLabel: "IT Security"
+            });
+            if (result?.error) {
+              workspace.showToast(result.error);
+              return;
+            }
+            workspace.showToast(
+              status === "Done"
+                ? "Mitigation marked as Done"
+                : note
+                  ? "Progress note added"
+                  : `Status updated to ${status}`
+            );
+            setActiveId(null);
+          }}
         />
       ) : null}
-    </section>
+
+      <p className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+        <CheckCircle2 size={10} aria-hidden /> Audit log records every status change with timestamp and IP.
+      </p>
+    </div>
   );
 }

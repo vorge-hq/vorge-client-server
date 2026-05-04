@@ -59,5 +59,5 @@ export function getBandForScore(score) {
 
 export function getBandClasses(bandId) {
   const band = Object.values(RISK_BANDS).find((entry) => entry.id === bandId);
-  return band ? `${band.fg} ${band.bg}` : "text-slate-600 bg-slate-100";
+  return band ? `${band.fg} ${band.bg}` : "text-zinc-600 bg-zinc-100";
 }

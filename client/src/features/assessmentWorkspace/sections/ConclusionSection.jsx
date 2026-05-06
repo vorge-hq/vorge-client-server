@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
+import { CommentAffordance } from "../../../components/CommentAffordance";
+import { ASSESSMENT_STATES } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
 export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors }) {
+  const { session } = useAuth();
   const [text, setText] = useState(assessment?.conclusion || "");
   const wordCount = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
+  const canComment =
+    session.actingRole === ROLES.REVIEWER &&
+    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
   return (
     <SectionShell
@@ -14,15 +22,20 @@ export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors 
       title="Conclusion"
       description="Closing position on residual risk, mitigation acceptance, and sign-off readiness."
       actions={
-        readOnly ? null : (
-          <button
-            type="button"
-            onClick={onOpenAIDraft}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#1E3A5F] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1E3A5F] hover:bg-[#EFF4FB]"
-          >
-            <Sparkles size={12} aria-hidden /> Draft with AI
-          </button>
-        )
+        <>
+          {canComment ? (
+            <CommentAffordance section="Section 8 — Conclusion" sectionId={8} />
+          ) : null}
+          {readOnly ? null : (
+            <button
+              type="button"
+              onClick={onOpenAIDraft}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#1E3A5F] bg-white px-3 py-1.5 text-[12px] font-medium text-[#1E3A5F] hover:bg-[#EFF4FB]"
+            >
+              <Sparkles size={12} aria-hidden /> Draft with AI
+            </button>
+          )}
+        </>
       }
       footer={<p className="text-[11px] text-zinc-500">{wordCount} words · auto-saved.</p>}
     >

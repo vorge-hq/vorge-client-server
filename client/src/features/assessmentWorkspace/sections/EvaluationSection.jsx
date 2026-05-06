@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle2, FileSearch, Plus } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { LIBRARY_SCENARIOS, similarity } from "../../../data/library";
+import { similarity } from "../../../data/library";
 import { useWorkspace } from "../WorkspaceContext";
 import { ASSESSMENT_STATES } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
@@ -179,16 +179,17 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
 }
 
 function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canComment }) {
+  const { libraryScenarios } = useWorkspace();
   const r1 = calcRisk(evaluation.consequenceR1, evaluation.likelihoodR1);
   const r2 = calcRisk(evaluation.consequenceR2, evaluation.likelihoodR2);
 
   const suggestions = useMemo(() => {
     if (!evaluation.scenario || evaluation.scenario.length < 8) return [];
-    return LIBRARY_SCENARIOS.map((entry) => ({ ...entry, score: similarity(evaluation.scenario, entry.text) }))
+    return libraryScenarios.map((entry) => ({ ...entry, score: similarity(evaluation.scenario, entry.text) }))
       .filter((entry) => entry.score > 0.05)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
-  }, [evaluation.scenario]);
+  }, [evaluation.scenario, libraryScenarios]);
 
   const textareaClass =
     "w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-[13px] focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-100 resize-none disabled:bg-zinc-50 disabled:text-zinc-700 disabled:cursor-default";

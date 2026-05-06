@@ -317,8 +317,8 @@ export function MitigationsPage() {
         <MitigationDetailModal
           mitigation={active}
           onClose={() => setActiveId(null)}
-          onSave={({ status, note }) => {
-            const result = workspace.dispatchMitigationUpdate({
+          onSave={async ({ status, note }) => {
+            const result = await workspace.appendMitigationLogEntry({
               mitigationId: active.id,
               status,
               note,

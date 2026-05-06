@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { BookOpen, Search, Tag, X } from "lucide-react";
-import { LIBRARY_SCENARIOS, similarity } from "../../../data/library";
+import { similarity } from "../../../data/library";
+import { useWorkspace } from "../WorkspaceContext";
 
 export function LibraryModal({ onClose, onUse }) {
+  const { libraryScenarios } = useWorkspace();
   const [query, setQuery] = useState("Theft of materials from yard during night shift");
 
   const ranked = useMemo(() => {
-    if (!query) return LIBRARY_SCENARIOS.map((entry) => ({ entry, score: 0 }));
-    return LIBRARY_SCENARIOS.map((entry) => ({ entry, score: similarity(query, entry.text) }))
+    if (!query) return libraryScenarios.map((entry) => ({ entry, score: 0 }));
+    return libraryScenarios.map((entry) => ({ entry, score: similarity(query, entry.text) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
-  }, [query]);
+  }, [query, libraryScenarios]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">

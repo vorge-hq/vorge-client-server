@@ -8,7 +8,8 @@ import {
   Settings,
   Users
 } from "lucide-react";
-import { ADMIN_USERS, FACILITY_ASSIGNMENTS, OWNER_POOL } from "../../data/admin";
+import { OWNER_POOL } from "../../data/admin";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 
 function AdminTile({ Icon: TileIcon, title, description, count, to }) {
   return (
@@ -32,6 +33,8 @@ function AdminTile({ Icon: TileIcon, title, description, count, to }) {
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const workspace = useWorkspace();
+  const { adminUsers, facilityAssignments } = workspace;
 
   return (
     <div className="grid gap-5">
@@ -109,7 +112,7 @@ export function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {ADMIN_USERS.slice(0, 6).map((user) => (
+              {adminUsers.slice(0, 6).map((user) => (
                 <tr key={user.id} className="border-t border-zinc-100 hover:bg-zinc-50/40">
                   <td className="px-3 py-2 text-[12px]">
                     <div className="font-medium text-zinc-900">{user.name}</div>
@@ -150,7 +153,7 @@ export function AdminDashboard() {
             </button>
           </header>
           <ul className="divide-y divide-zinc-100">
-            {FACILITY_ASSIGNMENTS.map((row) => (
+            {facilityAssignments.map((row) => (
               <li key={row.facility} className="px-4 py-2.5 text-[12px]">
                 <p className="font-medium text-zinc-900">{row.facility}</p>
                 <p className="mt-0.5 text-[11px] text-zinc-600">

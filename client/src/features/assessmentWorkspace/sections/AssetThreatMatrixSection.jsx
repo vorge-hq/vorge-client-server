@@ -1,13 +1,22 @@
 import { useMemo, useState } from "react";
 import { Check, Plus } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
+import { CommentAffordance } from "../../../components/CommentAffordance";
+import { ASSESSMENT_STATES } from "../assessmentModel";
 import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
-export function AssetThreatMatrixSection({ readOnly, errors }) {
+export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
+  const { session } = useAuth();
   const { assets, threats, matrix, evaluations, toggleMatrix } = useWorkspace();
   const [view, setView] = useState("grid");
+
+  const canComment =
+    session.actingRole === ROLES.REVIEWER &&
+    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
   const evalKey = useMemo(() => {
     const set = new Set();
@@ -30,21 +39,29 @@ export function AssetThreatMatrixSection({ readOnly, errors }) {
       title="Asset Attractiveness Cross-Reference"
       description="Tick the threats that materially apply to each asset. Ticking a cell prompts an evaluation in Section 6."
       actions={
-        <div className="inline-flex rounded-md border border-zinc-200 p-0.5 text-[11px]">
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            className={`rounded px-2 py-1 ${view === "grid" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
-          >
-            Grid
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("by-threat")}
-            className={`rounded px-2 py-1 ${view === "by-threat" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
-          >
-            By threat
-          </button>
+        <div className="flex items-center gap-2">
+          {canComment ? (
+            <CommentAffordance
+              section="Section 5 — Asset Attractiveness Cross-Reference"
+              sectionId={5}
+            />
+          ) : null}
+          <div className="inline-flex rounded-md border border-zinc-200 p-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setView("grid")}
+              className={`rounded px-2 py-1 ${view === "grid" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("by-threat")}
+              className={`rounded px-2 py-1 ${view === "by-threat" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+            >
+              By threat
+            </button>
+          </div>
         </div>
       }
     >

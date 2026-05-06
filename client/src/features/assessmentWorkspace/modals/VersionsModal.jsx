@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Check, Eye, Info, Layers, Lock, X } from "lucide-react";
-import { VERSIONS } from "../../../data/versions";
+import { useWorkspace } from "../WorkspaceContext";
 
 export function VersionsModal({ onClose }) {
+  const { versions } = useWorkspace();
   const [selected, setSelected] = useState([]);
 
   function toggleSelect(id) {
@@ -35,7 +36,7 @@ export function VersionsModal({ onClose }) {
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-2">
-            {VERSIONS.map((version) => {
+            {versions.map((version) => {
               const isSelected = selected.includes(version.id);
               const isApproved = version.status === "Approved";
               return (

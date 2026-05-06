@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Lock, Sparkles } from "lucide-react";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
-import { HQ_AGGREGATE, ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
+import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 
 const RISK_BAND_STYLES = {
   low: { bg: "#ecfdf5", text: "#065f46", dot: "#10b981", border: "#a7f3d0" },
@@ -78,7 +78,7 @@ export function HQExecutiveDashboard() {
     };
   }, [evaluations]);
 
-  const allFacilities = [thisFacility, ...HQ_AGGREGATE];
+  const allFacilities = [thisFacility, ...workspace.hqAggregate];
   const totalOpen = allFacilities.reduce((s, f) => s + f.open, 0);
   const totalHigh = allFacilities.reduce((s, f) => s + f.high + f.vhigh, 0);
   const totalOverdue = allFacilities.reduce((s, f) => s + f.overdue, 0);

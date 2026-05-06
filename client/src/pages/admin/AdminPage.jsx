@@ -7,9 +7,7 @@ import { Chip } from "../../components/Chip";
 import { PageHeader } from "../../components/PageHeader";
 import { Tabs } from "../../components/Tabs";
 import {
-  ADMIN_USERS,
   EXPORT_SECTIONS,
-  FACILITY_ASSIGNMENTS,
   MFA_POLICY,
   NOTIFICATION_TRIGGERS,
   OWNER_POOL
@@ -23,6 +21,7 @@ import {
   getBandClasses,
   getBandForScore
 } from "../../features/assessmentWorkspace/riskMatrix";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 
 const TABS = [
   { id: "users", label: "Users & Roles" },
@@ -36,6 +35,7 @@ const TABS = [
 ];
 
 function UsersTab() {
+  const { adminUsers } = useWorkspace();
   return (
     <Card>
       <CardHeader
@@ -66,7 +66,7 @@ function UsersTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200">
-            {ADMIN_USERS.map((user) => (
+            {adminUsers.map((user) => (
               <tr key={user.id} className="align-top">
                 <td className="py-3 pr-4 font-semibold text-zinc-900">{user.name}</td>
                 <td className="py-3 pr-4 text-zinc-700">{user.email}</td>
@@ -244,6 +244,7 @@ function NotificationsTab() {
 }
 
 function TeamsTab() {
+  const { facilityAssignments } = useWorkspace();
   return (
     <Card>
       <CardHeader
@@ -262,7 +263,7 @@ function TeamsTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200">
-            {FACILITY_ASSIGNMENTS.map((row) => (
+            {facilityAssignments.map((row) => (
               <tr key={row.facility}>
                 <td className="py-3 pr-4 font-semibold text-zinc-900">{row.facility}</td>
                 <td className="py-3 pr-4 text-zinc-700">{row.author}</td>

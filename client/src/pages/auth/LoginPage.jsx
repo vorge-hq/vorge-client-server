@@ -5,7 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { ROLES, demoSession, getDemoPersona, isRoleMfaRequired } from "../../auth/session";
 import { Banner } from "../../components/Banner";
 import { FormField, TextInput } from "../../components/FormField";
-import { USERS } from "../../data/users";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 
 const PERSONA_HINTS = {
   [ROLES.AUTHOR]: "Drafts and edits assessments; field mode and submissions.",
@@ -22,9 +22,9 @@ const STAGES = Object.freeze({
   MFA: "mfa"
 });
 
-function buildSessionForRole(role) {
+function buildSessionForRole(role, users) {
   const persona = getDemoPersona(role);
-  const seed = USERS.find((user) => user.id === persona?.userId) || USERS[0];
+  const seed = users.find((user) => user.id === persona?.userId) || users[0];
   const facilityIds = Array.from(new Set(seed.roles.map((r) => r.facilityId)));
   const facilities = demoSession.facilities.filter((facility) =>
     facilityIds.includes(facility.id)
@@ -50,6 +50,7 @@ function buildSessionForRole(role) {
 
 export function LoginPage() {
   const { login } = useAuth();
+  const workspace = useWorkspace();
   const navigate = useNavigate();
   const [stage, setStage] = useState(STAGES.CREDENTIALS);
   const [email, setEmail] = useState("");
@@ -75,7 +76,7 @@ export function LoginPage() {
   }
 
   function completeLogin(role) {
-    const session = buildSessionForRole(role);
+    const session = buildSessionForRole(role, workspace.users);
     login(session);
     const home =
       role === ROLES.MITIGATION_OWNER

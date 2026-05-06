@@ -12,7 +12,7 @@ export function CommentAffordance({ section, sectionId, anchor, mini = false }) 
 
   function handlePost() {
     if (!comment.trim()) return;
-    workspace.dispatchComment?.({
+    workspace.addComment?.({
       section,
       sectionId,
       anchor,

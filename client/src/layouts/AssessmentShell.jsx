@@ -42,15 +42,23 @@ function SectionRail({
               }`}
             >
               <span
-                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${
+                className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${
                   isActive
                     ? "bg-white text-vantage-navy ring-1 ring-brand-muted-border"
                     : isComplete
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-emerald-50 text-emerald-700"
                       : "bg-zinc-100 text-zinc-700"
                 }`}
               >
-                {isComplete ? <Icon name="check" className="h-3.5 w-3.5" /> : section.id}
+                {section.id}
+                {isComplete ? (
+                  <span
+                    className="absolute -bottom-1 -right-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-emerald-500 text-white ring-2 ring-white"
+                    aria-hidden="true"
+                  >
+                    <Icon name="check" className="h-2.5 w-2.5" strokeWidth={3} />
+                  </span>
+                ) : null}
               </span>
               <span className="flex-1 leading-snug">{section.label}</span>
             </Link>

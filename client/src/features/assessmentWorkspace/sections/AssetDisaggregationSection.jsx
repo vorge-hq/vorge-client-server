@@ -1,8 +1,12 @@
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
 import { Chip } from "../../../components/Chip";
+import { CommentAffordance } from "../../../components/CommentAffordance";
 import { detectAssetAnomaly } from "../../../data/assets";
 import { useWorkspace } from "../WorkspaceContext";
+import { ASSESSMENT_STATES } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -19,8 +23,13 @@ function CriticalityChip({ level }) {
   return <Chip tone={CRITICALITY_TONE[level] || "slate"}>{level}</Chip>;
 }
 
-export function AssetDisaggregationSection({ readOnly, errors }) {
+export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
+  const { session } = useAuth();
   const { assets, updateAsset, addAsset, removeAsset } = useWorkspace();
+
+  const canComment =
+    session.actingRole === ROLES.REVIEWER &&
+    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
   function handleField(assetId, field, value) {
     updateAsset(assetId, { [field]: value });
@@ -45,11 +54,20 @@ export function AssetDisaggregationSection({ readOnly, errors }) {
       title="Asset Disaggregation"
       description="Master list of assets at the facility. Section 5 cross-reference and Section 6 evaluations derive from this list."
       actions={
-        readOnly ? null : (
-          <button type="button" onClick={handleAdd} className="btn-primary inline-flex items-center gap-1.5">
-            <Plus size={13} aria-hidden /> Add asset
-          </button>
-        )
+        <>
+          {canComment ? (
+            <CommentAffordance section="Section 3 — Asset Disaggregation" sectionId={3} />
+          ) : null}
+          {readOnly ? null : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="btn-primary inline-flex items-center gap-1.5"
+            >
+              <Plus size={13} aria-hidden /> Add asset
+            </button>
+          )}
+        </>
       }
       footer={
         <p className="text-[11px] text-zinc-500">

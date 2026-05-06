@@ -1,5 +1,9 @@
 import { useState } from "react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
+import { CommentAffordance } from "../../../components/CommentAffordance";
 import { FormField, Select, TextArea, TextInput } from "../../../components/FormField";
+import { ASSESSMENT_STATES } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -13,6 +17,7 @@ const NATURE_OPTIONS = [
 const REGULATORS = ["Department of Petroleum Resources", "Nigerian Maritime Administration", "Other"];
 
 export function FacilityInfoSection({ assessment, readOnly, errors }) {
+  const { session } = useAuth();
   const [data, setData] = useState({
     name: assessment?.facilityName || "Asset Site 1",
     region: "Lagos, Nigeria",
@@ -25,6 +30,10 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
     general:
       "Asset Site 1 is the primary refining and export facility for Operator A in the Lagos region. The site comprises a process unit, tank farm, control room, marine loading terminal, fuel loading skid, and supporting administration buildings. Operations run 24/7 with shift handovers at 06:00 and 18:00 local time."
   });
+
+  const canComment =
+    session.actingRole === ROLES.REVIEWER &&
+    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
   function update(field, value) {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -41,6 +50,14 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
       number={2}
       title="Facility / Asset Information"
       description="Core identifying information for the facility under assessment."
+      actions={
+        canComment ? (
+          <CommentAffordance
+            section="Section 2 — Facility / Asset Information"
+            sectionId={2}
+          />
+        ) : null
+      }
     >
       <ValidationSummary errors={errors} />
       <div className="grid gap-4 sm:grid-cols-2">

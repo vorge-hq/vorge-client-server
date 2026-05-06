@@ -4,12 +4,13 @@ import { Card, CardHeader } from "../../components/Card";
 import { Chip } from "../../components/Chip";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader } from "../../components/PageHeader";
-import { NOTIFICATIONS } from "../../data/notifications";
+import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { filterForRole, getNotificationToneClasses } from "../../features/notifications/notificationModel";
 
 export function NotificationsPage() {
   const { session } = useAuth();
-  const items = filterForRole(NOTIFICATIONS, session.actingRole);
+  const workspace = useWorkspace();
+  const items = filterForRole(workspace.notifications, session.actingRole);
   const unread = items.filter((item) => !item.read);
 
   return (

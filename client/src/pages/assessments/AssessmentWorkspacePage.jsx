@@ -64,11 +64,17 @@ function renderSection({ sectionId, assessment, readOnly, modalOpeners, errors }
     case 2:
       return <FacilityInfoSection assessment={assessment} readOnly={readOnly} errors={errors} />;
     case 3:
-      return <AssetDisaggregationSection readOnly={readOnly} errors={errors} />;
+      return (
+        <AssetDisaggregationSection assessment={assessment} readOnly={readOnly} errors={errors} />
+      );
     case 4:
-      return <ThreatAssessmentSection readOnly={readOnly} errors={errors} />;
+      return (
+        <ThreatAssessmentSection assessment={assessment} readOnly={readOnly} errors={errors} />
+      );
     case 5:
-      return <AssetThreatMatrixSection readOnly={readOnly} errors={errors} />;
+      return (
+        <AssetThreatMatrixSection assessment={assessment} readOnly={readOnly} errors={errors} />
+      );
     case 6:
       return <EvaluationSection assessment={assessment} errors={errors} />;
     case 7:
@@ -116,7 +122,7 @@ export function AssessmentWorkspacePage() {
       assessment.state === ASSESSMENT_STATES.IN_REVIEW &&
       assessment.reviewerState !== "opened"
     ) {
-      workspace.dispatchWorkflowAction({
+      workspace.applyWorkflowTransition({
         assessmentId: assessment.id,
         type: WORKFLOW_ACTIONS.REVIEWER_OPENED,
         actor: { name: session.user.name, role: session.actingRole }
@@ -127,7 +133,7 @@ export function AssessmentWorkspacePage() {
       assessment.state === ASSESSMENT_STATES.AWAITING_APPROVAL &&
       assessment.approverState !== "opened"
     ) {
-      workspace.dispatchWorkflowAction({
+      workspace.applyWorkflowTransition({
         assessmentId: assessment.id,
         type: WORKFLOW_ACTIONS.APPROVER_OPENED,
         actor: { name: session.user.name, role: session.actingRole }
@@ -209,8 +215,8 @@ export function AssessmentWorkspacePage() {
     }
   }
 
-  function handleRecallApprove() {
-    const result = workspace.dispatchWorkflowAction({
+  async function handleRecallApprove() {
+    const result = await workspace.applyWorkflowTransition({
       assessmentId,
       type: WORKFLOW_ACTIONS.RECALL_APPROVE,
       actor: actor()
@@ -218,8 +224,8 @@ export function AssessmentWorkspacePage() {
     workspace.showToast(result?.error || "Recall approved");
   }
 
-  function handleRecallDecline() {
-    const result = workspace.dispatchWorkflowAction({
+  async function handleRecallDecline() {
+    const result = await workspace.applyWorkflowTransition({
       assessmentId,
       type: WORKFLOW_ACTIONS.RECALL_DECLINE,
       actor: actor(),
@@ -269,8 +275,8 @@ export function AssessmentWorkspacePage() {
           assets={workspace.assets}
           evaluations={workspace.evaluations}
           onClose={() => setSubmitOpen(false)}
-          onSubmit={() => {
-            const result = workspace.dispatchWorkflowAction({
+          onSubmit={async () => {
+            const result = await workspace.applyWorkflowTransition({
               assessmentId,
               type: WORKFLOW_ACTIONS.SUBMIT,
               actor: actor()
@@ -285,7 +291,7 @@ export function AssessmentWorkspacePage() {
         <WithdrawModal
           mode={withdrawMode}
           onClose={() => setWithdrawMode(null)}
-          onConfirm={(reason) => {
+          onConfirm={async (reason) => {
             let type;
             let success;
             if (withdrawMode === "withdraw" || withdrawMode === "withdraw-reviewer") {
@@ -297,7 +303,7 @@ export function AssessmentWorkspacePage() {
               type = WORKFLOW_ACTIONS.RECALL_REQUEST;
               success = "Recall request sent";
             }
-            const result = workspace.dispatchWorkflowAction({
+            const result = await workspace.applyWorkflowTransition({
               assessmentId,
               type,
               actor: actor(),
@@ -313,7 +319,7 @@ export function AssessmentWorkspacePage() {
         <DecisionModal
           kind={decisionKind}
           onClose={() => setDecisionKind(null)}
-          onConfirm={(comment) => {
+          onConfirm={async (comment) => {
             const type = DECISION_TO_WORKFLOW[decisionKind];
             if (!type) {
               setDecisionKind(null);
@@ -325,7 +331,7 @@ export function AssessmentWorkspacePage() {
             const payload = requiresReason
               ? { reason: comment }
               : { note: comment };
-            const result = workspace.dispatchWorkflowAction({
+            const result = await workspace.applyWorkflowTransition({
               assessmentId,
               type,
               actor: actor(),

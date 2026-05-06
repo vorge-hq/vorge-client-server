@@ -25,7 +25,6 @@ import {
   getHomeRouteForRole,
   getNavigationForRole
 } from "../features/navigation/navigation";
-import { NOTIFICATIONS } from "../data/notifications";
 import { countUnread, filterForRole } from "../features/notifications/notificationModel";
 import { useWorkspace } from "../features/assessmentWorkspace/WorkspaceContext";
 
@@ -145,10 +144,13 @@ function RoleSwitcher({ session, onSwitchRole }) {
   );
 }
 
-function NotificationDropdown({ actingRole, unreadCount }) {
+function NotificationDropdown({ actingRole, unreadCount, notifications }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const items = useMemo(() => filterForRole([...NOTIFICATIONS], actingRole).slice(0, 6), [actingRole]);
+  const items = useMemo(
+    () => filterForRole([...notifications], actingRole).slice(0, 6),
+    [notifications, actingRole]
+  );
 
   return (
     <div className="relative">
@@ -260,7 +262,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const navigation = getNavigationForRole(session.actingRole);
-  const unreadCount = countUnread(NOTIFICATIONS, session.actingRole);
+  const unreadCount = countUnread(workspace.notifications, session.actingRole);
 
   function handleSwitchRole(role) {
     if (session.demo && switchDemoRole) {
@@ -336,7 +338,11 @@ export function AppShell() {
         </div>
 
         <div className="flex items-center gap-3">
-          <NotificationDropdown actingRole={session.actingRole} unreadCount={unreadCount} />
+          <NotificationDropdown
+            actingRole={session.actingRole}
+            unreadCount={unreadCount}
+            notifications={workspace.notifications}
+          />
 
           <RoleSwitcher session={session} onSwitchRole={handleSwitchRole} />
 

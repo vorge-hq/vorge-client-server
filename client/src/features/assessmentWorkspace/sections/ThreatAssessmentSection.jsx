@@ -1,5 +1,9 @@
 import { Plus, Trash2 } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
+import { CommentAffordance } from "../../../components/CommentAffordance";
+import { ASSESSMENT_STATES } from "../assessmentModel";
 import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
@@ -28,8 +32,13 @@ function buildNewThreat() {
   };
 }
 
-export function ThreatAssessmentSection({ readOnly, errors }) {
+export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
+  const { session } = useAuth();
   const { threats, updateThreat, addThreat, removeThreat } = useWorkspace();
+
+  const canComment =
+    session.actingRole === ROLES.REVIEWER &&
+    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
   function handleField(threat, field, value) {
     updateThreat(threat.id, { [field]: value });
@@ -55,16 +64,21 @@ export function ThreatAssessmentSection({ readOnly, errors }) {
       title="Threat Assessment"
       description="Threat classifications with general history, facility-specific history, capability and intent, and an overall rating."
       actions={
-        readOnly ? null : (
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="btn-primary inline-flex items-center gap-1.5"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
-          >
-            <Plus size={13} aria-hidden /> Add threat
-          </button>
-        )
+        <>
+          {canComment ? (
+            <CommentAffordance section="Section 4 — Threat Assessment" sectionId={4} />
+          ) : null}
+          {readOnly ? null : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="btn-primary inline-flex items-center gap-1.5"
+              style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
+            >
+              <Plus size={13} aria-hidden /> Add threat
+            </button>
+          )}
+        </>
       }
       footer={
         <p className="text-[11px] text-zinc-500">

@@ -1,5 +1,5 @@
 export { SubmitReviewModal } from "./SubmitReviewModal";
-export { WithdrawModal } from "./WithdrawModal";
+export { RecallModal } from "./RecallModal";
 export { DecisionModal } from "./DecisionModal";
 export { AIDraftModal } from "./AIDraftModal";
 export { NewAssessmentModal } from "./NewAssessmentModal";

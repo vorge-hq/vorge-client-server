@@ -122,7 +122,6 @@ export function AssessmentsListPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <StateChip state={assessment.state} />
                       <span className="text-xs text-zinc-500">Cycle {assessment.cycle}</span>
-                      <span className="text-xs text-zinc-500">{assessment.version}</span>
                     </div>
                     <h3 className="mt-2 text-lg font-semibold text-zinc-900">{assessment.name}</h3>
                     <p className="mt-1 text-xs text-zinc-500">

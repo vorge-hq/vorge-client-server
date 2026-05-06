@@ -13,7 +13,6 @@ import { LIBRARY_SCENARIOS } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
 import {
   WORKFLOW_ACTIONS,
-  applyDemoRoleSideEffects,
   applyWorkflowAction,
   getInitialAssessmentState
 } from "./workflowReducer";
@@ -102,27 +101,7 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  const applyDemoRoleSwitch = useCallback(async (role) => {
-    return new Promise((resolve) => {
-      setState((current) => {
-        const assessment = current.assessmentsById[current.activeAssessmentId];
-        if (!assessment) {
-          queueMicrotask(() => resolve({ ok: true }));
-          return current;
-        }
-        const next = applyDemoRoleSideEffects(assessment, role);
-        if (next === assessment) {
-          queueMicrotask(() => resolve({ ok: true }));
-          return current;
-        }
-        queueMicrotask(() => resolve({ ok: true }));
-        return {
-          ...current,
-          assessmentsById: { ...current.assessmentsById, [current.activeAssessmentId]: { ...assessment, ...next } }
-        };
-      });
-    });
-  }, []);
+  const applyDemoRoleSwitch = useCallback(async () => ({ ok: true }), []);
 
   const appendMitigationLogEntry = useCallback(async (options) => {
     return new Promise((resolve) => {

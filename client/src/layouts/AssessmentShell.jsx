@@ -167,7 +167,6 @@ export function AssessmentShell({
           <h1 className="mt-1 text-xl font-bold text-zinc-900 sm:text-2xl">{assessment.name}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
             <StateChip state={assessment.state} />
-            <span>Version {assessment.version}</span>
             {readOnly ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-zinc-600">
                 <Lock size={12} aria-hidden /> Read-only
@@ -292,7 +291,7 @@ export function AssessmentShell({
             <div className="grid gap-1.5">
               <ToolButton Icon={BookOpen} label="Library suggestions" onClick={onOpenLibrary} />
               <ToolButton Icon={FileSearch} label="Audit log" onClick={onOpenAudit} />
-              <ToolButton Icon={Layers} label="Version history" onClick={onOpenVersions} />
+              <ToolButton Icon={Layers} label="Assessment history" onClick={onOpenVersions} />
             </div>
           </div>
 

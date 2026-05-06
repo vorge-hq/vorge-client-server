@@ -3,7 +3,8 @@ import { ASSESSMENT_STATES } from "./assessmentModel";
 
 export const WORKFLOW_ACTIONS = Object.freeze({
   SUBMIT: "submit",
-  WITHDRAW: "withdraw",
+  RECALL_IMMEDIATE: "recall-immediate",
+  REVIEWER_RECALL_IMMEDIATE: "reviewer-recall-immediate",
   RECALL_REQUEST: "recall-request",
   RECALL_APPROVE: "recall-approve",
   RECALL_DECLINE: "recall-decline",
@@ -106,38 +107,62 @@ export function applyWorkflowAction(prev, action) {
       });
       break;
     }
-    case WORKFLOW_ACTIONS.WITHDRAW: {
-      if (actor.role === ROLES.AUTHOR) {
-        if (prev.state !== ASSESSMENT_STATES.IN_REVIEW) {
-          return { error: "Withdraw is only available while In Review." };
-        }
-        if (prev.reviewerState && prev.reviewerState !== "not-opened") {
-          return { error: "Reviewer has already opened — request a recall instead." };
-        }
-        next.state = ASSESSMENT_STATES.DRAFT;
-        next.reviewerState = null;
-        next.signatureDates.author = null;
-      } else if (actor.role === ROLES.REVIEWER) {
-        if (prev.state !== ASSESSMENT_STATES.AWAITING_APPROVAL) {
-          return { error: "Reviewer withdraw is only available while Awaiting Approval." };
-        }
-        if (prev.approverState && prev.approverState !== "not-opened") {
-          return { error: "Approver has already opened — request a recall instead." };
-        }
-        next.state = ASSESSMENT_STATES.IN_REVIEW;
-        next.reviewerState = "opened";
-        next.approverState = null;
-        next.signatureDates.reviewer = null;
-      } else {
-        return { error: "Only the Author or Reviewer can withdraw a submission." };
+    case WORKFLOW_ACTIONS.RECALL_IMMEDIATE: {
+      if (actor.role !== ROLES.AUTHOR) {
+        return { error: "Only the Author can recall a submission." };
       }
+      if (prev.state !== ASSESSMENT_STATES.IN_REVIEW) {
+        return { error: "Recall is only available while In Review." };
+      }
+      if (prev.reviewerState === "opened") {
+        return { error: "Reviewer has already opened — request a recall instead." };
+      }
+      if (prev.pendingRecall) {
+        return { error: "A recall request is already pending on this assessment." };
+      }
+      next.state = ASSESSMENT_STATES.DRAFT;
+      next.reviewerState = null;
+      next.signatureDates.author = null;
       next.pendingRecall = null;
       auditEntry = audit({
         user: actor.name,
         role: actor.role,
-        action: "withdraw",
+        action: "recall-immediate",
         assessment,
-        detail: { reason: reason || "(no reason provided)" }
+        detail: {
+          reason: reason || "(no reason provided)",
+          note: "Recalled before Reviewer opened"
+        }
+      });
+      break;
+    }
+    case WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE: {
+      if (actor.role !== ROLES.REVIEWER) {
+        return { error: "Only the Reviewer can recall a submission." };
+      }
+      if (prev.state !== ASSESSMENT_STATES.AWAITING_APPROVAL) {
+        return { error: "Recall is only available while Awaiting Approval." };
+      }
+      if (prev.approverState === "opened") {
+        return { error: "Approver has already opened — request a recall instead." };
+      }
+      if (prev.pendingRecall) {
+        return { error: "A recall request is already pending on this assessment." };
+      }
+      next.state = ASSESSMENT_STATES.IN_REVIEW;
+      next.reviewerState = "opened";
+      next.approverState = null;
+      next.signatureDates.reviewer = null;
+      next.pendingRecall = null;
+      auditEntry = audit({
+        user: actor.name,
+        role: actor.role,
+        action: "reviewer-recall-immediate",
+        assessment,
+        detail: {
+          reason: reason || "(no reason provided)",
+          note: "Recalled before Approver opened"
+        }
       });
       break;
     }
@@ -156,14 +181,14 @@ export function applyWorkflowAction(prev, action) {
           return { error: "Once reviewed, the Author cannot recall — the Reviewer must request it." };
         }
         if (prev.reviewerState !== "opened") {
-          return { error: "Reviewer has not opened yet — withdraw the submission instead." };
+          return { error: "Reviewer has not opened yet — recall the submission instead." };
         }
       } else if (actor.role === ROLES.REVIEWER) {
         if (prev.state !== ASSESSMENT_STATES.AWAITING_APPROVAL) {
           return { error: "Reviewer recall is only available while Awaiting Approval." };
         }
         if (prev.approverState !== "opened") {
-          return { error: "Approver has not opened yet — withdraw the submission instead." };
+          return { error: "Approver has not opened yet — recall the submission instead." };
         }
       } else {
         return { error: "Only the Author or Reviewer can request a recall." };
@@ -178,10 +203,12 @@ export function applyWorkflowAction(prev, action) {
         fromState,
         createdAt: TODAY()
       };
+      const requestAuditAction =
+        actor.role === ROLES.AUTHOR ? "recall-request" : "reviewer-recall-request";
       auditEntry = audit({
         user: actor.name,
         role: actor.role,
-        action: "recall-request",
+        action: requestAuditAction,
         assessment,
         detail: { from: fromState, reason: reason || "(no reason provided)", receiver }
       });
@@ -205,12 +232,14 @@ export function applyWorkflowAction(prev, action) {
         next.approverState = null;
         next.signatureDates.reviewer = null;
       }
-      next.pendingRecall = null;
-      next.sentBack = null;
+      const approveAuditAction =
+        prev.pendingRecall.requesterRole === ROLES.AUTHOR
+          ? "recall-approved"
+          : "reviewer-recall-approved";
       auditEntry = audit({
         user: actor.name,
         role: actor.role,
-        action: "recall-approved",
+        action: approveAuditAction,
         assessment,
         detail: {
           requester: prev.pendingRecall.requesterName,
@@ -218,6 +247,8 @@ export function applyWorkflowAction(prev, action) {
           fromState
         }
       });
+      next.pendingRecall = null;
+      next.sentBack = null;
       break;
     }
     case WORKFLOW_ACTIONS.RECALL_DECLINE: {
@@ -227,10 +258,14 @@ export function applyWorkflowAction(prev, action) {
       if (actor.role !== prev.pendingRecall.receiverRole) {
         return { error: `Only the ${prev.pendingRecall.receiverRole} can decline this recall.` };
       }
+      const declineAuditAction =
+        prev.pendingRecall.requesterRole === ROLES.AUTHOR
+          ? "recall-declined"
+          : "reviewer-recall-declined";
       auditEntry = audit({
         user: actor.name,
         role: actor.role,
-        action: "recall-declined",
+        action: declineAuditAction,
         assessment,
         detail: {
           requester: prev.pendingRecall.requesterName,
@@ -332,7 +367,7 @@ export function applyWorkflowAction(prev, action) {
         role: actor.role,
         action: "approve",
         assessment,
-        detail: note ? { note, version: "v1.0", e_signed: true } : { version: "v1.0", e_signed: true }
+        detail: note ? { note, cycle: assessment.cycle, e_signed: true } : { cycle: assessment.cycle, e_signed: true }
       });
       break;
     }
@@ -408,37 +443,6 @@ export function applyWorkflowAction(prev, action) {
   return { next, auditEntry };
 }
 
-export function applyDemoRoleSideEffects(prev, role) {
-  const next = { ...prev, signatureDates: { ...prev.signatureDates } };
-
-  if (role === ROLES.REVIEWER) {
-    if (prev.state === ASSESSMENT_STATES.DRAFT || prev.state === ASSESSMENT_STATES.APPROVED) {
-      next.state = ASSESSMENT_STATES.IN_REVIEW;
-      next.reviewerState = "opened";
-      next.approverState = null;
-      next.pendingRecall = null;
-      if (!prev.signatureDates.author) {
-        next.signatureDates.author = "2026-04-25";
-      }
-    }
-  } else if (role === ROLES.APPROVER) {
-    if (prev.state !== ASSESSMENT_STATES.AWAITING_APPROVAL) {
-      next.state = ASSESSMENT_STATES.AWAITING_APPROVAL;
-      next.approverState = "not-opened";
-      next.pendingRecall = null;
-      next.signatureDates.author = prev.signatureDates.author || "2026-04-25";
-      next.signatureDates.reviewer = prev.signatureDates.reviewer || "2026-04-26";
-    }
-  } else if (role === ROLES.MITIGATION_OWNER) {
-    if (prev.state !== ASSESSMENT_STATES.APPROVED) {
-      next.state = ASSESSMENT_STATES.APPROVED;
-      next.approverState = null;
-      next.pendingRecall = null;
-      next.signatureDates.author = prev.signatureDates.author || "2026-04-25";
-      next.signatureDates.reviewer = prev.signatureDates.reviewer || "2026-04-26";
-      next.signatureDates.approver = prev.signatureDates.approver || "2026-04-27";
-    }
-  }
-
-  return next;
+export function applyDemoRoleSideEffects(prev) {
+  return prev;
 }

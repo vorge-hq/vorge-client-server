@@ -180,12 +180,12 @@ describe("assessment workspace model", () => {
   });
 
   test("recall actions appear contextually for Author and Reviewer", () => {
-    const authorWithdraw = getWorkflowActionsForRole({
+    const authorRecallImmediate = getWorkflowActionsForRole({
       state: ASSESSMENT_STATES.IN_REVIEW,
       actingRole: ROLES.AUTHOR,
       reviewerState: "not-opened"
     }).map((a) => a.id);
-    expect(authorWithdraw).toContain("withdraw");
+    expect(authorRecallImmediate).toContain("recall-immediate");
 
     const authorRecall = getWorkflowActionsForRole({
       state: ASSESSMENT_STATES.IN_REVIEW,
@@ -193,14 +193,14 @@ describe("assessment workspace model", () => {
       reviewerState: "opened"
     }).map((a) => a.id);
     expect(authorRecall).toContain("recall-request");
-    expect(authorRecall).not.toContain("withdraw");
+    expect(authorRecall).not.toContain("recall-immediate");
 
-    const reviewerWithdraw = getWorkflowActionsForRole({
+    const reviewerRecallImmediate = getWorkflowActionsForRole({
       state: ASSESSMENT_STATES.AWAITING_APPROVAL,
       actingRole: ROLES.REVIEWER,
       approverState: "not-opened"
     }).map((a) => a.id);
-    expect(reviewerWithdraw).toContain("withdraw-reviewer");
+    expect(reviewerRecallImmediate).toContain("reviewer-recall-immediate");
 
     const reviewerRecall = getWorkflowActionsForRole({
       state: ASSESSMENT_STATES.AWAITING_APPROVAL,
@@ -483,7 +483,7 @@ describe("workflow reducer", () => {
     expect(ok.next.sentBack.kind).toBe("approver-reject");
   });
 
-  test("Author withdraw goes back to Draft when Reviewer hasn't opened", () => {
+  test("Author RECALL_IMMEDIATE returns to Draft when Reviewer hasn't opened", () => {
     const inReview = {
       ...draftState,
       state: ASSESSMENT_STATES.IN_REVIEW,
@@ -491,7 +491,7 @@ describe("workflow reducer", () => {
       signatureDates: { ...draftState.signatureDates, author: "2026-04-25" }
     };
     const result = applyWorkflowAction(inReview, {
-      type: WORKFLOW_ACTIONS.WITHDRAW,
+      type: WORKFLOW_ACTIONS.RECALL_IMMEDIATE,
       actor: { name: "Demo Author", role: ROLES.AUTHOR },
       assessment: baseAssessment,
       reason: "Spotted a typo"
@@ -499,24 +499,24 @@ describe("workflow reducer", () => {
     expect(result.error).toBeUndefined();
     expect(result.next.state).toBe(ASSESSMENT_STATES.DRAFT);
     expect(result.next.signatureDates.author).toBeNull();
-    expect(result.auditEntry.action).toBe("withdraw");
+    expect(result.auditEntry.action).toBe("recall-immediate");
   });
 
-  test("Author withdraw is blocked once Reviewer has opened (must request recall)", () => {
+  test("Author RECALL_IMMEDIATE is blocked once Reviewer has opened", () => {
     const opened = {
       ...draftState,
       state: ASSESSMENT_STATES.IN_REVIEW,
       reviewerState: "opened"
     };
     const blocked = applyWorkflowAction(opened, {
-      type: WORKFLOW_ACTIONS.WITHDRAW,
+      type: WORKFLOW_ACTIONS.RECALL_IMMEDIATE,
       actor: { name: "Author", role: ROLES.AUTHOR },
       assessment: baseAssessment
     });
     expect(blocked.error).toContain("recall");
   });
 
-  test("Reviewer withdraw at Awaiting Approval goes back to In Review when Approver hasn't opened", () => {
+  test("Reviewer REVIEWER_RECALL_IMMEDIATE returns to In Review when Approver hasn't opened", () => {
     const awaiting = {
       ...draftState,
       state: ASSESSMENT_STATES.AWAITING_APPROVAL,
@@ -524,7 +524,7 @@ describe("workflow reducer", () => {
       signatureDates: { author: "2026-04-25", reviewer: "2026-04-26", approver: null, approverNote: null }
     };
     const result = applyWorkflowAction(awaiting, {
-      type: WORKFLOW_ACTIONS.WITHDRAW,
+      type: WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE,
       actor: { name: "A. Reviewer", role: ROLES.REVIEWER },
       assessment: baseAssessment,
       reason: "Wrong file forwarded"
@@ -533,6 +533,7 @@ describe("workflow reducer", () => {
     expect(result.next.state).toBe(ASSESSMENT_STATES.IN_REVIEW);
     expect(result.next.reviewerState).toBe("opened");
     expect(result.next.signatureDates.reviewer).toBeNull();
+    expect(result.auditEntry.action).toBe("reviewer-recall-immediate");
   });
 
   test("RECALL_REQUEST sets pendingRecall and tags receiver per requester", () => {
@@ -597,7 +598,7 @@ describe("workflow reducer", () => {
     ).toContain("Approved");
   });
 
-  test("RECALL_REQUEST blocked when Reviewer has not opened (use withdraw)", () => {
+  test("RECALL_REQUEST blocked when Reviewer has not opened (use recall instead)", () => {
     const notOpened = {
       ...draftState,
       state: ASSESSMENT_STATES.IN_REVIEW,
@@ -610,7 +611,7 @@ describe("workflow reducer", () => {
         assessment: baseAssessment,
         reason: "tweak"
       }).error
-    ).toContain("withdraw");
+    ).toContain("recall");
   });
 
   test("RECALL_APPROVE rolls state back and clears the relevant signature", () => {
@@ -668,7 +669,7 @@ describe("workflow reducer", () => {
     });
     expect(declined.next.state).toBe(ASSESSMENT_STATES.AWAITING_APPROVAL);
     expect(declined.next.pendingRecall).toBeNull();
-    expect(declined.auditEntry.action).toBe("recall-declined");
+    expect(declined.auditEntry.action).toBe("reviewer-recall-declined");
   });
 
   test("REVIEWER_OPENED and APPROVER_OPENED set per-role openness flags", () => {
@@ -693,6 +694,71 @@ describe("workflow reducer", () => {
     expect(a.next.approverState).toBe("opened");
   });
 
+  test("Reviewer REVIEWER_RECALL_IMMEDIATE is blocked once Approver has opened", () => {
+    const opened = {
+      ...draftState,
+      state: ASSESSMENT_STATES.AWAITING_APPROVAL,
+      approverState: "opened",
+      signatureDates: { author: "2026-04-25", reviewer: "2026-04-26", approver: null, approverNote: null }
+    };
+    const blocked = applyWorkflowAction(opened, {
+      type: WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE,
+      actor: { name: "A. Reviewer", role: ROLES.REVIEWER },
+      assessment: baseAssessment
+    });
+    expect(blocked.error).toContain("recall");
+  });
+
+  test("RECALL_REQUEST and RECALL_APPROVE emit role-distinguished audit actions", () => {
+    const inReviewOpened = {
+      ...draftState,
+      state: ASSESSMENT_STATES.IN_REVIEW,
+      reviewerState: "opened"
+    };
+    const authorRequest = applyWorkflowAction(inReviewOpened, {
+      type: WORKFLOW_ACTIONS.RECALL_REQUEST,
+      actor: { name: "Demo Author", role: ROLES.AUTHOR },
+      assessment: baseAssessment,
+      reason: "x"
+    });
+    expect(authorRequest.auditEntry.action).toBe("recall-request");
+
+    const awaitingOpened = {
+      ...draftState,
+      state: ASSESSMENT_STATES.AWAITING_APPROVAL,
+      approverState: "opened",
+      signatureDates: { author: "2026-04-25", reviewer: "2026-04-26", approver: null, approverNote: null }
+    };
+    const reviewerRequest = applyWorkflowAction(awaitingOpened, {
+      type: WORKFLOW_ACTIONS.RECALL_REQUEST,
+      actor: { name: "A. Reviewer", role: ROLES.REVIEWER },
+      assessment: baseAssessment,
+      reason: "x"
+    });
+    expect(reviewerRequest.auditEntry.action).toBe("reviewer-recall-request");
+
+    const approverApproves = applyWorkflowAction(
+      {
+        ...draftState,
+        state: ASSESSMENT_STATES.AWAITING_APPROVAL,
+        pendingRecall: {
+          requesterRole: ROLES.REVIEWER,
+          requesterName: "A. Reviewer",
+          receiverRole: ROLES.APPROVER,
+          fromState: ASSESSMENT_STATES.AWAITING_APPROVAL,
+          reason: "x"
+        },
+        signatureDates: { author: "2026-04-25", reviewer: "2026-04-26", approver: null, approverNote: null }
+      },
+      {
+        type: WORKFLOW_ACTIONS.RECALL_APPROVE,
+        actor: { name: "M. Approver", role: ROLES.APPROVER },
+        assessment: baseAssessment
+      }
+    );
+    expect(approverApproves.auditEntry.action).toBe("reviewer-recall-approved");
+  });
+
   test("unknown action returns error", () => {
     expect(applyWorkflowAction(draftState, { type: "noop", actor: { role: ROLES.AUTHOR }, assessment: baseAssessment }).error).toContain("Unknown");
   });
@@ -704,15 +770,15 @@ describe("workflow reducer", () => {
 
     expect(
       applyWorkflowAction(draftState, {
-        type: WORKFLOW_ACTIONS.WITHDRAW,
+        type: WORKFLOW_ACTIONS.RECALL_IMMEDIATE,
         actor: { name: "?", role: ROLES.ADMIN },
         assessment: baseAssessment
       }).error
-    ).toContain("Author or Reviewer");
+    ).toContain("Author");
 
     expect(
       applyWorkflowAction(draftState, {
-        type: WORKFLOW_ACTIONS.WITHDRAW,
+        type: WORKFLOW_ACTIONS.RECALL_IMMEDIATE,
         actor: { name: "Author", role: ROLES.AUTHOR },
         assessment: baseAssessment
       }).error
@@ -720,7 +786,7 @@ describe("workflow reducer", () => {
 
     expect(
       applyWorkflowAction(awaiting, {
-        type: WORKFLOW_ACTIONS.WITHDRAW,
+        type: WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE,
         actor: { name: "Reviewer", role: ROLES.REVIEWER },
         assessment: baseAssessment
       }).next
@@ -730,7 +796,7 @@ describe("workflow reducer", () => {
       applyWorkflowAction(
         { ...awaiting, approverState: "opened" },
         {
-          type: WORKFLOW_ACTIONS.WITHDRAW,
+          type: WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE,
           actor: { name: "Reviewer", role: ROLES.REVIEWER },
           assessment: baseAssessment
         }
@@ -896,7 +962,7 @@ describe("workflow reducer", () => {
         assessment: baseAssessment,
         reason: "x"
       }).error
-    ).toContain("withdraw");
+    ).toContain("recall");
 
     expect(
       applyWorkflowAction(draftState, {
@@ -992,22 +1058,12 @@ describe("workflow reducer", () => {
     expect(inReview.approverState).toBeNull();
   });
 
-  test("applyDemoRoleSideEffects forces state per role", () => {
-    const draft = applyDemoRoleSideEffects(draftState, ROLES.REVIEWER);
-    expect(draft.state).toBe(ASSESSMENT_STATES.IN_REVIEW);
-    expect(draft.reviewerState).toBe("opened");
-
-    const approver = applyDemoRoleSideEffects(draftState, ROLES.APPROVER);
-    expect(approver.state).toBe(ASSESSMENT_STATES.AWAITING_APPROVAL);
-    expect(approver.signatureDates.author).toBeTruthy();
-    expect(approver.signatureDates.reviewer).toBeTruthy();
-
-    const owner = applyDemoRoleSideEffects(draftState, ROLES.MITIGATION_OWNER);
-    expect(owner.state).toBe(ASSESSMENT_STATES.APPROVED);
-    expect(owner.signatureDates.approver).toBeTruthy();
-
-    const noop = applyDemoRoleSideEffects(draftState, ROLES.AUTHOR);
-    expect(noop.state).toBe(ASSESSMENT_STATES.DRAFT);
+  test("applyDemoRoleSideEffects is a no-op regardless of role", () => {
+    const baseline = { ...draftState };
+    Object.values(ROLES).forEach((role) => {
+      const result = applyDemoRoleSideEffects(baseline, role);
+      expect(result).toBe(baseline);
+    });
   });
 });
 

@@ -2,26 +2,27 @@ import { useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
 const COPY = {
-  withdraw: {
-    title: "Withdraw submission",
+  "recall-immediate": {
+    title: "Recall submission",
     description:
-      "The submission can be withdrawn while the Reviewer has not opened the assessment.",
-    placeholder: "Why are you withdrawing?",
+      "Recall this assessment? It will return to Draft. The Reviewer has not opened it yet.",
+    placeholder: "Why are you recalling?",
     actionClass: "btn-primary",
     actionStyle: { background: "#1E3A5F", borderColor: "#1E3A5F" },
-    actionLabel: "Confirm withdraw",
+    actionLabel: "Confirm recall",
     banner:
-      "Withdrawing returns the assessment to Draft and notifies the Reviewer."
+      "Recall returns the assessment to Draft and notifies the Reviewer. Logged in the audit trail."
   },
-  "withdraw-reviewer": {
-    title: "Withdraw forward",
-    description: "Send the assessment back to In Review while the Approver has not opened.",
-    placeholder: "Why are you withdrawing?",
+  "reviewer-recall-immediate": {
+    title: "Recall submission",
+    description:
+      "Recall this assessment? It will return to In Review. The Approver has not opened it yet.",
+    placeholder: "Why are you recalling?",
     actionClass: "btn-primary",
     actionStyle: { background: "#1E3A5F", borderColor: "#1E3A5F" },
-    actionLabel: "Withdraw",
+    actionLabel: "Confirm recall",
     banner:
-      "Reviewer signature will be cleared so you can revise before re-forwarding to the Approver."
+      "Recall returns the assessment to In Review and notifies the Approver. Logged in the audit trail."
   },
   recall: {
     title: "Request recall from Reviewer",
@@ -45,9 +46,9 @@ const COPY = {
   }
 };
 
-export function WithdrawModal({ mode = "withdraw", onClose, onConfirm }) {
+export function RecallModal({ mode = "recall-immediate", onClose, onConfirm }) {
   const [reason, setReason] = useState("");
-  const config = COPY[mode] || COPY.withdraw;
+  const config = COPY[mode] || COPY["recall-immediate"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">

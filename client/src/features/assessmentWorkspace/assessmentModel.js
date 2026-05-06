@@ -93,7 +93,7 @@ export function getWorkflowActionsForRole({
     if (reviewerState === "opened") {
       actions.push({ id: "recall-request", label: "Request recall", tone: "secondary" });
     } else {
-      actions.push({ id: "withdraw", label: "Withdraw", tone: "secondary" });
+      actions.push({ id: "recall-immediate", label: "Recall", tone: "secondary" });
     }
   }
 
@@ -110,13 +110,13 @@ export function getWorkflowActionsForRole({
     if (approverState === "opened") {
       actions.push({
         id: "recall-request-reviewer",
-        label: "Request recall from Approver",
+        label: "Request recall",
         tone: "secondary"
       });
     } else {
       actions.push({
-        id: "withdraw-reviewer",
-        label: "Withdraw to In Review",
+        id: "reviewer-recall-immediate",
+        label: "Recall",
         tone: "secondary"
       });
     }

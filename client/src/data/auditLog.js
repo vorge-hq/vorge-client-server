@@ -139,7 +139,7 @@ export const AUDIT_LOG = Object.freeze([
     facility: "Asset Site 1",
     assessment: "Asset Site 1 — 2025 SRA",
     action: "approve",
-    detail: "v1.0 e-signed",
+    detail: "Approved 2025 cycle · e-signed",
     section: "Workflow",
     sectionId: null,
     ip: "102.89.34.71"

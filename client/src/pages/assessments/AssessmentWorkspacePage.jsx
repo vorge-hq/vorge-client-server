@@ -20,9 +20,9 @@ import {
   FieldModeModal,
   LibraryModal,
   NewAssessmentModal,
+  RecallModal,
   SubmitReviewModal,
-  VersionsModal,
-  WithdrawModal
+  VersionsModal
 } from "../../features/assessmentWorkspace/modals";
 import { ExecutiveSummarySection } from "../../features/assessmentWorkspace/sections/ExecutiveSummarySection";
 import { FacilityInfoSection } from "../../features/assessmentWorkspace/sections/FacilityInfoSection";
@@ -100,7 +100,7 @@ export function AssessmentWorkspacePage() {
   const { session } = useAuth();
   const workspace = useWorkspace();
   const [submitOpen, setSubmitOpen] = useState(false);
-  const [withdrawMode, setWithdrawMode] = useState(null);
+  const [recallMode, setRecallMode] = useState(null);
   const [decisionKind, setDecisionKind] = useState(null);
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
@@ -193,20 +193,20 @@ export function AssessmentWorkspacePage() {
       setSubmitOpen(true);
       return;
     }
-    if (actionId === "withdraw") {
-      setWithdrawMode("withdraw");
+    if (actionId === "recall-immediate") {
+      setRecallMode("recall-immediate");
       return;
     }
-    if (actionId === "withdraw-reviewer") {
-      setWithdrawMode("withdraw-reviewer");
+    if (actionId === "reviewer-recall-immediate") {
+      setRecallMode("reviewer-recall-immediate");
       return;
     }
     if (actionId === "recall-request") {
-      setWithdrawMode("recall");
+      setRecallMode("recall");
       return;
     }
     if (actionId === "recall-request-reviewer") {
-      setWithdrawMode("recall-reviewer");
+      setRecallMode("recall-reviewer");
       return;
     }
     const decision = ACTION_TO_DECISION[actionId];
@@ -287,18 +287,19 @@ export function AssessmentWorkspacePage() {
         />
       ) : null}
 
-      {withdrawMode ? (
-        <WithdrawModal
-          mode={withdrawMode}
-          onClose={() => setWithdrawMode(null)}
+      {recallMode ? (
+        <RecallModal
+          mode={recallMode}
+          onClose={() => setRecallMode(null)}
           onConfirm={async (reason) => {
             let type;
             let success;
-            if (withdrawMode === "withdraw" || withdrawMode === "withdraw-reviewer") {
-              type = WORKFLOW_ACTIONS.WITHDRAW;
-              success = withdrawMode === "withdraw"
-                ? "Submission withdrawn"
-                : "Forwarded back to In Review";
+            if (recallMode === "recall-immediate") {
+              type = WORKFLOW_ACTIONS.RECALL_IMMEDIATE;
+              success = "Recalled to Draft";
+            } else if (recallMode === "reviewer-recall-immediate") {
+              type = WORKFLOW_ACTIONS.REVIEWER_RECALL_IMMEDIATE;
+              success = "Recalled to In Review";
             } else {
               type = WORKFLOW_ACTIONS.RECALL_REQUEST;
               success = "Recall request sent";
@@ -309,7 +310,7 @@ export function AssessmentWorkspacePage() {
               actor: actor(),
               reason
             });
-            setWithdrawMode(null);
+            setRecallMode(null);
             workspace.showToast(result?.error || success);
           }}
         />

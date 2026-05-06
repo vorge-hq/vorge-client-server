@@ -1,18 +1,8 @@
-import { useState } from "react";
-import { Check, Eye, Info, Layers, Lock, X } from "lucide-react";
+import { Eye, Info, Layers, Lock, X } from "lucide-react";
 import { useWorkspace } from "../WorkspaceContext";
 
 export function VersionsModal({ onClose }) {
   const { versions } = useWorkspace();
-  const [selected, setSelected] = useState([]);
-
-  function toggleSelect(id) {
-    setSelected((current) => {
-      if (current.includes(id)) return current.filter((s) => s !== id);
-      if (current.length < 2) return [...current, id];
-      return [current[1], id];
-    });
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
@@ -23,9 +13,9 @@ export function VersionsModal({ onClose }) {
               <Layers size={16} className="text-zinc-700" />
             </div>
             <div>
-              <div className="text-[14px] font-semibold">Version history</div>
+              <div className="text-[14px] font-semibold">Assessment history</div>
               <div className="text-[11px] text-zinc-500">
-                Asset Site 1 — all approved versions and the current draft.
+                Asset Site 1 — current draft and prior approved cycles.
               </div>
             </div>
           </div>
@@ -37,32 +27,24 @@ export function VersionsModal({ onClose }) {
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-2">
             {versions.map((version) => {
-              const isSelected = selected.includes(version.id);
               const isApproved = version.status === "Approved";
               return (
                 <button
                   key={version.id}
-                  onClick={() => toggleSelect(version.id)}
-                  className="w-full rounded-lg border p-3 text-left transition-colors"
-                  style={
-                    isSelected
-                      ? { borderColor: "#1E3A5F", background: "#EFF4FB" }
-                      : { borderColor: "#E4E4E7", background: "transparent" }
-                  }
                   type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Available with server backend"
+                  className="w-full rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ borderColor: "#E4E4E7", background: "transparent" }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-1 items-start gap-3">
                       <span
                         className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded"
-                        style={
-                          isSelected
-                            ? { border: "2px solid #1E3A5F", background: "#1E3A5F" }
-                            : { border: "2px solid #D4D4D8", background: "transparent" }
-                        }
-                      >
-                        {isSelected ? <Check size={10} style={{ color: "#FFFFFF" }} strokeWidth={3} /> : null}
-                      </span>
+                        style={{ border: "2px solid #D4D4D8", background: "transparent" }}
+                        aria-hidden
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-medium text-zinc-900">{version.label}</span>
@@ -99,18 +81,13 @@ export function VersionsModal({ onClose }) {
 
           <div className="mt-4 flex items-start gap-2 text-[11px] text-zinc-500">
             <Info size={11} className="mt-0.5 shrink-0" />
-            <span>
-              Select two versions to compare side-by-side with field-level change highlighting. Versions are
-              immutable once approved.
-            </span>
+            <span>Approved cycles are immutable.</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/40 px-5 py-3">
           <div className="text-[11px] text-zinc-500">
-            {selected.length === 0 ? "Select up to two versions to compare" : null}
-            {selected.length === 1 ? "Select one more version to compare" : null}
-            {selected.length === 2 ? `Comparing ${selected.join(" vs ")}` : null}
+            Side-by-side comparison: available with server backend.
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onClose} className="btn-secondary">
@@ -118,7 +95,8 @@ export function VersionsModal({ onClose }) {
             </button>
             <button
               type="button"
-              disabled={selected.length !== 2}
+              disabled
+              title="Available with server backend"
               className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
               style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
             >

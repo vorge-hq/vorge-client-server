@@ -1,4 +1,5 @@
-import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
@@ -32,20 +33,199 @@ function buildNewThreat() {
   };
 }
 
+function isThreatComplete(threat) {
+  return !!(
+    threat.classification?.trim() &&
+    threat.history?.trim() &&
+    threat.facilityHistory?.trim() &&
+    threat.capabilityIntent?.trim() &&
+    threat.rating
+  );
+}
+
+function CompletionDot({ complete }) {
+  return (
+    <span
+      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+        complete ? "bg-emerald-500" : "bg-zinc-300"
+      }`}
+      aria-label={complete ? "Complete" : "Incomplete"}
+    />
+  );
+}
+
+function RatingChip({ level }) {
+  return <Chip tone={RATING_TONE[level] || "slate"}>{level}</Chip>;
+}
+
+function RatingToggle({ value, onChange, disabled }) {
+  if (disabled) {
+    return <RatingChip level={value} />;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {RATINGS.map((level) => {
+        const isActive = value === level;
+        const toneClasses = {
+          Low: isActive
+            ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+            : "border-zinc-200 text-zinc-600 hover:border-emerald-300 hover:bg-emerald-50/50",
+          Medium: isActive
+            ? "border-blue-400 bg-blue-50 text-blue-800"
+            : "border-zinc-200 text-zinc-600 hover:border-blue-300 hover:bg-blue-50/50",
+          High: isActive
+            ? "border-amber-400 bg-amber-50 text-amber-900"
+            : "border-zinc-200 text-zinc-600 hover:border-amber-300 hover:bg-amber-50/50",
+          "Very High": isActive
+            ? "border-red-400 bg-red-50 text-red-800"
+            : "border-zinc-200 text-zinc-600 hover:border-red-300 hover:bg-red-50/50"
+        };
+
+        return (
+          <button
+            key={level}
+            type="button"
+            onClick={() => onChange(level)}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${toneClasses[level]}`}
+          >
+            {level}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CollapsedThreatRow({ threat, onClick }) {
+  const complete = isThreatComplete(threat);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 border-b border-zinc-100 px-4 py-3.5 text-left transition hover:bg-zinc-50 last:border-b-0"
+    >
+      <CompletionDot complete={complete} />
+      <span className="min-w-0 shrink-0 text-sm font-medium text-zinc-900">
+        {threat.classification}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
+        {threat.history || <em className="text-zinc-400">No history entered</em>}
+      </span>
+      <RatingChip level={threat.rating} />
+      <ChevronRight size={14} className="shrink-0 text-zinc-400" />
+    </button>
+  );
+}
+
+function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOnly }) {
+  return (
+    <div className="border-b border-zinc-100 bg-zinc-50/60 last:border-b-0">
+      <button
+        type="button"
+        onClick={onCollapse}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-zinc-100"
+      >
+        <CompletionDot complete={isThreatComplete(threat)} />
+        <span className="text-sm font-semibold text-zinc-900">{threat.classification}</span>
+        <span className="flex-1" />
+        <RatingChip level={threat.rating} />
+        <ChevronDown size={14} className="shrink-0 text-zinc-400" />
+      </button>
+
+      <div className="px-4 pb-5">
+        <div className="space-y-1.5">
+          <label className="field-label">Threat Classification</label>
+          <input
+            value={threat.classification || ""}
+            onChange={(e) => onFieldChange("classification", e.target.value)}
+            disabled={readOnly}
+            placeholder="e.g. Terrorism, Organised Crime, Insider Threat"
+            className="field-control"
+          />
+        </div>
+
+        <div className="mt-4 space-y-1.5">
+          <label className="field-label">General History</label>
+          <textarea
+            value={threat.history || ""}
+            onChange={(e) => onFieldChange("history", e.target.value)}
+            disabled={readOnly}
+            rows={3}
+            placeholder="Describe the general history of this threat type globally or nationally..."
+            className="field-control resize-y"
+          />
+        </div>
+
+        <div className="mt-4 space-y-1.5">
+          <label className="field-label">Facility-Specific History</label>
+          <textarea
+            value={threat.facilityHistory || ""}
+            onChange={(e) => onFieldChange("facilityHistory", e.target.value)}
+            disabled={readOnly}
+            rows={3}
+            placeholder="Any incidents or intelligence relating to this threat at this specific facility..."
+            className="field-control resize-y"
+          />
+        </div>
+
+        <div className="mt-4 space-y-1.5">
+          <label className="field-label">Capability & Intent</label>
+          <textarea
+            value={threat.capabilityIntent || ""}
+            onChange={(e) => onFieldChange("capabilityIntent", e.target.value)}
+            disabled={readOnly}
+            rows={3}
+            placeholder="Assess the threat actor's capability and intent to target this facility..."
+            className="field-control resize-y"
+          />
+        </div>
+
+        <div className="mt-4 space-y-1.5">
+          <label className="field-label">Threat Rating</label>
+          <RatingToggle
+            value={threat.rating}
+            onChange={(level) => onFieldChange("rating", level)}
+            disabled={readOnly}
+          />
+        </div>
+
+        {readOnly ? null : (
+          <div className="mt-5 flex items-center justify-end border-t border-zinc-200 pt-4">
+            <button
+              type="button"
+              onClick={() => onRemove(threat)}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+            >
+              <Trash2 size={12} /> Delete threat
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
   const { threats, updateThreat, addThreat, removeThreat } = useWorkspace();
+  const [expandedId, setExpandedId] = useState(null);
 
   const canComment =
     session.actingRole === ROLES.REVIEWER &&
     assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+
+  const completeCount = threats.filter(isThreatComplete).length;
 
   function handleField(threat, field, value) {
     updateThreat(threat.id, { [field]: value });
   }
 
   function handleAdd() {
-    addThreat(buildNewThreat());
+    const newThreat = buildNewThreat();
+    addThreat(newThreat);
+    setExpandedId(newThreat.id);
   }
 
   function handleRemove(threat) {
@@ -54,6 +234,9 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
         `Remove ${threat.classification}? This will also clear any Section 5 ticks linking assets to this threat.`
       );
       if (!ok) return;
+    }
+    if (expandedId === threat.id) {
+      setExpandedId(null);
     }
     removeThreat(threat.id);
   }
@@ -73,7 +256,6 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
               type="button"
               onClick={handleAdd}
               className="btn-primary inline-flex items-center gap-1.5"
-              style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
             >
               <Plus size={13} aria-hidden /> Add threat
             </button>
@@ -87,159 +269,53 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
       }
     >
       <ValidationSummary errors={errors} />
-      <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 lg:block">
-        <table className="min-w-full text-left text-[12px]">
-          <thead className="bg-zinc-50 text-[10px] uppercase tracking-wide text-zinc-500">
-            <tr>
-              <th className="w-44 px-3 py-2">Threat</th>
-              <th className="px-3 py-2">General history</th>
-              <th className="px-3 py-2">Facility-specific history</th>
-              <th className="px-3 py-2">Capability & intent</th>
-              <th className="w-32 px-3 py-2">Rating</th>
-              <th className="w-12 px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {threats.map((threat) => (
-              <tr key={threat.id} className="align-top">
-                <td className="px-3 py-2">
-                  {readOnly ? (
-                    <span className="font-medium text-zinc-900">{threat.classification}</span>
-                  ) : (
-                    <input
-                      value={threat.classification || ""}
-                      onChange={(event) => handleField(threat, "classification", event.target.value)}
-                      className="field-control text-[12px] font-medium"
-                      aria-label="Threat classification"
-                    />
-                  )}
-                </td>
-                <td className="px-3 py-2">
-                  <textarea
-                    value={threat.history || ""}
-                    onChange={(event) => handleField(threat, "history", event.target.value)}
-                    disabled={readOnly}
-                    rows={2}
-                    className="field-control text-[12px]"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <textarea
-                    value={threat.facilityHistory || ""}
-                    onChange={(event) => handleField(threat, "facilityHistory", event.target.value)}
-                    disabled={readOnly}
-                    rows={2}
-                    className="field-control text-[12px]"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <textarea
-                    value={threat.capabilityIntent || ""}
-                    onChange={(event) => handleField(threat, "capabilityIntent", event.target.value)}
-                    disabled={readOnly}
-                    rows={2}
-                    className="field-control text-[12px]"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  {readOnly ? (
-                    <Chip tone={RATING_TONE[threat.rating]}>{threat.rating}</Chip>
-                  ) : (
-                    <select
-                      value={threat.rating || "Medium"}
-                      onChange={(event) => handleField(threat, "rating", event.target.value)}
-                      className="field-control text-[12px]"
-                    >
-                      {RATINGS.map((rating) => (
-                        <option key={rating}>{rating}</option>
-                      ))}
-                    </select>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  {readOnly ? null : (
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(threat)}
-                      className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700"
-                      aria-label={`Delete ${threat.classification}`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {/* Progress summary */}
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <span className="font-medium text-zinc-700">
+          {completeCount}/{threats.length} complete
+        </span>
+        <div className="flex gap-1">
+          {threats.map((threat) => (
+            <span
+              key={threat.id}
+              className={`h-2 w-5 rounded-full ${
+                isThreatComplete(threat) ? "bg-emerald-400" : "bg-zinc-200"
+              }`}
+            />
+          ))}
+        </div>
+        {threats.length > 0 && completeCount === threats.length ? (
+          <Chip tone="success">All complete</Chip>
+        ) : null}
       </div>
 
-      <div className="grid gap-3 lg:hidden">
-        {threats.map((threat) => (
-          <article key={threat.id} className="rounded-lg border border-zinc-200 p-3 text-[13px]">
-            <header className="mb-2 flex items-start justify-between gap-2">
-              {readOnly ? (
-                <h3 className="font-semibold text-zinc-900">{threat.classification}</h3>
-              ) : (
-                <input
-                  value={threat.classification || ""}
-                  onChange={(event) => handleField(threat, "classification", event.target.value)}
-                  className="field-control flex-1 text-[13px] font-medium"
-                  aria-label="Threat classification"
-                />
-              )}
-              <div className="flex items-center gap-1.5">
-                {readOnly ? (
-                  <Chip tone={RATING_TONE[threat.rating]}>{threat.rating}</Chip>
-                ) : (
-                  <select
-                    value={threat.rating || "Medium"}
-                    onChange={(event) => handleField(threat, "rating", event.target.value)}
-                    className="field-control text-[12px] sm:w-32"
-                  >
-                    {RATINGS.map((rating) => (
-                      <option key={rating}>{rating}</option>
-                    ))}
-                  </select>
-                )}
-                {readOnly ? null : (
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(threat)}
-                    className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700"
-                    aria-label={`Delete ${threat.classification}`}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            </header>
-            <textarea
-              value={threat.history || ""}
-              onChange={(event) => handleField(threat, "history", event.target.value)}
-              disabled={readOnly}
-              rows={2}
-              className="field-control mt-1 text-[12px]"
-              aria-label={`${threat.classification} general history`}
-            />
-            <textarea
-              value={threat.facilityHistory || ""}
-              onChange={(event) => handleField(threat, "facilityHistory", event.target.value)}
-              disabled={readOnly}
-              rows={2}
-              className="field-control mt-1 text-[12px]"
-              aria-label={`${threat.classification} facility history`}
-            />
-            <textarea
-              value={threat.capabilityIntent || ""}
-              onChange={(event) => handleField(threat, "capabilityIntent", event.target.value)}
-              disabled={readOnly}
-              rows={2}
-              className="field-control mt-1 text-[12px]"
-              aria-label={`${threat.classification} capability and intent`}
-            />
-          </article>
-        ))}
+      {/* Threat list */}
+      <div className="overflow-hidden rounded-lg border border-zinc-200">
+        {threats.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-zinc-500">
+            No threats yet. Click <strong>+ Add threat</strong> to get started.
+          </div>
+        ) : (
+          threats.map((threat) =>
+            expandedId === threat.id ? (
+              <ExpandedThreatRow
+                key={threat.id}
+                threat={threat}
+                readOnly={readOnly}
+                onFieldChange={(field, value) => handleField(threat, field, value)}
+                onCollapse={() => setExpandedId(null)}
+                onRemove={handleRemove}
+              />
+            ) : (
+              <CollapsedThreatRow
+                key={threat.id}
+                threat={threat}
+                onClick={() => setExpandedId(threat.id)}
+              />
+            )
+          )
+        )}
       </div>
     </SectionShell>
   );

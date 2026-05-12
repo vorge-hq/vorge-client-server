@@ -11,6 +11,7 @@ import { ADMIN_USERS, FACILITY_ASSIGNMENTS } from "../../data/admin";
 import { VERSIONS } from "../../data/versions";
 import { LIBRARY_SCENARIOS } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
+import { evaluationHasAnyData } from "./assessmentModel";
 import {
   WORKFLOW_ACTIONS,
   applyWorkflowAction,
@@ -52,11 +53,20 @@ function buildInitialState() {
 export function WorkspaceProvider({ children }) {
   const [state, setState] = useState(buildInitialState);
 
-  const showToast = useCallback((message) => {
-    setState((current) => ({ ...current, toast: message }));
+  const showToast = useCallback((message, options = {}) => {
+    /* Normalize: callers may pass a plain string OR an object
+       { message, action }. Internally we always store an object so the
+       Toast component has a uniform contract. Action is optional and
+       lets callers offer an undo affordance. */
+    const payload =
+      typeof message === "string"
+        ? { message, action: options.action || null }
+        : { message: message.message, action: message.action || null };
+    const duration = options.duration || (payload.action ? 4000 : 2400);
+    setState((current) => ({ ...current, toast: payload }));
     setTimeout(() => {
-      setState((current) => (current.toast === message ? { ...current, toast: null } : current));
-    }, 2400);
+      setState((current) => (current.toast === payload ? { ...current, toast: null } : current));
+    }, duration);
   }, []);
 
   const dismissToast = useCallback(() => {
@@ -280,18 +290,69 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  const toggleMatrix = useCallback(async (assetId, threatId) => {
+  const toggleMatrix = useCallback(async (assetId, threatId, actor = null) => {
     return new Promise((resolve) => {
       setState((current) => {
         const key = `${assetId}|${threatId}`;
+        const wasTicked = Boolean(current.matrix[key]);
         const next = { ...current.matrix };
-        if (next[key]) {
+        if (wasTicked) {
           delete next[key];
         } else {
           next[key] = true;
         }
+
+        /* Smart cleanup: when unticking, remove any associated empty
+           stub evaluation so misclicks don't accumulate orphaned rows.
+           If the user has typed anything (or set R1/R2), the row is
+           preserved orphaned so re-ticking restores their work. */
+        let nextEvaluations = current.evaluations;
+        if (wasTicked) {
+          const associated = current.evaluations.find(
+            (e) => e.assetId === assetId && e.threatId === threatId
+          );
+          if (associated && !evaluationHasAnyData(associated)) {
+            nextEvaluations = current.evaluations.filter((e) => e.id !== associated.id);
+          }
+        }
+
+        /* Emit an audit entry when the caller provides actor info.
+           Always tagged sectionId:5 because the matrix is the
+           methodological artifact of Section 5, regardless of which
+           UI surface the user clicked. */
+        let nextAudit = current.audit;
+        if (actor) {
+          const asset = current.assets.find((a) => a.id === assetId);
+          const threat = current.threats.find((t) => t.id === threatId);
+          const assessment = current.assessmentsById[current.activeAssessmentId];
+          const ts = new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
+          nextAudit = [
+            {
+              id: `au-matrix-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              timestamp: ts,
+              user: actor.name || "Unknown",
+              role: actor.role || "Author",
+              facility: assessment?.facilityName || "—",
+              assessment: assessment?.name || "—",
+              action: wasTicked ? "matrix-untick" : "matrix-tick",
+              detail: `${asset?.name || assetId} × ${
+                threat?.short || threat?.classification || threatId
+              }`,
+              section: "Section 5 — Asset × Threat Matrix",
+              sectionId: 5,
+              ip: "102.89.34.45"
+            },
+            ...current.audit
+          ];
+        }
+
         queueMicrotask(() => resolve({ ok: true }));
-        return { ...current, matrix: next };
+        return {
+          ...current,
+          matrix: next,
+          evaluations: nextEvaluations,
+          audit: nextAudit
+        };
       });
     });
   }, []);

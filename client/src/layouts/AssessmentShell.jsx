@@ -11,8 +11,10 @@ import {
   getAssessmentStateBanner,
   getSectionProgress,
   getWorkflowActionsForRole,
-  isAssessmentReadOnly
+  isAssessmentReadOnly,
+  isSection6Complete
 } from "../features/assessmentWorkspace/assessmentModel";
+import { useWorkspace } from "../features/assessmentWorkspace/WorkspaceContext";
 
 function SectionRail({
   assessmentId,
@@ -129,7 +131,19 @@ export function AssessmentShell({
 }) {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const progress = getSectionProgress(SRA_SECTIONS, assessment.completedSectionIds);
+  const { matrix, evaluations } = useWorkspace();
+
+  /* Section 6's completion is auto-derived from evaluations: it's
+     "complete" when every in-scope matrix cell has a meaningfully
+     filled evaluation. Other sections still use the static
+     completedSectionIds from the assessment seed. */
+  const section6Complete = isSection6Complete({ matrix, evaluations });
+  const baseCompleted = assessment.completedSectionIds || [];
+  const derivedCompletedSectionIds = section6Complete
+    ? Array.from(new Set([...baseCompleted, 6]))
+    : baseCompleted.filter((id) => id !== 6);
+
+  const progress = getSectionProgress(SRA_SECTIONS, derivedCompletedSectionIds);
   const readOnly = isAssessmentReadOnly({ state: assessment.state, actingRole: session.actingRole });
   const advanceBanner = getAdvanceBanner({
     state: assessment.state,
@@ -274,7 +288,7 @@ export function AssessmentShell({
           <SectionRail
             assessmentId={assessment.id}
             activeSectionId={activeSectionId}
-            completedSectionIds={assessment.completedSectionIds}
+            completedSectionIds={derivedCompletedSectionIds}
             commentCounts={commentCounts}
             errorsBySection={errorsBySection}
             onOpenAuditFor={onOpenAuditFor}

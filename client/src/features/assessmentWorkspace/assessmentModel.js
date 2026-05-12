@@ -75,6 +75,67 @@ export function getSectionProgress(sections = SRA_SECTIONS, completedSectionIds 
   };
 }
 
+/* ============================================================
+   Evaluation completeness (Section 6)
+   Used by both the Section 5 matrix dots and the Section 6
+   sidebar matrix to give a truthful readout of whether each
+   asset-threat evaluation has been meaningfully filled.
+
+   MODERATE bar: scenario + consequences + existingControls +
+   vulnerabilities + proposedMitigation + R1 (consequence/likelihood).
+   R2 (post-mitigation) is optional polish.
+   ============================================================ */
+export function isEvaluationComplete(evaluation) {
+  if (!evaluation) return false;
+  return Boolean(
+    evaluation.scenario?.trim() &&
+      evaluation.consequences?.trim() &&
+      evaluation.existingControls?.trim() &&
+      evaluation.vulnerabilities?.trim() &&
+      evaluation.proposedMitigation?.trim() &&
+      evaluation.consequenceR1 &&
+      evaluation.likelihoodR1
+  );
+}
+
+export function getEvaluationStatus(evaluation) {
+  if (!evaluation) return "missing";
+  if (isEvaluationComplete(evaluation)) return "complete";
+  return "in-progress";
+}
+
+/* True when the evaluation has ANY meaningful field set. Used by
+   toggleMatrix's smart cleanup: an empty stub gets removed when the
+   user unticks (so misclicks don't accumulate orphans), but anything
+   the user has touched is preserved orphaned and restored on re-tick. */
+export function evaluationHasAnyData(evaluation) {
+  if (!evaluation) return false;
+  return Boolean(
+    evaluation.scenario?.trim() ||
+      evaluation.consequences?.trim() ||
+      evaluation.existingControls?.trim() ||
+      evaluation.vulnerabilities?.trim() ||
+      evaluation.proposedMitigation?.trim() ||
+      evaluation.consequenceR1 ||
+      evaluation.likelihoodR1 ||
+      evaluation.consequenceR2 ||
+      evaluation.likelihoodR2
+  );
+}
+
+/* Derives whether Section 6 should count as complete for the
+   section-rail. Returns true when at least one cell is in scope
+   AND every in-scope cell has a complete evaluation.
+   Returns false when no cells are scoped (nothing to evaluate). */
+export function isSection6Complete({ matrix = {}, evaluations = [] } = {}) {
+  const scopedKeys = Object.keys(matrix).filter((key) => matrix[key]);
+  if (scopedKeys.length === 0) return false;
+  const evalByKey = new Map(
+    evaluations.map((evaluation) => [`${evaluation.assetId}|${evaluation.threatId}`, evaluation])
+  );
+  return scopedKeys.every((key) => isEvaluationComplete(evalByKey.get(key)));
+}
+
 export function getWorkflowActionsForRole({
   state,
   actingRole,

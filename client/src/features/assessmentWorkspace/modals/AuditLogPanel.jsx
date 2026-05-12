@@ -35,7 +35,9 @@ const ACTION_STYLES = {
   "send-back-to-author": { color: "#9a3412", bg: "#fff7ed", label: "Send-back → Author" },
   "send-back-to-reviewer": { color: "#9a3412", bg: "#fff7ed", label: "Send-back → Reviewer" },
   reject: { color: "#991b1b", bg: "#fef2f2", label: "Reject" },
-  "mitigation-update": { color: "#0f766e", bg: "#ecfdf5", label: "Mitigation update" }
+  "mitigation-update": { color: "#0f766e", bg: "#ecfdf5", label: "Mitigation update" },
+  "matrix-tick": { color: "#065f46", bg: "#ecfdf5", label: "Matrix tick" },
+  "matrix-untick": { color: "#9a3412", bg: "#fff7ed", label: "Matrix untick" }
 };
 
 function formatTimestamp(ts) {

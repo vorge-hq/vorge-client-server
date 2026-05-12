@@ -22,13 +22,17 @@ import {
 import {
   ASSESSMENT_STATES,
   STATE_DESCRIPTORS,
+  evaluationHasAnyData,
   getActionTone,
   getAdvanceBanner,
   getAssessmentStateBanner,
+  getEvaluationStatus,
   getSectionProgress,
   getStateChipClasses,
   getWorkflowActionsForRole,
-  isAssessmentReadOnly
+  isAssessmentReadOnly,
+  isEvaluationComplete,
+  isSection6Complete
 } from "./assessmentWorkspace/assessmentModel";
 import {
   calculateRisk,
@@ -228,6 +232,120 @@ describe("assessment workspace model", () => {
     expect(
       getAdvanceBanner({ state: ASSESSMENT_STATES.DRAFT, actingRole: ROLES.AUTHOR })
     ).toBeNull();
+  });
+
+  test("evaluation completeness uses the moderate bar", () => {
+    const fullyComplete = {
+      scenario: "Theft from yard",
+      consequences: "Loss",
+      existingControls: "CCTV",
+      vulnerabilities: "Perimeter gap",
+      proposedMitigation: "Fence repair",
+      consequenceR1: 3,
+      likelihoodR1: 4,
+      consequenceR2: 0,
+      likelihoodR2: 0
+    };
+    expect(isEvaluationComplete(fullyComplete)).toBe(true);
+    // R2 is optional, doesn't block complete
+    expect(isEvaluationComplete({ ...fullyComplete, consequenceR2: 2, likelihoodR2: 1 })).toBe(true);
+    // missing scenario
+    expect(isEvaluationComplete({ ...fullyComplete, scenario: "" })).toBe(false);
+    // whitespace-only fields don't count
+    expect(isEvaluationComplete({ ...fullyComplete, consequences: "   " })).toBe(false);
+    // missing R1
+    expect(isEvaluationComplete({ ...fullyComplete, consequenceR1: 0 })).toBe(false);
+    // null evaluation
+    expect(isEvaluationComplete(null)).toBe(false);
+    expect(isEvaluationComplete(undefined)).toBe(false);
+  });
+
+  test("getEvaluationStatus returns missing | in-progress | complete", () => {
+    expect(getEvaluationStatus(null)).toBe("missing");
+    expect(getEvaluationStatus(undefined)).toBe("missing");
+    expect(getEvaluationStatus({ scenario: "draft" })).toBe("in-progress");
+    const complete = {
+      scenario: "Theft",
+      consequences: "Loss",
+      existingControls: "CCTV",
+      vulnerabilities: "Gap",
+      proposedMitigation: "Fix it",
+      consequenceR1: 2,
+      likelihoodR1: 3
+    };
+    expect(getEvaluationStatus(complete)).toBe("complete");
+  });
+
+  test("evaluationHasAnyData detects any non-empty field for smart cleanup", () => {
+    expect(evaluationHasAnyData(null)).toBe(false);
+    expect(evaluationHasAnyData(undefined)).toBe(false);
+    // truly empty stub
+    expect(
+      evaluationHasAnyData({
+        scenario: "",
+        consequences: "",
+        existingControls: "",
+        vulnerabilities: "",
+        proposedMitigation: "",
+        consequenceR1: 0,
+        likelihoodR1: 0,
+        consequenceR2: 0,
+        likelihoodR2: 0
+      })
+    ).toBe(false);
+    // whitespace-only doesn't count
+    expect(
+      evaluationHasAnyData({
+        scenario: "   ",
+        consequences: "\t",
+        consequenceR1: 0,
+        likelihoodR1: 0
+      })
+    ).toBe(false);
+    // a single touched field is enough
+    expect(evaluationHasAnyData({ scenario: "draft" })).toBe(true);
+    expect(evaluationHasAnyData({ consequenceR1: 2 })).toBe(true);
+    expect(evaluationHasAnyData({ likelihoodR2: 1 })).toBe(true);
+    expect(evaluationHasAnyData({ proposedMitigation: "Fix the fence" })).toBe(true);
+  });
+
+  test("isSection6Complete requires all in-scope cells to be complete", () => {
+    const complete = {
+      scenario: "Theft",
+      consequences: "Loss",
+      existingControls: "CCTV",
+      vulnerabilities: "Gap",
+      proposedMitigation: "Fix it",
+      consequenceR1: 2,
+      likelihoodR1: 3
+    };
+    // No scope -> not complete (nothing to evaluate yet)
+    expect(isSection6Complete({ matrix: {}, evaluations: [] })).toBe(false);
+    // One scoped cell, no evaluation row -> not complete
+    expect(
+      isSection6Complete({ matrix: { "a1|t1": true }, evaluations: [] })
+    ).toBe(false);
+    // One scoped cell with complete evaluation -> complete
+    expect(
+      isSection6Complete({
+        matrix: { "a1|t1": true },
+        evaluations: [{ ...complete, assetId: "a1", threatId: "t1" }]
+      })
+    ).toBe(true);
+    // Two scoped cells, only one complete -> not complete
+    expect(
+      isSection6Complete({
+        matrix: { "a1|t1": true, "a2|t2": true },
+        evaluations: [{ ...complete, assetId: "a1", threatId: "t1" }]
+      })
+    ).toBe(false);
+    // Falsy matrix entries don't count as scoped
+    expect(
+      isSection6Complete({
+        matrix: { "a1|t1": false },
+        evaluations: []
+      })
+    ).toBe(false);
   });
 });
 

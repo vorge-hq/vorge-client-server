@@ -1,43 +1,120 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Check, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import {
+  ASSESSMENT_STATES,
+  evaluationHasAnyData,
+  getEvaluationStatus
+} from "../assessmentModel";
+import { AssetThreatMatrix, MatrixLegend } from "../AssetThreatMatrix";
+import { RemoveFromScopeModal } from "../RemoveFromScopeModal";
 import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
+/* Cell-state -> dot symbol used in the by-threat view's per-asset row.
+   Mirrors the matrix's visual language for consistency. */
+const BY_THREAT_DOT = {
+  unscoped: { className: "border-border-default bg-surface-base", label: "Not in scope" },
+  missing: { className: "border-border-strong bg-border-strong", label: "Missing" },
+  "in-progress": {
+    className: "border-severity-medium-fill bg-severity-medium-fill",
+    label: "In progress"
+  },
+  complete: {
+    className: "border-severity-low-fill bg-severity-low-fill",
+    label: "Complete"
+  }
+};
+
+function StatusDot({ state }) {
+  const tokens = BY_THREAT_DOT[state] || BY_THREAT_DOT.unscoped;
+  return (
+    <span
+      aria-label={tokens.label}
+      title={tokens.label}
+      className={`inline-block h-2 w-2 rounded-full border ${tokens.className}`}
+    />
+  );
+}
+
 export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
   const { assets, threats, matrix, evaluations, toggleMatrix } = useWorkspace();
+  const navigate = useNavigate();
   const [view, setView] = useState("grid");
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   const canComment =
     session.actingRole === ROLES.REVIEWER &&
     assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
 
-  const evalKey = useMemo(() => {
-    const set = new Set();
-    evaluations.forEach((e) => set.add(`${e.assetId}|${e.threatId}`));
-    return set;
-  }, [evaluations]);
-
   function isTicked(assetId, threatId) {
     return Boolean(matrix[`${assetId}|${threatId}`]);
   }
 
-  function evaluationStatus(assetId, threatId) {
-    if (!isTicked(assetId, threatId)) return null;
-    return evalKey.has(`${assetId}|${threatId}`) ? "evaluated" : "missing";
+  function statusFor(assetId, threatId) {
+    if (!isTicked(assetId, threatId)) return "unscoped";
+    const evaluation = evaluations.find(
+      (e) => e.assetId === assetId && e.threatId === threatId
+    );
+    return getEvaluationStatus(evaluation);
+  }
+
+  function focusInSection6(assetId, threatId) {
+    navigate(
+      `/assessments/${assessment.id}/sections/6?focus=${encodeURIComponent(`${assetId}|${threatId}`)}`
+    );
+  }
+
+  const actor = { name: session.user.name, role: session.actingRole };
+
+  function handleCellClick(assetId, threatId, state) {
+    if (readOnly) return;
+    if (state === "unscoped") {
+      toggleMatrix(assetId, threatId, actor);
+      return;
+    }
+    focusInSection6(assetId, threatId);
+  }
+
+  /* Right-click on an in-scope cell removes it from scope. Cells with
+     any user data prompt a confirmation modal so the user doesn't
+     accidentally hide work they've done. Empty stubs untick instantly. */
+  function requestUntick(assetId, threatId) {
+    if (readOnly) return;
+    const existing = evaluations.find(
+      (e) => e.assetId === assetId && e.threatId === threatId
+    );
+    if (existing && evaluationHasAnyData(existing)) {
+      const asset = assets.find((a) => a.id === assetId);
+      const threat = threats.find((t) => t.id === threatId);
+      setRemoveTarget({
+        assetId,
+        threatId,
+        label: `${asset?.name || assetId} \u00d7 ${
+          threat?.short || threat?.classification || threatId
+        }`
+      });
+      return;
+    }
+    toggleMatrix(assetId, threatId, actor);
+  }
+
+  function handleCellContextMenu(assetId, threatId, state) {
+    if (readOnly || state === "unscoped") return;
+    requestUntick(assetId, threatId);
   }
 
   return (
     <SectionShell
       number={5}
       title="Asset Attractiveness Cross-Reference"
-      description="Tick the threats that materially apply to each asset. Ticking a cell prompts an evaluation in Section 6."
+      description="Tick the threats that materially apply to each asset. Cells show evaluation status. Click a ticked cell to jump to Section 6; right-click to remove from scope."
       actions={
         <div className="flex items-center gap-2">
           {canComment ? (
@@ -46,18 +123,18 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
               sectionId={5}
             />
           ) : null}
-          <div className="inline-flex rounded-md border border-zinc-200 p-0.5 text-[11px]">
+          <div className="inline-flex rounded-md border border-border-default p-0.5 text-[11px]">
             <button
               type="button"
               onClick={() => setView("grid")}
-              className={`rounded px-2 py-1 ${view === "grid" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+              className={`rounded px-2 py-1 ${view === "grid" ? "bg-zinc-900 text-white" : "text-text-secondary"}`}
             >
               Grid
             </button>
             <button
               type="button"
               onClick={() => setView("by-threat")}
-              className={`rounded px-2 py-1 ${view === "by-threat" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+              className={`rounded px-2 py-1 ${view === "by-threat" ? "bg-zinc-900 text-white" : "text-text-secondary"}`}
             >
               By threat
             </button>
@@ -67,102 +144,78 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
     >
       <ValidationSummary errors={errors} />
       {view === "grid" ? (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200">
-          <table className="min-w-full text-[11px]">
-            <thead className="bg-zinc-50">
-              <tr>
-                <th className="sticky left-0 z-10 bg-zinc-50 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Asset
-                </th>
-                {threats.map((threat) => (
-                  <th
-                    key={threat.id}
-                    className="px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-                  >
-                    {threat.short}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 bg-white">
-              {assets.map((asset) => (
-                <tr key={asset.id}>
-                  <td className="sticky left-0 z-10 bg-white px-3 py-2 align-top">
-                    <p className="text-[12px] font-medium text-zinc-900">{asset.name}</p>
-                    <p className="text-[10px] text-zinc-500">{asset.type}</p>
-                  </td>
-                  {threats.map((threat) => {
-                    const ticked = isTicked(asset.id, threat.id);
-                    const status = evaluationStatus(asset.id, threat.id);
-                    return (
-                      <td key={threat.id} className="px-1 py-1 text-center align-middle">
-                        <button
-                          type="button"
-                          onClick={() => !readOnly && toggleMatrix(asset.id, threat.id)}
-                          disabled={readOnly}
-                          aria-pressed={ticked}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] transition-colors ${
-                            ticked
-                              ? "border-primary bg-primary-50 text-primary dark:bg-primary-900/40"
-                              : "border-border-default bg-surface-raised text-text-disabled hover:bg-surface-muted"
-                          } ${readOnly ? "cursor-not-allowed" : ""}`}
-                        >
-                          {ticked ? <Check size={12} strokeWidth={2.5} /> : ""}
-                        </button>
-                        {ticked ? (
-                          <p className="mt-0.5 text-[9px] font-medium leading-tight">
-                            {status === "evaluated" ? (
-                              <span className="text-emerald-700">Eval ✓</span>
-                            ) : (
-                              <span className="text-amber-700">Missing</span>
-                            )}
-                          </p>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-raised p-4">
+          <AssetThreatMatrix
+            assets={assets}
+            threats={threats}
+            matrix={matrix}
+            evaluations={evaluations}
+            mode="edit"
+            readOnly={readOnly}
+            onCellClick={handleCellClick}
+            onCellContextMenu={handleCellContextMenu}
+          />
+          <MatrixLegend className="mt-4" />
         </div>
       ) : (
         <div className="grid gap-3">
           {threats.map((threat) => {
             const linkedAssets = assets.filter((asset) => isTicked(asset.id, threat.id));
             return (
-              <details key={threat.id} className="rounded-lg border border-zinc-200">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-zinc-900">
+              <details key={threat.id} className="rounded-lg border border-border-default">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[12px] font-medium text-text-primary">
                   <span className="inline-flex items-center gap-2">
                     {threat.classification}
                     <Chip tone="slate">{linkedAssets.length} assets</Chip>
                   </span>
                 </summary>
-                <ul className="divide-y divide-zinc-100 border-t border-zinc-100">
+                <ul className="divide-y divide-border-subtle border-t border-border-subtle">
                   {assets.map((asset) => {
                     const ticked = isTicked(asset.id, threat.id);
+                    const state = statusFor(asset.id, threat.id);
                     return (
                       <li
                         key={asset.id}
                         className="flex items-center justify-between px-3 py-2 text-[12px]"
                       >
-                        <div>
-                          <p className="font-medium text-zinc-900">{asset.name}</p>
-                          <p className="text-[10px] text-zinc-500">{asset.type}</p>
+                        <div className="flex items-center gap-2">
+                          <StatusDot state={state} />
+                          <div>
+                            <p className="font-medium text-text-primary">{asset.name}</p>
+                            <p className="text-[10px] text-text-muted">{asset.type}</p>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => !readOnly && toggleMatrix(asset.id, threat.id)}
-                          disabled={readOnly}
-                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold ${
-                            ticked
-                              ? "border-primary bg-primary-50 text-primary dark:bg-primary-900/40"
-                              : "border-border-default bg-surface-raised text-text-muted"
-                          }`}
-                        >
-                          {ticked ? <Check size={10} /> : <Plus size={10} />}
-                          {ticked ? "Linked" : "Link"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {ticked ? (
+                            <button
+                              type="button"
+                              onClick={() => focusInSection6(asset.id, threat.id)}
+                              className="text-[11px] font-medium text-primary hover:underline"
+                            >
+                              Open in Section 6 →
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (readOnly) return;
+                              if (ticked) {
+                                requestUntick(asset.id, threat.id);
+                              } else {
+                                toggleMatrix(asset.id, threat.id, actor);
+                              }
+                            }}
+                            disabled={readOnly}
+                            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold ${
+                              ticked
+                                ? "border-primary bg-primary-50 text-primary dark:bg-primary-900/40"
+                                : "border-border-default bg-surface-raised text-text-muted"
+                            }`}
+                          >
+                            {ticked ? <Check size={10} /> : <Plus size={10} />}
+                            {ticked ? "Linked" : "Link"}
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
@@ -173,10 +226,20 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
         </div>
       )}
 
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600">
+      <div className="rounded-md border border-border-default bg-surface-muted px-3 py-2 text-[11px] text-text-muted">
         Ticked cells without an evaluation are flagged in Section 6. Untick cautiously — dependent evaluations
         warn before deletion.
       </div>
+
+      <RemoveFromScopeModal
+        open={Boolean(removeTarget)}
+        label={removeTarget?.label}
+        onConfirm={() => {
+          toggleMatrix(removeTarget.assetId, removeTarget.threatId, actor);
+          setRemoveTarget(null);
+        }}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </SectionShell>
   );
 }

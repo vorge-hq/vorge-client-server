@@ -1,13 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, FileSearch, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ArrowRight, CheckCircle2, FileSearch } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { similarity } from "../../../data/library";
+import { AssetThreatMatrix, MatrixLegend } from "../AssetThreatMatrix";
+import { RemoveFromScopeModal } from "../RemoveFromScopeModal";
 import { useWorkspace } from "../WorkspaceContext";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import {
+  ASSESSMENT_STATES,
+  evaluationHasAnyData,
+  getEvaluationStatus,
+  isEvaluationComplete
+} from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
+
+const STATUS_DOT_CLASS = {
+  missing: "border-border-strong bg-border-strong",
+  "in-progress": "border-severity-medium-fill bg-severity-medium-fill",
+  complete: "border-severity-low-fill bg-severity-low-fill"
+};
+
+function ListStatusDot({ state }) {
+  const className = STATUS_DOT_CLASS[state] || STATUS_DOT_CLASS.missing;
+  return (
+    <span
+      aria-hidden
+      className={`inline-block h-2 w-2 shrink-0 rounded-full border ${className}`}
+    />
+  );
+}
 
 const CONSEQUENCE_LEVELS = [
   { v: 0, label: "No effect" },
@@ -248,13 +272,13 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
                 className={textareaClass}
               />
               {suggestions.length > 0 ? (
-                <div className="mt-1.5 rounded-md border border-primary-200 bg-primary-50 p-2 dark:border-primary-700 dark:bg-primary-900/40">
+                <div className="mt-1.5 rounded-md border border-primary-200 bg-primary-50 p-2 dark:border-primary-700 dark:bg-primary-900/80">
                   <div className="mb-1.5 flex items-center gap-1.5">
-                    <FileSearch size={10} className="text-primary" aria-hidden />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <FileSearch size={10} className="text-primary dark:text-primary-300" aria-hidden />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary dark:text-primary-300">
                       Library matches (semantic)
                     </span>
-                    <span className="ml-auto text-[10px] text-primary">advisory</span>
+                    <span className="ml-auto text-[10px] text-primary dark:text-primary-300">advisory</span>
                   </div>
                   <div className="space-y-1">
                     {suggestions.map((entry) => (
@@ -266,7 +290,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
                         className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left hover:bg-surface-base disabled:cursor-default disabled:hover:bg-transparent"
                       >
                         <div className="flex-1 truncate text-[12px] text-text-secondary">{entry.text}</div>
-                        <div className="shrink-0 text-[10px] text-primary tabular-nums">
+                        <div className="shrink-0 text-[10px] text-primary dark:text-primary-300 tabular-nums">
                           {(entry.score * 100).toFixed(0)}% match
                         </div>
                       </button>
@@ -368,8 +392,18 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
 
 export function EvaluationSection({ assessment, errors }) {
   const { session } = useAuth();
-  const { assets, threats, matrix, evaluations, upsertEvaluation } = useWorkspace();
+  const {
+    assets,
+    threats,
+    matrix,
+    evaluations,
+    toggleMatrix,
+    upsertEvaluation,
+    showToast
+  } = useWorkspace();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeId, setActiveId] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   const candidates = useMemo(() => {
     const out = [];
@@ -385,12 +419,45 @@ export function EvaluationSection({ assessment, errors }) {
   const fallbackId = candidates.find((c) => c.existing)?.existing?.id || evaluations[0]?.id || null;
   const currentId = activeId || fallbackId;
   const active = currentId ? evaluations.find((e) => e.id === currentId) : null;
+  const focusedKey = active ? `${active.assetId}|${active.threatId}` : null;
+
+  /* Completion summary for the header chip. Counts every IN-SCOPE
+     cell, not just rows that exist in `evaluations` — a missing row
+     counts as "not complete". */
+  const totals = useMemo(() => {
+    const scoped = candidates.length;
+    const complete = candidates.filter(
+      (cell) => cell.existing && isEvaluationComplete(cell.existing)
+    ).length;
+    return { scoped, complete };
+  }, [candidates]);
 
   useEffect(() => {
     if (!active && fallbackId) {
       setActiveId(fallbackId);
     }
   }, [active, fallbackId]);
+
+  /* Deep-link from Section 5: ?focus=assetId|threatId. Match the focused
+     cell to an existing evaluation and select it. Unknown values are
+     ignored gracefully. After consuming, clear the search param so back-
+     navigation doesn't re-fire the focus. */
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const [assetId, threatId] = focus.split("|");
+    if (!assetId || !threatId) {
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    const existing = evaluations.find(
+      (e) => e.assetId === assetId && e.threatId === threatId
+    );
+    if (existing) {
+      setActiveId(existing.id);
+    }
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, evaluations]);
 
   const isAuthor = session.actingRole === ROLES.AUTHOR;
   const isReviewer = session.actingRole === ROLES.REVIEWER;
@@ -405,29 +472,118 @@ export function EvaluationSection({ assessment, errors }) {
     return threats.find((t) => t.id === id);
   }
 
+  /* Create an empty evaluation row and return its id (for sidebar
+     matrix click-to-focus on a freshly-ticked cell). */
+  const createEvaluationStub = useCallback(
+    (assetId, threatId) => {
+      const id = `e-${assetId}-${threatId}-${Date.now()}`;
+      const seed = {
+        id,
+        assetId,
+        threatId,
+        scenario: "",
+        consequences: "",
+        existingControls: "",
+        vulnerabilities: "",
+        proposedMitigation: "",
+        consequenceR1: 0,
+        likelihoodR1: 0,
+        consequenceR2: 0,
+        likelihoodR2: 0
+      };
+      upsertEvaluation(seed);
+      return id;
+    },
+    [upsertEvaluation]
+  );
+
   function handleRowClick(cell) {
     if (cell.existing) {
       setActiveId(cell.existing.id);
       return;
     }
     if (!canEdit) return;
-    const id = `e-${cell.assetId}-${cell.threatId}-${Date.now()}`;
-    const seed = {
-      id,
-      assetId: cell.assetId,
-      threatId: cell.threatId,
-      scenario: "",
-      consequences: "",
-      existingControls: "",
-      vulnerabilities: "",
-      proposedMitigation: "",
-      consequenceR1: 0,
-      likelihoodR1: 0,
-      consequenceR2: 0,
-      likelihoodR2: 0
-    };
-    upsertEvaluation(seed);
+    const id = createEvaluationStub(cell.assetId, cell.threatId);
     setActiveId(id);
+  }
+
+  const actor = { name: session.user.name, role: session.actingRole };
+
+  /* Sidebar matrix click handler. Decision A: tick + create + focus
+     editor immediately for the typical "I want to evaluate this"
+     intent. Show an undo toast for the misclick recovery case.
+     If a prior right-click left an orphaned eval row for this cell,
+     prefer reusing it so the user's data is restored on re-tick. */
+  function handleMatrixClick(assetId, threatId, state) {
+    if (state === "unscoped") {
+      if (!canEdit) return;
+      const previousActiveId = activeId;
+      toggleMatrix(assetId, threatId, actor);
+      const orphan = evaluations.find(
+        (e) => e.assetId === assetId && e.threatId === threatId
+      );
+      const id = orphan ? orphan.id : createEvaluationStub(assetId, threatId);
+      setActiveId(id);
+      const asset = assetById(assetId);
+      const threat = threatById(threatId);
+      const label = `${asset?.name || assetId} \u00d7 ${
+        threat?.short || threat?.classification || threatId
+      }`;
+      showToast(`Added ${label} to scope`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            toggleMatrix(assetId, threatId, actor);
+            setActiveId(previousActiveId);
+          }
+        }
+      });
+      return;
+    }
+    const existing = evaluations.find(
+      (e) => e.assetId === assetId && e.threatId === threatId
+    );
+    if (existing) {
+      setActiveId(existing.id);
+      return;
+    }
+    if (!canEdit) return;
+    const id = createEvaluationStub(assetId, threatId);
+    setActiveId(id);
+  }
+
+  /* Untick a cell. If the unticked cell was focused, fall back so
+     the editor doesn't render against a now-orphaned row. */
+  function performUntick(assetId, threatId) {
+    const wasFocused = focusedKey === `${assetId}|${threatId}`;
+    toggleMatrix(assetId, threatId, actor);
+    if (wasFocused) {
+      setActiveId(null);
+    }
+  }
+
+  /* Right-click affordance to remove a cell from scope without leaving
+     Section 6. Empty stubs untick instantly. Cells with any user data
+     prompt a confirmation modal so the user can't accidentally hide
+     work they've done. */
+  function handleMatrixContextMenu(assetId, threatId, state) {
+    if (!canEdit || state === "unscoped") return;
+    const existing = evaluations.find(
+      (e) => e.assetId === assetId && e.threatId === threatId
+    );
+    if (existing && evaluationHasAnyData(existing)) {
+      const asset = assetById(assetId);
+      const threat = threatById(threatId);
+      setRemoveTarget({
+        assetId,
+        threatId,
+        label: `${asset?.name || assetId} \u00d7 ${
+          threat?.short || threat?.classification || threatId
+        }`
+      });
+      return;
+    }
+    performUntick(assetId, threatId);
   }
 
   function handleEditorChange(patch) {
@@ -435,62 +591,110 @@ export function EvaluationSection({ assessment, errors }) {
     upsertEvaluation({ ...active, ...patch });
   }
 
+  const completionChip =
+    totals.scoped > 0 ? (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-text-secondary">
+        <span
+          aria-hidden
+          className={`inline-block h-1.5 w-1.5 rounded-full ${
+            totals.complete === totals.scoped
+              ? "bg-severity-low-fill"
+              : "bg-severity-medium-fill"
+          }`}
+        />
+        {totals.complete} of {totals.scoped} complete
+      </span>
+    ) : null;
+
   return (
     <SectionShell
       number={6}
       title="Vulnerability Assessment & Risk Treatment"
       description="For each asset–threat combination, capture the risk scenario, controls, vulnerabilities, and proposed mitigations. R1 and R2 calculate from the 5×5 matrix."
+      actions={completionChip}
     >
       <ValidationSummary errors={errors} />
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="overflow-hidden rounded-lg border border-border-default bg-surface-raised lg:w-[260px] lg:shrink-0">
-          <div className="flex items-center justify-between border-b border-border-subtle bg-surface-muted/60 px-3 py-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Evaluations</div>
-            <span className="text-[11px] tabular-nums text-text-muted">{evaluations.length}</span>
+        <aside className="flex flex-col gap-3 lg:w-[260px] lg:shrink-0">
+          <div className="rounded-lg border border-border-default bg-surface-raised p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                Overview
+              </div>
+              <div className="text-[10px] text-text-muted">
+                click to focus &middot; right-click to remove
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <AssetThreatMatrix
+                assets={assets}
+                threats={threats}
+                matrix={matrix}
+                evaluations={evaluations}
+                mode="compact"
+                focusedKey={focusedKey}
+                readOnly={!canEdit}
+                onCellClick={handleMatrixClick}
+                onCellContextMenu={handleMatrixContextMenu}
+              />
+            </div>
+            <MatrixLegend className="mt-3" />
           </div>
-          <div className="max-h-[520px] overflow-y-auto">
-            {candidates.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-text-muted">
-                No matrix cells ticked yet. Use Section 5 to link assets to threats.
-              </p>
-            ) : null}
-            {candidates.map((cell) => {
-              const asset = assetById(cell.assetId);
-              const threat = threatById(cell.threatId);
-              const isActive = cell.existing && cell.existing.id === currentId;
-              const r1 = cell.existing
-                ? calcRisk(cell.existing.consequenceR1, cell.existing.likelihoodR1)
-                : null;
-              return (
-                <button
-                  key={cell.key}
-                  type="button"
-                  onClick={() => handleRowClick(cell)}
-                  className={`w-full border-b border-border-subtle px-3 py-2 text-left transition-colors hover:bg-surface-muted/60 ${
-                    isActive ? "border-l-2 border-l-primary bg-primary-50 dark:bg-primary-900/40" : ""
-                  }`}
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="truncate text-[12px] font-medium text-text-primary">
-                      {asset?.name} × {threat?.short || threat?.classification}
+
+          <div className="overflow-hidden rounded-lg border border-border-default bg-surface-raised">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-surface-muted/60 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                Evaluations
+              </div>
+              <span className="text-[11px] tabular-nums text-text-muted">{candidates.length}</span>
+            </div>
+            <div className="max-h-[360px] overflow-y-auto">
+              {candidates.length === 0 ? (
+                <p className="px-3 py-6 text-center text-[12px] text-text-muted">
+                  No matrix cells ticked yet. Use Section 5 (or the overview above) to scope.
+                </p>
+              ) : null}
+              {candidates.map((cell) => {
+                const asset = assetById(cell.assetId);
+                const threat = threatById(cell.threatId);
+                const isActive = cell.existing && cell.existing.id === currentId;
+                const state = getEvaluationStatus(cell.existing);
+                const r1 = cell.existing
+                  ? calcRisk(cell.existing.consequenceR1, cell.existing.likelihoodR1)
+                  : null;
+                return (
+                  <button
+                    key={cell.key}
+                    type="button"
+                    onClick={() => handleRowClick(cell)}
+                    className={`w-full border-b border-border-subtle px-3 py-2 text-left transition-colors hover:bg-surface-muted/60 ${
+                      isActive
+                        ? "border-l-2 border-l-primary bg-primary-50 dark:bg-primary-900/80"
+                        : ""
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center gap-2">
+                      <ListStatusDot state={state} />
+                      <div className="flex-1 truncate text-[12px] font-medium text-text-primary">
+                        {asset?.name} × {threat?.short || threat?.classification}
+                      </div>
                     </div>
-                    {!cell.existing ? <Plus size={10} className="text-text-disabled" aria-hidden /> : null}
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 truncate text-[11px] text-text-muted">
-                      {cell.existing?.scenario ? (
-                        cell.existing.scenario
-                      ) : (
-                        <span className="italic text-text-disabled">No evaluation yet</span>
-                      )}
+                    <div className="flex items-center justify-between gap-2 pl-4">
+                      <div className="flex-1 truncate text-[11px] text-text-muted">
+                        {cell.existing?.scenario ? (
+                          cell.existing.scenario
+                        ) : (
+                          <span className="italic text-text-disabled">No evaluation yet</span>
+                        )}
+                      </div>
+                      {r1 ? <RiskChip rating={r1} /> : null}
                     </div>
-                    {r1 ? <RiskChip rating={r1} /> : null}
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </aside>
 
         <div className="min-w-0 flex-1">
           {active ? (
@@ -510,6 +714,16 @@ export function EvaluationSection({ assessment, errors }) {
           )}
         </div>
       </div>
+
+      <RemoveFromScopeModal
+        open={Boolean(removeTarget)}
+        label={removeTarget?.label}
+        onConfirm={() => {
+          performUntick(removeTarget.assetId, removeTarget.threatId);
+          setRemoveTarget(null);
+        }}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </SectionShell>
   );
 }

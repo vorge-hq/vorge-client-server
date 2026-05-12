@@ -28,7 +28,7 @@ function CompletionDot({ complete }) {
   return (
     <span
       className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-        complete ? "bg-emerald-500" : "bg-zinc-300"
+        complete ? "bg-emerald-500" : "bg-border-strong"
       }`}
       aria-label={complete ? "Complete" : "Incomplete"}
     />
@@ -91,16 +91,16 @@ function CollapsedAssetRow({ asset, onClick, readOnly }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-zinc-100 px-4 py-3.5 text-left transition hover:bg-zinc-50 last:border-b-0"
+      className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3.5 text-left transition hover:bg-surface-muted last:border-b-0"
     >
       <CompletionDot complete={complete} />
-      <span className="w-20 shrink-0 text-sm font-medium text-zinc-900">{asset.name}</span>
+      <span className="w-20 shrink-0 text-sm font-medium text-text-primary">{asset.name}</span>
       <Chip tone="slate" className="shrink-0">{asset.type || "—"}</Chip>
-      <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
-        {asset.description || <em className="text-zinc-400">No description</em>}
+      <span className="min-w-0 flex-1 truncate text-sm text-text-muted">
+        {asset.description || <em className="text-text-disabled">No description</em>}
       </span>
       <CriticalityChip level={asset.criticality} />
-      <ChevronRight size={14} className="shrink-0 text-zinc-400" />
+      <ChevronRight size={14} className="shrink-0 text-text-disabled" />
     </button>
   );
 }
@@ -109,18 +109,18 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
   const anomaly = detectAssetAnomaly(asset);
 
   return (
-    <div className="border-b border-zinc-100 bg-zinc-50/60 last:border-b-0">
+    <div className="border-b border-border-subtle bg-surface-muted/60 last:border-b-0">
       <button
         type="button"
         onClick={onCollapse}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-zinc-100"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-surface-muted"
       >
         <CompletionDot complete={isAssetComplete(asset)} />
-        <span className="text-sm font-semibold text-zinc-900">{asset.name}</span>
+        <span className="text-sm font-semibold text-text-primary">{asset.name}</span>
         <Chip tone="slate">{asset.type || "—"}</Chip>
         <span className="flex-1" />
         <CriticalityChip level={asset.criticality} />
-        <ChevronDown size={14} className="shrink-0 text-zinc-400" />
+        <ChevronDown size={14} className="shrink-0 text-text-disabled" />
       </button>
 
       <div className="px-4 pb-5">
@@ -187,7 +187,7 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
         </div>
 
         {readOnly ? null : (
-          <div className="mt-5 flex items-center justify-end border-t border-zinc-200 pt-4">
+          <div className="mt-5 flex items-center justify-end border-t border-border-default pt-4">
             <button
               type="button"
               onClick={() => onRemove(asset.id)}
@@ -253,7 +253,7 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
         </>
       }
       footer={
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-text-muted">
           {assets.length} assets · changes flow into Section 5 matrix and Section 6 evaluations.
         </p>
       }
@@ -266,7 +266,7 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
 
       {/* Progress summary */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="font-medium text-zinc-700">
+        <span className="font-medium text-text-secondary">
           {completeCount}/{assets.length} complete
         </span>
         <div className="flex gap-1">
@@ -274,7 +274,7 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
             <span
               key={asset.id}
               className={`h-2 w-5 rounded-full ${
-                isAssetComplete(asset) ? "bg-emerald-400" : "bg-zinc-200"
+                isAssetComplete(asset) ? "bg-emerald-400" : "bg-border-strong"
               }`}
             />
           ))}
@@ -285,9 +285,9 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
       </div>
 
       {/* Asset list */}
-      <div className="overflow-hidden rounded-lg border border-zinc-200">
+      <div className="overflow-hidden rounded-lg border border-border-default">
         {assets.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 text-center text-sm text-text-muted">
             No assets yet. Click <strong>+ Add asset</strong> to get started.
           </div>
         ) : (

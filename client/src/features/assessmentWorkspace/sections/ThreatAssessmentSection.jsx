@@ -47,7 +47,7 @@ function CompletionDot({ complete }) {
   return (
     <span
       className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-        complete ? "bg-emerald-500" : "bg-zinc-300"
+        complete ? "bg-emerald-500" : "bg-border-strong"
       }`}
       aria-label={complete ? "Complete" : "Incomplete"}
     />
@@ -104,34 +104,34 @@ function CollapsedThreatRow({ threat, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-zinc-100 px-4 py-3.5 text-left transition hover:bg-zinc-50 last:border-b-0"
+      className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3.5 text-left transition hover:bg-surface-muted last:border-b-0"
     >
       <CompletionDot complete={complete} />
-      <span className="min-w-0 shrink-0 text-sm font-medium text-zinc-900">
+      <span className="min-w-0 shrink-0 text-sm font-medium text-text-primary">
         {threat.classification}
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm text-zinc-500">
-        {threat.history || <em className="text-zinc-400">No history entered</em>}
+      <span className="min-w-0 flex-1 truncate text-sm text-text-muted">
+        {threat.history || <em className="text-text-disabled">No history entered</em>}
       </span>
       <RatingChip level={threat.rating} />
-      <ChevronRight size={14} className="shrink-0 text-zinc-400" />
+      <ChevronRight size={14} className="shrink-0 text-text-disabled" />
     </button>
   );
 }
 
 function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOnly }) {
   return (
-    <div className="border-b border-zinc-100 bg-zinc-50/60 last:border-b-0">
+    <div className="border-b border-border-subtle bg-surface-muted/60 last:border-b-0">
       <button
         type="button"
         onClick={onCollapse}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-zinc-100"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-surface-muted"
       >
         <CompletionDot complete={isThreatComplete(threat)} />
-        <span className="text-sm font-semibold text-zinc-900">{threat.classification}</span>
+        <span className="text-sm font-semibold text-text-primary">{threat.classification}</span>
         <span className="flex-1" />
         <RatingChip level={threat.rating} />
-        <ChevronDown size={14} className="shrink-0 text-zinc-400" />
+        <ChevronDown size={14} className="shrink-0 text-text-disabled" />
       </button>
 
       <div className="px-4 pb-5">
@@ -192,7 +192,7 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
         </div>
 
         {readOnly ? null : (
-          <div className="mt-5 flex items-center justify-end border-t border-zinc-200 pt-4">
+          <div className="mt-5 flex items-center justify-end border-t border-border-default pt-4">
             <button
               type="button"
               onClick={() => onRemove(threat)}
@@ -263,7 +263,7 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
         </>
       }
       footer={
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-text-muted">
           {threats.length} threats · removing a threat strips dependent Section 5 ticks.
         </p>
       }
@@ -272,7 +272,7 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
 
       {/* Progress summary */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="font-medium text-zinc-700">
+        <span className="font-medium text-text-secondary">
           {completeCount}/{threats.length} complete
         </span>
         <div className="flex gap-1">
@@ -280,7 +280,7 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
             <span
               key={threat.id}
               className={`h-2 w-5 rounded-full ${
-                isThreatComplete(threat) ? "bg-emerald-400" : "bg-zinc-200"
+                isThreatComplete(threat) ? "bg-emerald-400" : "bg-border-strong"
               }`}
             />
           ))}
@@ -291,9 +291,9 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
       </div>
 
       {/* Threat list */}
-      <div className="overflow-hidden rounded-lg border border-zinc-200">
+      <div className="overflow-hidden rounded-lg border border-border-default">
         {threats.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-zinc-500">
+          <div className="px-4 py-8 text-center text-sm text-text-muted">
             No threats yet. Click <strong>+ Add threat</strong> to get started.
           </div>
         ) : (

@@ -55,19 +55,46 @@ export function WorkspaceProvider({ children }) {
 
   const showToast = useCallback((message, options = {}) => {
     /* Normalize: callers may pass a plain string OR an object
-       { message, action }. Internally we always store an object so the
-       Toast component has a uniform contract. Action is optional and
-       lets callers offer an undo affordance. */
+       { message, action, tone }. Internally we always store an object
+       with a tone so the Toast component has a uniform contract.
+       Tones: "success" (default) | "error" | "warning" | "info". */
     const payload =
       typeof message === "string"
-        ? { message, action: options.action || null }
-        : { message: message.message, action: message.action || null };
-    const duration = options.duration || (payload.action ? 4000 : 2400);
+        ? {
+            message,
+            action: options.action || null,
+            tone: options.tone || "success"
+          }
+        : {
+            message: message.message,
+            action: message.action || null,
+            tone: message.tone || options.tone || "success"
+          };
+    /* Errors get a longer dwell time so users have time to read and act. */
+    const baseDuration = payload.tone === "error" ? 5000 : 2400;
+    const duration = options.duration || (payload.action ? Math.max(baseDuration, 4000) : baseDuration);
     setState((current) => ({ ...current, toast: payload }));
     setTimeout(() => {
       setState((current) => (current.toast === payload ? { ...current, toast: null } : current));
     }, duration);
   }, []);
+
+  /* Helper: surface a workspace operation result with the right tone.
+     Conventions across the workspace: success returns { ok: true } and
+     failures return { error: "message" }. This keeps tone-handling out
+     of every caller and guarantees errors are visually distinct. */
+  const showResultToast = useCallback(
+    (result, successMessage, options = {}) => {
+      if (result?.error) {
+        showToast(result.error, { ...options, tone: "error" });
+        return;
+      }
+      if (successMessage) {
+        showToast(successMessage, options);
+      }
+    },
+    [showToast]
+  );
 
   const dismissToast = useCallback(() => {
     setState((current) => ({ ...current, toast: null }));
@@ -388,6 +415,7 @@ export function WorkspaceProvider({ children }) {
     () => ({
       ...state,
       showToast,
+      showResultToast,
       dismissToast,
       applyWorkflowTransition,
       applyDemoRoleSwitch,
@@ -408,6 +436,7 @@ export function WorkspaceProvider({ children }) {
     [
       state,
       showToast,
+      showResultToast,
       dismissToast,
       applyWorkflowTransition,
       applyDemoRoleSwitch,

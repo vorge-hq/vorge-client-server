@@ -1,26 +1,26 @@
 export const ADMIN_USERS = Object.freeze([
-  { id: "u1", name: "Demo Author", email: "demo.author@vantage.local", roles: ["Author"], facilities: "Asset Site 1", mfa: "Disabled", lastSignIn: "2 hours ago" },
-  { id: "u2", name: "A. Reviewer", email: "a.reviewer@vantage.local", roles: ["Reviewer"], facilities: "Asset Site 1, Asset Site 2", mfa: "Enabled", lastSignIn: "Yesterday" },
-  { id: "u3", name: "M. Approver", email: "m.approver@vantage.local", roles: ["Approver"], facilities: "Asset Site 1, Asset Site 2", mfa: "Enabled", lastSignIn: "3 days ago" },
-  { id: "u4", name: "Demo Executive", email: "demo.exec@vantage.local", roles: ["HQ Executive"], facilities: "All", mfa: "Enabled", lastSignIn: "1 hour ago" },
-  { id: "u5", name: "Demo Admin", email: "demo.admin@vantage.local", roles: ["Admin"], facilities: "All", mfa: "Enabled", lastSignIn: "Now" },
-  { id: "u6", name: "C. Adeyemi", email: "c.adeyemi@operator-a.com", roles: ["Author", "Approver"], facilities: "Asset Site 1", mfa: "Enabled", lastSignIn: "Yesterday" },
-  { id: "u7", name: "J. Onyema", email: "j.onyema@operator-a.com", roles: ["Author"], facilities: "Asset Site 2", mfa: "Disabled", lastSignIn: "2 days ago" },
-  { id: "u8", name: "B. Onuoha", email: "b.onuoha@operator-a.com", roles: ["Author", "Reviewer"], facilities: "Asset Site 3", mfa: "Enabled", lastSignIn: "5 days ago" }
+  { id: "u1", name: "Adaeze Okeke", email: "adaeze.okeke@vantage.local", roles: ["Author"], facilities: "Lagos Refinery", mfa: "Disabled", lastSignIn: "2 hours ago" },
+  { id: "u2", name: "Mei-Lin Tanaka", email: "meilin.tanaka@vantage.local", roles: ["Reviewer"], facilities: "Lagos Refinery, Bonny Terminal", mfa: "Enabled", lastSignIn: "Yesterday" },
+  { id: "u3", name: "Rafael Castellanos", email: "rafael.castellanos@vantage.local", roles: ["Approver"], facilities: "Lagos Refinery, Bonny Terminal", mfa: "Enabled", lastSignIn: "3 days ago" },
+  { id: "u4", name: "Sarah Chen", email: "sarah.chen@vantage.local", roles: ["HQ Executive"], facilities: "All", mfa: "Enabled", lastSignIn: "1 hour ago" },
+  { id: "u5", name: "Olivia Bennett", email: "olivia.bennett@vantage.local", roles: ["Admin"], facilities: "All", mfa: "Enabled", lastSignIn: "Now" },
+  { id: "u6", name: "Daniel Mensah", email: "daniel.mensah@operator-a.com", roles: ["Author", "Approver"], facilities: "Lagos Refinery", mfa: "Enabled", lastSignIn: "Yesterday" },
+  { id: "u7", name: "Hassan Al-Mansoori", email: "hassan.al-mansoori@operator-a.com", roles: ["Author"], facilities: "Bonny Terminal", mfa: "Disabled", lastSignIn: "2 days ago" },
+  { id: "u8", name: "Nadia Haddad", email: "nadia.haddad@operator-a.com", roles: ["Author", "Reviewer"], facilities: "Fujairah Marine Terminal", mfa: "Enabled", lastSignIn: "5 days ago" }
 ]);
 
 export const FACILITY_ASSIGNMENTS = Object.freeze([
-  { facility: "Asset Site 1", author: "Demo Author", reviewer: "A. Reviewer", approver: "M. Approver" },
-  { facility: "Asset Site 2", author: "J. Onyema", reviewer: "A. Reviewer", approver: "M. Approver" },
-  { facility: "Asset Site 3", author: "B. Onuoha", reviewer: "A. Reviewer", approver: "M. Approver" }
+  { facility: "Lagos Refinery", author: "Adaeze Okeke", reviewer: "Mei-Lin Tanaka", approver: "Rafael Castellanos" },
+  { facility: "Bonny Terminal", author: "Hassan Al-Mansoori", reviewer: "Mei-Lin Tanaka", approver: "Rafael Castellanos" },
+  { facility: "Fujairah Marine Terminal", author: "Nadia Haddad", reviewer: "Mei-Lin Tanaka", approver: "Rafael Castellanos" }
 ]);
 
 export const OWNER_POOL = Object.freeze([
-  { id: "op1", label: "Security Manager", mappedTo: "C. Adeyemi", email: "c.adeyemi@operator-a.com" },
-  { id: "op2", label: "IT Manager", mappedTo: "J. Onyema", email: "j.onyema@operator-a.com" },
-  { id: "op3", label: "Facility Operations", mappedTo: "B. Onuoha", email: "b.onuoha@operator-a.com" },
-  { id: "op4", label: "HSE Lead", mappedTo: "A. Reviewer", email: "a.reviewer@vantage.local" },
-  { id: "op5", label: "Marine Operations", mappedTo: "C. Adeyemi", email: "c.adeyemi@operator-a.com" },
+  { id: "op1", label: "Security Manager", mappedTo: "Daniel Mensah", email: "daniel.mensah@operator-a.com" },
+  { id: "op2", label: "IT Manager", mappedTo: "Marcus Johnson", email: "marcus.johnson@operator-a.com" },
+  { id: "op3", label: "Facility Operations", mappedTo: "Nadia Haddad", email: "nadia.haddad@operator-a.com" },
+  { id: "op4", label: "HSE Lead", mappedTo: "Tomás Herrera", email: "tomas.herrera@operator-a.com" },
+  { id: "op5", label: "Marine Operations", mappedTo: "Yusuf Bello", email: "yusuf.bello@operator-a.com" },
   { id: "op6", label: "Social Performance Manager", mappedTo: "— unassigned —", email: "" }
 ]);
 
@@ -38,7 +38,7 @@ export const NOTIFICATION_TRIGGERS = Object.freeze([
 export const EXPORT_SECTIONS = Object.freeze([
   { id: "es1", section: "Cover page", binding: "Front-matter (Author, Reviewer, Approver, dates, version)" },
   { id: "es2", section: "1. Executive Summary", binding: "Section 1 rich text" },
-  { id: "es3", section: "2. Facility / Asset Information", binding: "Section 2 fields" },
+  { id: "es3", section: "2. Facility Information", binding: "Section 2 fields" },
   { id: "es4", section: "3. Asset Disaggregation", binding: "Section 3 table (no internal-only fields)" },
   { id: "es5", section: "4. Threat Assessment", binding: "Section 4 table" },
   { id: "es6", section: "5. Asset Attractiveness", binding: "Section 5 cross-reference matrix" },

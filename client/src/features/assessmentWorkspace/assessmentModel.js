@@ -9,7 +9,7 @@ export const ASSESSMENT_STATES = Object.freeze({
 
 export const SRA_SECTIONS = Object.freeze([
   { id: 1, label: "Executive Summary", icon: "doc", short: "Summary" },
-  { id: 2, label: "Facility / Asset Information", icon: "building", short: "Facility" },
+  { id: 2, label: "Facility Information", icon: "building", short: "Facility" },
   { id: 3, label: "Asset Disaggregation", icon: "layers", short: "Assets" },
   { id: 4, label: "Threat Assessment", icon: "shield", short: "Threats" },
   { id: 5, label: "Asset Attractiveness Cross-Reference", icon: "grid", short: "Matrix" },

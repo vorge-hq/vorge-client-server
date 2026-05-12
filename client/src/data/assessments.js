@@ -5,7 +5,7 @@ import { MITIGATIONS } from "./mitigations";
 import { DEFAULT_THREATS } from "./threats";
 
 const SEED_EXEC_SUMMARY =
-  "The 2026 SRA for Asset Site 1 confirms cybercrime against the central control room as the highest residual risk after mitigation, followed by organised crime targeting marine product transfer. Mitigation proposals focus on per-vendor authentication, expanded CCTV coverage, radar coverage, and a substation HMI upgrade.";
+  "The 2026 SRA for Lagos Refinery confirms cybercrime against the central control room as the highest residual risk after mitigation, followed by organised crime targeting marine product transfer. Mitigation proposals focus on per-vendor authentication, expanded CCTV coverage, radar coverage, and a substation HMI upgrade.";
 
 const SEED_CONCLUSION =
   "Overall residual risk is reduced from High to Medium across the assessed scenarios when proposed mitigations are agreed and tracked. Cybercrime requires Approver attention prior to next cycle.";
@@ -15,7 +15,7 @@ export const ACTIVE_ASSESSMENT_ID = "ass-1-2026";
 export const ASSESSMENTS = Object.freeze([
   {
     id: ACTIVE_ASSESSMENT_ID,
-    name: "Asset Site 1 — 2026 SRA",
+    name: "Lagos Refinery — 2026 SRA",
     facilityId: "fac-1",
     cycle: "2026",
     state: ASSESSMENT_STATES.DRAFT,
@@ -45,7 +45,7 @@ export const ASSESSMENTS = Object.freeze([
       {
         id: "contrib-1",
         type: "Core",
-        name: "C. Adeyemi",
+        name: "Daniel Mensah",
         position: "Facility Manager",
         expertise: "Operations",
         company: "Operator A"
@@ -53,7 +53,7 @@ export const ASSESSMENTS = Object.freeze([
       {
         id: "contrib-2",
         type: "Specialist",
-        name: "B. Hartley",
+        name: "Liam O'Connor",
         position: "OT Cyber Lead",
         expertise: "Cyber",
         company: "Operator A"
@@ -61,7 +61,7 @@ export const ASSESSMENTS = Object.freeze([
       {
         id: "contrib-3",
         type: "Part Time",
-        name: "T. Adigun",
+        name: "Yusuf Bello",
         position: "Marine Coordinator",
         expertise: "Maritime",
         company: "Coastal Marine Services"
@@ -69,13 +69,13 @@ export const ASSESSMENTS = Object.freeze([
     ],
     references: [
       { id: "ref-1", description: "Site security plan (2024)", type: "PDF" },
-      { id: "ref-2", description: "Asset Site 1 perimeter as-built drawings", type: "DWG" },
+      { id: "ref-2", description: "Lagos Refinery perimeter as-built drawings", type: "DWG" },
       { id: "ref-3", description: "Last SRA exported document", type: "DOCX" }
     ]
   },
   {
     id: "ass-2-2026",
-    name: "Asset Site 2 — 2026 SRA",
+    name: "Bonny Terminal — 2026 SRA",
     facilityId: "fac-2",
     cycle: "2026",
     state: ASSESSMENT_STATES.IN_REVIEW,
@@ -98,7 +98,7 @@ export const ASSESSMENTS = Object.freeze([
   },
   {
     id: "ass-3-2026",
-    name: "Asset Site 3 — 2026 SRA",
+    name: "Fujairah Marine Terminal — 2026 SRA",
     facilityId: "fac-3",
     cycle: "2026",
     state: ASSESSMENT_STATES.AWAITING_APPROVAL,
@@ -119,7 +119,7 @@ export const ASSESSMENTS = Object.freeze([
   },
   {
     id: "ass-1-2025",
-    name: "Asset Site 1 — 2025 SRA",
+    name: "Lagos Refinery — 2025 SRA",
     facilityId: "fac-1",
     cycle: "2025",
     state: ASSESSMENT_STATES.APPROVED,
@@ -140,7 +140,7 @@ export const ASSESSMENTS = Object.freeze([
   },
   {
     id: "ass-2-2025",
-    name: "Asset Site 2 — 2025 SRA",
+    name: "Bonny Terminal — 2025 SRA",
     facilityId: "fac-2",
     cycle: "2025",
     state: ASSESSMENT_STATES.APPROVED,
@@ -183,8 +183,8 @@ export function getAssessmentBundle(assessmentId) {
 }
 
 export const HQ_AGGREGATE = Object.freeze([
-  { facilityId: "fac-2", name: "Asset Site 2", open: 14, high: 4, vhigh: 1, overdue: 2, status: "Approved" },
-  { facilityId: "fac-3", name: "Asset Site 3", open: 9, high: 2, vhigh: 0, overdue: 0, status: "Approved" },
-  { facilityId: "fac-4", name: "Asset Site 4", open: 18, high: 5, vhigh: 2, overdue: 4, status: "In Review" },
-  { facilityId: "fac-5", name: "Asset Site 5", open: 11, high: 3, vhigh: 0, overdue: 1, status: "Approved" }
+  { facilityId: "fac-2", name: "Bonny Terminal", open: 14, high: 4, vhigh: 1, overdue: 2, status: "Approved" },
+  { facilityId: "fac-3", name: "Fujairah Marine Terminal", open: 9, high: 2, vhigh: 0, overdue: 0, status: "Approved" },
+  { facilityId: "fac-4", name: "Pernis Refinery Complex", open: 18, high: 5, vhigh: 2, overdue: 4, status: "In Review" },
+  { facilityId: "fac-5", name: "Jurong Storage Terminal", open: 11, high: 3, vhigh: 0, overdue: 1, status: "Approved" }
 ]);

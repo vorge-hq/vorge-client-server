@@ -85,7 +85,7 @@ export function HQExecutiveDashboard() {
     }).length;
     return {
       facilityId: "fac-1",
-      name: "Asset Site 1",
+      name: "Lagos Refinery",
       open,
       high,
       vhigh,
@@ -122,20 +122,20 @@ export function HQExecutiveDashboard() {
     {
       id: "f1",
       title: "Maritime threat under-rated",
-      detail: "Asset Site 3 rated Maritime as Low; 4 of 5 peer facilities rated Medium or High.",
-      facility: "Asset Site 3"
+      detail: "Fujairah Marine Terminal rated Maritime as Low; 4 of 5 peer facilities rated Medium or High.",
+      facility: "Fujairah Marine Terminal"
     },
     {
       id: "f2",
       title: "Cyber consequence outlier",
-      detail: "Asset Site 4 rated Cyber consequence at level 5; peer median is 3.",
-      facility: "Asset Site 4"
+      detail: "Pernis Refinery Complex rated Cyber consequence at level 5; peer median is 3.",
+      facility: "Pernis Refinery Complex"
     },
     {
       id: "f3",
       title: "Insider threat divergence",
-      detail: "Asset Site 5 rated Insider as Very Low; 4 of 5 peers rated Medium.",
-      facility: "Asset Site 5"
+      detail: "Jurong Storage Terminal rated Insider as Very Low; 4 of 5 peers rated Medium.",
+      facility: "Jurong Storage Terminal"
     }
   ];
 

@@ -18,6 +18,34 @@ function isBlank(value) {
   return !value || !String(value).trim();
 }
 
+/* Build a human-readable label for a mitigation, anchored on the
+   asset x threat scenario it addresses. Falls back to the proposed
+   mitigation text or — in the worst case — to a generic phrase. The
+   internal id is intentionally never used in user-visible strings. */
+function mitigationLabel(mitigation, evaluations, assets, threats) {
+  if (mitigation.assetThreat) {
+    return `the ${mitigation.assetThreat} mitigation`;
+  }
+  const evaluation = evaluations.find((e) => e.id === mitigation.evaluationId);
+  if (evaluation) {
+    const asset = assets.find((a) => a.id === evaluation.assetId);
+    const threat = threats.find((t) => t.id === evaluation.threatId);
+    const assetLabel = asset?.name || evaluation.assetId;
+    const threatLabel = threat?.short || threat?.classification || threat?.name || evaluation.threatId;
+    if (assetLabel && threatLabel) {
+      return `the ${assetLabel} \u00d7 ${threatLabel} mitigation`;
+    }
+  }
+  if (mitigation.description) {
+    const trimmed = String(mitigation.description).trim();
+    if (trimmed.length > 0) {
+      const summary = trimmed.length > 60 ? `${trimmed.slice(0, 57)}\u2026` : trimmed;
+      return `the mitigation "${summary}"`;
+    }
+  }
+  return "a mitigation";
+}
+
 export function validateAssessment(input = {}) {
   const {
     assessment = null,
@@ -86,22 +114,24 @@ export function validateAssessment(input = {}) {
   mitigations.forEach((mitigation) => {
     const owner = mitigation.ownerLabel || mitigation.owner;
     const target = mitigation.targetDate || mitigation.target;
+    const label = mitigationLabel(mitigation, evaluations, assets, threats);
+    const sentenceLabel = label.charAt(0).toUpperCase() + label.slice(1);
     if (isBlank(owner)) {
       out[7].push({
         code: "mit-owner",
-        message: `Mitigation ${mitigation.id} has no owner.`
+        message: `${sentenceLabel} has no owner.`
       });
     }
     if (isBlank(target)) {
       out[7].push({
         code: "mit-target",
-        message: `Mitigation ${mitigation.id} has no target date.`
+        message: `${sentenceLabel} has no target date.`
       });
     }
     if (mitigation.agreed === "Pending") {
       out[7].push({
         code: "mit-agreed",
-        message: `Mitigation ${mitigation.id} is still pending agreement.`
+        message: `${sentenceLabel} is still pending agreement.`
       });
     }
   });

@@ -15,7 +15,7 @@ export function VersionsModal({ onClose }) {
             <div>
               <div className="text-[14px] font-semibold">Assessment history</div>
               <div className="text-[11px] text-text-muted">
-                Asset Site 1 — current draft and prior approved cycles.
+                Lagos Refinery — current draft and prior approved cycles.
               </div>
             </div>
           </div>

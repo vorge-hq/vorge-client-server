@@ -226,7 +226,7 @@ export function AuthorDashboard() {
                       <span className="w-8 text-[11px] tabular-nums text-text-muted">{completion}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-text-muted">A. Reviewer</td>
+                  <td className="px-4 py-3 text-text-muted">Mei-Lin Tanaka</td>
                   <td className="px-4 py-3 text-[13px] text-text-muted">
                     {new Date(assessment.lastUpdated).toLocaleDateString()}
                   </td>

@@ -221,7 +221,7 @@ export function AssessmentWorkspacePage() {
       type: WORKFLOW_ACTIONS.RECALL_APPROVE,
       actor: actor()
     });
-    workspace.showToast(result?.error || "Recall approved");
+    workspace.showResultToast(result, "Recall approved");
   }
 
   async function handleRecallDecline() {
@@ -231,7 +231,7 @@ export function AssessmentWorkspacePage() {
       actor: actor(),
       reason: "Declined by receiver"
     });
-    workspace.showToast(result?.error || "Recall declined");
+    workspace.showResultToast(result, "Recall declined");
   }
 
   const modalOpeners = {
@@ -282,7 +282,7 @@ export function AssessmentWorkspacePage() {
               actor: actor()
             });
             setSubmitOpen(false);
-            workspace.showToast(result?.error || "Submitted to A. Reviewer");
+            workspace.showResultToast(result, "Submitted for review");
           }}
         />
       ) : null}
@@ -311,7 +311,7 @@ export function AssessmentWorkspacePage() {
               reason
             });
             setRecallMode(null);
-            workspace.showToast(result?.error || success);
+            workspace.showResultToast(result, success);
           }}
         />
       ) : null}
@@ -340,13 +340,13 @@ export function AssessmentWorkspacePage() {
             });
             setDecisionKind(null);
             const successMessages = {
-              "review-complete": "Review complete — forwarded to M. Approver",
+              "review-complete": "Review complete — forwarded to Approver",
               "reviewer-send-back": "Sent back to Author with comments",
               approve: "Assessment approved",
               "approver-send-back": "Sent back to Reviewer",
               reject: "Rejected — returned to Author"
             };
-            workspace.showToast(result?.error || successMessages[decisionKind]);
+            workspace.showResultToast(result, successMessages[decisionKind]);
           }}
         />
       ) : null}

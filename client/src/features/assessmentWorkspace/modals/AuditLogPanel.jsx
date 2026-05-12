@@ -49,7 +49,7 @@ function formatTimestamp(ts) {
 
 export function AuditLogPanel({
   entries = [],
-  assessmentName = "Asset Site 1 — 2026 SRA",
+  assessmentName = "Lagos Refinery — 2026 SRA",
   onClose,
   initialFilter = "all",
   initialSectionId = null

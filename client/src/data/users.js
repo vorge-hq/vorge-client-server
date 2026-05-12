@@ -3,9 +3,9 @@ import { ROLES } from "../auth/session";
 export const USERS = Object.freeze([
   {
     id: "user-demo-author",
-    name: "Demo Author",
-    initials: "DA",
-    email: "demo.author@vantage.local",
+    name: "Adaeze Okeke",
+    initials: "AO",
+    email: "adaeze.okeke@vantage.local",
     title: "Author",
     mfaEnabled: false,
     roles: [
@@ -17,9 +17,9 @@ export const USERS = Object.freeze([
   },
   {
     id: "user-a-reviewer",
-    name: "A. Reviewer",
-    initials: "AR",
-    email: "a.reviewer@vantage.local",
+    name: "Mei-Lin Tanaka",
+    initials: "MT",
+    email: "meilin.tanaka@vantage.local",
     title: "Reviewer",
     mfaEnabled: true,
     roles: [
@@ -32,9 +32,9 @@ export const USERS = Object.freeze([
   },
   {
     id: "user-m-approver",
-    name: "M. Approver",
-    initials: "MA",
-    email: "m.approver@vantage.local",
+    name: "Rafael Castellanos",
+    initials: "RC",
+    email: "rafael.castellanos@vantage.local",
     title: "Approver",
     mfaEnabled: true,
     roles: [
@@ -46,9 +46,9 @@ export const USERS = Object.freeze([
   },
   {
     id: "user-demo-exec",
-    name: "Demo Executive",
-    initials: "DE",
-    email: "demo.exec@vantage.local",
+    name: "Sarah Chen",
+    initials: "SC",
+    email: "sarah.chen@vantage.local",
     title: "HQ Executive",
     mfaEnabled: true,
     roles: [
@@ -63,9 +63,9 @@ export const USERS = Object.freeze([
   },
   {
     id: "user-demo-admin",
-    name: "Demo Admin",
-    initials: "DA",
-    email: "demo.admin@vantage.local",
+    name: "Olivia Bennett",
+    initials: "OB",
+    email: "olivia.bennett@vantage.local",
     title: "Administrator",
     mfaEnabled: true,
     roles: [
@@ -78,9 +78,9 @@ export const USERS = Object.freeze([
   },
   {
     id: "user-j-doe",
-    name: "J. Doe",
-    initials: "JD",
-    email: "j.doe@operator-a.com",
+    name: "Marcus Johnson",
+    initials: "MJ",
+    email: "marcus.johnson@operator-a.com",
     title: "IT Security",
     mfaEnabled: false,
     roles: [

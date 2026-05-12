@@ -53,16 +53,16 @@ async function seed() {
 
   await db.transaction(async (trx) => {
     await upsert(trx, "operators", [
-      { id: IDS.northstar, name: "Northstar Energy" }
+      { id: IDS.northstar, name: "Operator A" }
     ]);
 
     await upsert(trx, "facilities", [
       {
         id: IDS.bonny,
         operator_id: IDS.northstar,
-        name: "Bonny Refinery",
+        name: "Bonny Terminal",
         configuration: {
-          region: "Niger Delta, Nigeria",
+          region: "Rivers State, Nigeria",
           riskBands: [
             { min: 1, max: 4, label: "Low" },
             { min: 5, max: 9, label: "Medium" },
@@ -74,18 +74,18 @@ async function seed() {
       {
         id: IDS.coral,
         operator_id: IDS.northstar,
-        name: "Coral FPSO",
-        configuration: { region: "Offshore Mozambique" }
+        name: "Pernis Refinery Complex",
+        configuration: { region: "Rotterdam, Netherlands" }
       }
     ]);
 
     await upsert(trx, "users", [
-      { id: IDS.omar, email: "omar.haddad@northstar.example", password_hash: passwordHash, name: "Omar Haddad", mfa_enabled: true },
-      { id: IDS.sarah, email: "sarah.okonkwo@northstar.example", password_hash: passwordHash, name: "Sarah Okonkwo", mfa_enabled: true },
-      { id: IDS.marcus, email: "marcus.king@northstar.example", password_hash: passwordHash, name: "Marcus King", mfa_enabled: true },
-      { id: IDS.elena, email: "elena.park@northstar.example", password_hash: passwordHash, name: "Elena Park", mfa_enabled: true },
-      { id: IDS.priya, email: "priya.rao@alora.example", password_hash: passwordHash, name: "Priya Rao", mfa_enabled: true },
-      { id: IDS.james, email: "james.clark@vendor.example", password_hash: passwordHash, name: "James Clark", mfa_enabled: false }
+      { id: IDS.omar, email: "adaeze.okeke@operator-a.example", password_hash: passwordHash, name: "Adaeze Okeke", mfa_enabled: true },
+      { id: IDS.sarah, email: "meilin.tanaka@operator-a.example", password_hash: passwordHash, name: "Mei-Lin Tanaka", mfa_enabled: true },
+      { id: IDS.marcus, email: "rafael.castellanos@operator-a.example", password_hash: passwordHash, name: "Rafael Castellanos", mfa_enabled: true },
+      { id: IDS.elena, email: "sarah.chen@operator-a.example", password_hash: passwordHash, name: "Sarah Chen", mfa_enabled: true },
+      { id: IDS.priya, email: "olivia.bennett@operator-a.example", password_hash: passwordHash, name: "Olivia Bennett", mfa_enabled: true },
+      { id: IDS.james, email: "marcus.johnson@operator-a.example", password_hash: passwordHash, name: "Marcus Johnson", mfa_enabled: false }
     ]);
 
     await upsert(trx, "role_assignments", [
@@ -108,11 +108,11 @@ async function seed() {
         operator_id: IDS.northstar,
         facility_id: IDS.bonny,
         lead_author_user_id: IDS.omar,
-        name: "Bonny Refinery - 2026 SRA",
+        name: "Bonny Terminal - 2026 SRA",
         state: ASSESSMENT_STATES.IN_REVIEW,
         lock_version: 4,
         contributors: [
-          { id: "contrib-1", type: "Core", name: "Adaeze Okeke", position: "Facility Manager", expertise: "Operations", company: "Northstar Energy" }
+          { id: "contrib-1", type: "Core", name: "Daniel Mensah", position: "Facility Manager", expertise: "Operations", company: "Operator A" }
         ]
       },
       {
@@ -120,7 +120,7 @@ async function seed() {
         operator_id: IDS.northstar,
         facility_id: IDS.coral,
         lead_author_user_id: IDS.omar,
-        name: "Coral FPSO - 2026 SRA",
+        name: "Pernis Refinery Complex - 2026 SRA",
         state: ASSESSMENT_STATES.DRAFT,
         lock_version: 1,
         contributors: []
@@ -130,7 +130,7 @@ async function seed() {
         operator_id: IDS.northstar,
         facility_id: IDS.bonny,
         lead_author_user_id: IDS.omar,
-        name: "Bonny Refinery - 2025 SRA",
+        name: "Bonny Terminal - 2025 SRA",
         state: ASSESSMENT_STATES.APPROVED,
         lock_version: 1,
         contributors: []

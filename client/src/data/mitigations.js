@@ -11,7 +11,7 @@ const PROGRESS_LOGS = [
       id: "log-m0-1",
       timestamp: "2026-02-14T09:32:00",
       userId: "user-j-doe",
-      userName: "J. Doe",
+      userName: "Marcus Johnson",
       roleLabel: "IT Security",
       text: "Vendor RFP issued to three approved suppliers. Responses due 2026-03-01.",
       statusChange: { from: "Open", to: "In Progress" }
@@ -20,7 +20,7 @@ const PROGRESS_LOGS = [
       id: "log-m0-2",
       timestamp: "2026-03-12T14:08:00",
       userId: "user-j-doe",
-      userName: "J. Doe",
+      userName: "Marcus Johnson",
       roleLabel: "IT Security",
       text: "Two responses received. Technical evaluation underway. PSC engaged for procurement governance.",
       statusChange: null
@@ -29,7 +29,7 @@ const PROGRESS_LOGS = [
       id: "log-m0-3",
       timestamp: "2026-04-22T11:47:00",
       userId: "user-j-doe",
-      userName: "J. Doe",
+      userName: "Marcus Johnson",
       roleLabel: "IT Security",
       text: "Vendor selected (Axis Communications). PO issued. Installation scheduled for late May.",
       statusChange: null
@@ -41,7 +41,7 @@ const PROGRESS_LOGS = [
       id: "log-m2-1",
       timestamp: "2026-02-08T10:15:00",
       userId: "user-j-doe",
-      userName: "F. Olawale",
+      userName: "Yusuf Bello",
       roleLabel: "Marine Operations",
       text: "Joint exercise plan drafted with regional naval liaison. Awaiting confirmation of date.",
       statusChange: { from: "Open", to: "In Progress" }
@@ -50,7 +50,7 @@ const PROGRESS_LOGS = [
       id: "log-m2-2",
       timestamp: "2026-04-10T13:22:00",
       userId: "user-j-doe",
-      userName: "F. Olawale",
+      userName: "Yusuf Bello",
       roleLabel: "Marine Operations",
       text: "Date confirmed for May 18. Pre-exercise briefing scheduled. All crews notified.",
       statusChange: null
@@ -62,7 +62,7 @@ const PROGRESS_LOGS = [
       id: "log-m4-1",
       timestamp: "2026-01-22T11:40:00",
       userId: "user-j-doe",
-      userName: "A. Adekunle",
+      userName: "Tomás Herrera",
       roleLabel: "IT Security",
       text: "Programme requirements documented. Engaging HR for behavioural baseline framework.",
       statusChange: { from: "Open", to: "In Progress" }
@@ -108,7 +108,7 @@ export const MITIGATIONS = Object.freeze(generateMitigations(EVALUATIONS, "ass-1
 export const MY_MITIGATIONS = Object.freeze([
   {
     id: "mit-001",
-    facility: "Operator A — Lagos Refinery",
+    facility: "Lagos Refinery",
     facilityId: "fac-1",
     assessmentId: "ass-1-2026",
     cycle: "2026 SRA",
@@ -122,13 +122,13 @@ export const MY_MITIGATIONS = Object.freeze([
     ownerUserId: "user-j-doe",
     targetDate: "2026-06-30",
     status: "In Progress",
-    assignedBy: "Demo Author",
+    assignedBy: "Adaeze Okeke",
     assignedDate: "2026-04-12",
     log: [
       {
         id: "log-001-1",
         timestamp: "2026-02-14T09:32:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Vendor RFP issued to three approved suppliers. Responses due 2026-03-01.",
         statusChange: { from: "Open", to: "In Progress" }
@@ -136,7 +136,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-001-2",
         timestamp: "2026-03-12T14:08:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Two responses received. Technical evaluation underway. PSC engaged for procurement governance.",
         statusChange: null
@@ -144,7 +144,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-001-3",
         timestamp: "2026-04-22T11:47:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Vendor selected (Axis Communications). PO issued. Installation scheduled for late May.",
         statusChange: null
@@ -153,7 +153,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-002",
-    facility: "Operator A — Lagos Refinery",
+    facility: "Lagos Refinery",
     facilityId: "fac-1",
     assessmentId: "ass-1-2026",
     cycle: "2026 SRA",
@@ -167,14 +167,14 @@ export const MY_MITIGATIONS = Object.freeze([
     ownerUserId: "user-j-doe",
     targetDate: "2026-04-15",
     status: "Open",
-    assignedBy: "Demo Author",
+    assignedBy: "Adaeze Okeke",
     assignedDate: "2026-04-12",
     log: [],
     overdue: true
   },
   {
     id: "mit-003",
-    facility: "Operator A — Bonny Terminal",
+    facility: "Bonny Terminal",
     facilityId: "fac-2",
     assessmentId: "ass-2-2025",
     cycle: "2025 SRA",
@@ -188,13 +188,13 @@ export const MY_MITIGATIONS = Object.freeze([
     ownerUserId: "user-j-doe",
     targetDate: "2026-09-30",
     status: "In Progress",
-    assignedBy: "Bonny Author",
+    assignedBy: "Hassan Al-Mansoori",
     assignedDate: "2025-08-10",
     log: [
       {
         id: "log-003-1",
         timestamp: "2025-09-15T10:00:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Citadel design specification approved with marine architect. Procurement initiated.",
         statusChange: { from: "Open", to: "In Progress" }
@@ -202,7 +202,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-003-2",
         timestamp: "2025-11-22T16:30:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Citadel fabricated and delivered to Bonny shipyard. Fitting scheduled during next vessel drydock.",
         statusChange: null
@@ -210,7 +210,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-003-3",
         timestamp: "2026-01-18T09:15:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Citadel installation complete. Sea trial conducted; all systems functional.",
         statusChange: null
@@ -218,7 +218,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-003-4",
         timestamp: "2026-02-28T14:00:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "First quarterly drill conducted with regional naval liaison. Lessons captured; minor procedural updates pending.",
         statusChange: null
@@ -226,7 +226,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-003-5",
         timestamp: "2026-04-18T11:20:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Procedural updates incorporated into vessel ops manual. Second quarterly drill scheduled for May 2026.",
         statusChange: null
@@ -235,7 +235,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-004",
-    facility: "Operator A — Lagos Refinery",
+    facility: "Lagos Refinery",
     facilityId: "fac-1",
     assessmentId: "ass-1-2025",
     cycle: "2025 SRA",
@@ -249,13 +249,13 @@ export const MY_MITIGATIONS = Object.freeze([
     ownerUserId: "user-j-doe",
     targetDate: "2025-12-31",
     status: "Done",
-    assignedBy: "Lagos Author",
+    assignedBy: "Adaeze Okeke",
     assignedDate: "2025-04-15",
     log: [
       {
         id: "log-004-1",
         timestamp: "2025-06-12T10:00:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "HR partnership established. BRP framework drafted, reviewed by Legal.",
         statusChange: { from: "Open", to: "In Progress" }
@@ -263,7 +263,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-004-2",
         timestamp: "2025-08-22T14:15:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "BRP rolled out to high-access roles (12 staff). First training session delivered.",
         statusChange: null
@@ -271,7 +271,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-004-3",
         timestamp: "2025-09-30T16:00:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Q3 access review completed. Two anomalies identified and resolved (stale privileges revoked).",
         statusChange: null
@@ -279,7 +279,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-004-4",
         timestamp: "2025-11-15T11:30:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text: "Q4 access review in progress. Process now embedded in quarterly compliance calendar.",
         statusChange: null
@@ -287,7 +287,7 @@ export const MY_MITIGATIONS = Object.freeze([
       {
         id: "log-004-5",
         timestamp: "2025-12-15T17:45:00",
-        userName: "J. Doe",
+        userName: "Marcus Johnson",
         roleLabel: "IT Security",
         text:
           "Programme fully operational and embedded. Marking as Done. Quarterly access reviews continue under standing operational governance.",
@@ -297,7 +297,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-005",
-    facility: "Operator A — Port Harcourt Depot",
+    facility: "Fujairah Marine Terminal",
     facilityId: "fac-3",
     assessmentId: "ass-3-2026",
     cycle: "2026 SRA",
@@ -311,7 +311,7 @@ export const MY_MITIGATIONS = Object.freeze([
     ownerUserId: "user-j-doe",
     targetDate: "2026-08-15",
     status: "Open",
-    assignedBy: "PHC Author",
+    assignedBy: "Nadia Haddad",
     assignedDate: "2026-04-10",
     log: []
   }

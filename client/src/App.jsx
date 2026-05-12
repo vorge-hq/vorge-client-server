@@ -13,6 +13,7 @@ import { AuditPage } from "./pages/audit/AuditPage";
 import { FieldModePage } from "./pages/fieldMode/FieldModePage";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { WorkspaceProvider } from "./features/assessmentWorkspace/WorkspaceContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toast } from "./components/Toast";
 
 export function AppRoutes() {
@@ -46,11 +47,13 @@ export function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <WorkspaceProvider>
-        <AppRoutes />
-        <Toast />
-      </WorkspaceProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <AppRoutes />
+          <Toast />
+        </WorkspaceProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

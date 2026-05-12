@@ -30,18 +30,18 @@ export function ApproverDashboard() {
   const queue = [
     {
       id: "a1",
-      facility: "Operator A — Lagos Refinery",
+      facility: "Lagos Refinery",
       cycle: "2026 SRA",
-      reviewer: "A. Reviewer",
+      reviewer: "Mei-Lin Tanaka",
       reviewedOn: isAwaitingApproval ? "Just now" : "—",
       status: isAwaitingApproval ? "Awaiting Approval" : "Not yet reviewed",
       isCurrent: true
     },
     {
       id: "a2",
-      facility: "Operator A — Bonny Terminal",
+      facility: "Bonny Terminal",
       cycle: "2026 SRA",
-      reviewer: "A. Reviewer",
+      reviewer: "Mei-Lin Tanaka",
       reviewedOn: "4 days ago",
       status: "Awaiting Approval",
       isCurrent: false
@@ -74,7 +74,7 @@ export function ApproverDashboard() {
     : [
         {
           id: "ap1",
-          facility: "Operator A — Lagos Refinery",
+          facility: "Lagos Refinery",
           cycle: "2025 SRA",
           approvedOn: "2025-09-12",
           note: "Approved with note: maritime rating to be revisited next cycle"
@@ -94,7 +94,7 @@ export function ApproverDashboard() {
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
-          <CheckCircle2 size={10} aria-hidden /> Approver: M. Approver
+          <CheckCircle2 size={10} aria-hidden /> Approver: Rafael Castellanos
         </span>
       </header>
 

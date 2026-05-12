@@ -3,7 +3,7 @@ const { canAccessFacility } = require("../services/facilityAccessService");
 
 const SECTION_NAMES = Object.freeze([
   "Executive Summary",
-  "Facility / Asset Information",
+  "Facility Information",
   "Asset Disaggregation",
   "Threat Assessment",
   "Asset Attractiveness Cross-Reference",

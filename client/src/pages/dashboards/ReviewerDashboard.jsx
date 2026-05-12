@@ -28,9 +28,9 @@ export function ReviewerDashboard() {
   const queue = [
     {
       id: "r1",
-      facility: "Operator A — Lagos Refinery",
+      facility: "Lagos Refinery",
       cycle: "2026 SRA",
-      author: "Demo Author",
+      author: "Adaeze Okeke",
       submitted: isAwaitingReview ? "Just now" : "—",
       due: "2026-05-08",
       status: isAwaitingReview ? "Awaiting Review" : "Not yet submitted",
@@ -38,9 +38,9 @@ export function ReviewerDashboard() {
     },
     {
       id: "r2",
-      facility: "Operator A — Bonny Terminal",
+      facility: "Bonny Terminal",
       cycle: "2026 SRA",
-      author: "J. Onyema",
+      author: "Hassan Al-Mansoori",
       submitted: "2 days ago",
       due: "2026-05-12",
       status: "Awaiting Review",
@@ -48,9 +48,9 @@ export function ReviewerDashboard() {
     },
     {
       id: "r3",
-      facility: "Operator A — Port Harcourt Depot",
+      facility: "Fujairah Marine Terminal",
       cycle: "2026 SRA",
-      author: "B. Onuoha",
+      author: "Nadia Haddad",
       submitted: "5 days ago",
       due: "2026-04-30",
       status: "Awaiting Review",
@@ -62,14 +62,14 @@ export function ReviewerDashboard() {
   const completed = [
     {
       id: "c1",
-      facility: "Operator A — Lagos Refinery",
+      facility: "Lagos Refinery",
       cycle: "2025 SRA",
       completedOn: "2025-09-10",
-      actions: "Marked review complete · forwarded to M. Approver"
+      actions: "Marked review complete · forwarded to Rafael Castellanos"
     },
     {
       id: "c2",
-      facility: "Operator A — Bonny Terminal",
+      facility: "Bonny Terminal",
       cycle: "2025 SRA",
       completedOn: "2025-08-22",
       actions: "3 fields locked · 7 comments · sent back once"
@@ -89,7 +89,7 @@ export function ReviewerDashboard() {
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
-          <Eye size={10} aria-hidden /> Reviewer: A. Reviewer
+          <Eye size={10} aria-hidden /> Reviewer: Mei-Lin Tanaka
         </span>
       </header>
 

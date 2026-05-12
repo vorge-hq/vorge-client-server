@@ -1,10 +1,36 @@
 import { useState } from "react";
 import { Info, X } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
 import { FACILITIES } from "../../../data/operators";
+import { useOperatorMemory } from "../../../hooks/useOperatorMemory";
 
 export function NewAssessmentModal({ onClose, onCreate }) {
-  const [facility, setFacility] = useState(FACILITIES[0]?.name || "Asset Site 1");
+  const { session } = useAuth();
+  const operatorId = session?.facility?.operatorId || "op-a";
+  const { suggestionsFor, recordFacility } = useOperatorMemory(operatorId);
+
+  /* Build a deduped list of facility names: governance facilities first
+     (the configured list this user has access to), then any free-text
+     names the operator has entered before that aren't already in the
+     governance list. */
+  const knownFacilityNames = FACILITIES.map((f) => f.name);
+  const rememberedNames = suggestionsFor("name").filter(
+    (name) => !knownFacilityNames.includes(name)
+  );
+  const allFacilityOptions = [...knownFacilityNames, ...rememberedNames];
+
+  const [facility, setFacility] = useState(allFacilityOptions[0] || "Lagos Refinery");
   const [source, setSource] = useState("clone");
+
+  function handleCreate() {
+    /* Persist the chosen facility name so it shows up next time as a
+       suggestion. Only the name is recorded here; full Section 2
+       details are recorded when the user fills them in. */
+    if (facility?.trim()) {
+      recordFacility({ name: facility.trim() });
+    }
+    onCreate?.({ facility, source });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
@@ -23,18 +49,30 @@ export function NewAssessmentModal({ onClose, onCreate }) {
 
         <div className="space-y-4 px-5 py-4">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium text-text-secondary">Facility</label>
-            <select
+            <label className="mb-1.5 block text-[11px] font-medium text-text-secondary" htmlFor="new-assessment-facility">
+              Facility
+            </label>
+            <input
+              id="new-assessment-facility"
+              type="text"
+              list="new-assessment-facility-options"
+              autoComplete="off"
               value={facility}
               onChange={(event) => setFacility(event.target.value)}
+              placeholder="Pick from the list or type a new facility name"
               className="field-control text-[13px]"
-            >
-              {FACILITIES.map((f) => (
-                <option key={f.id} value={f.name}>
-                  {f.name}
-                </option>
+            />
+            <datalist id="new-assessment-facility-options">
+              {allFacilityOptions.map((name) => (
+                <option key={name} value={name} />
               ))}
-            </select>
+            </datalist>
+            {rememberedNames.length > 0 ? (
+              <p className="mt-1 text-[10px] text-text-muted">
+                {rememberedNames.length} previously-entered{" "}
+                {rememberedNames.length === 1 ? "facility" : "facilities"} available as suggestions.
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -111,11 +149,7 @@ export function NewAssessmentModal({ onClose, onCreate }) {
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={() => onCreate?.({ facility, source })}
-            className="btn-primary"
-          >
+          <button type="button" onClick={handleCreate} className="btn-primary">
             Create and open
           </button>
         </div>

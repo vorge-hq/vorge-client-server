@@ -17,14 +17,14 @@ const TABS = [
 ];
 
 const SEED_TEAM = [
-  { id: "tm1", type: "Internal", name: "C. Adeyemi", position: "Facility Manager", expertise: "Operations", company: "Operator A" },
-  { id: "tm2", type: "Internal", name: "B. Hartley", position: "OT Cyber Lead", expertise: "Cyber", company: "Operator A" },
-  { id: "tm3", type: "External", name: "T. Adigun", position: "Marine Coordinator", expertise: "Maritime", company: "Coastal Marine Services" }
+  { id: "tm1", type: "Internal", name: "Daniel Mensah", position: "Facility Manager", expertise: "Operations", company: "Operator A" },
+  { id: "tm2", type: "Internal", name: "Liam O'Connor", position: "OT Cyber Lead", expertise: "Cyber", company: "Operator A" },
+  { id: "tm3", type: "External", name: "Yusuf Bello", position: "Marine Coordinator", expertise: "Maritime", company: "Coastal Marine Services" }
 ];
 
 const SEED_REFS = [
   { id: "r1", description: "Site security plan (2024)", type: "PDF" },
-  { id: "r2", description: "Asset Site 1 perimeter as-built drawings", type: "DWG" },
+  { id: "r2", description: "Lagos Refinery perimeter as-built drawings", type: "DWG" },
   { id: "r3", description: "Last SRA exported document", type: "DOCX" }
 ];
 
@@ -32,19 +32,19 @@ function ApprovalsTable({ assessment }) {
   const rows = [
     {
       role: "Author",
-      name: assessment?.leadAuthorUserId === "user-demo-author" ? "Demo Author" : "Author",
+      name: assessment?.leadAuthorUserId === "user-demo-author" ? "Adaeze Okeke" : "Author",
       timestamp: assessment?.signatureDates?.author || "—",
       status: assessment?.signatureDates?.author ? "Signed" : "Pending"
     },
     {
       role: "Reviewer",
-      name: "A. Reviewer",
+      name: "Mei-Lin Tanaka",
       timestamp: assessment?.signatureDates?.reviewer || "—",
       status: assessment?.signatureDates?.reviewer ? "Signed" : "Pending"
     },
     {
       role: "Approver",
-      name: "M. Approver",
+      name: "Rafael Castellanos",
       timestamp: assessment?.signatureDates?.approver || "—",
       status: assessment?.signatureDates?.approver ? "Signed" : "Pending"
     }

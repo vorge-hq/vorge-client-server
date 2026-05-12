@@ -18,17 +18,18 @@ export const ROLE_TONE = Object.freeze({
 
 const DEMO_USER = Object.freeze({
   id: "user-demo-author",
-  name: "Demo Author",
-  initials: "DA",
-  email: "demo.author@vantage.local",
+  name: "Adaeze Okeke",
+  initials: "AO",
+  email: "adaeze.okeke@vantage.local",
   title: "Author",
   mfaEnabled: false
 });
 
 const DEMO_FACILITY = Object.freeze({
   id: "fac-1",
-  name: "Asset Site 1",
+  name: "Lagos Refinery",
   operator: "Operator A",
+  operatorId: "op-a",
   region: "Lagos, Nigeria",
   displayName: "Operator A — Lagos Refinery"
 });
@@ -40,17 +41,19 @@ export const DEMO_SESSION = Object.freeze({
     DEMO_FACILITY,
     {
       id: "fac-2",
-      name: "Asset Site 2",
+      name: "Bonny Terminal",
       operator: "Operator A",
+      operatorId: "op-a",
       region: "Rivers State, Nigeria",
       displayName: "Operator A — Bonny Terminal"
     },
     {
       id: "fac-3",
-      name: "Asset Site 3",
+      name: "Fujairah Marine Terminal",
       operator: "Operator A",
-      region: "Rivers State, Nigeria",
-      displayName: "Operator A — Port Harcourt Depot"
+      operatorId: "op-a",
+      region: "Fujairah, United Arab Emirates",
+      displayName: "Operator A — Fujairah Marine Terminal"
     }
   ],
   actingRole: ROLES.AUTHOR,
@@ -79,54 +82,54 @@ export function canDemoSwitchToRole(session, role) {
 export const DEMO_PERSONAS = Object.freeze({
   [ROLES.AUTHOR]: {
     userId: "user-demo-author",
-    name: "Demo Author",
-    initials: "DA",
-    email: "demo.author@vantage.local",
+    name: "Adaeze Okeke",
+    initials: "AO",
+    email: "adaeze.okeke@vantage.local",
     title: "Author",
     mfaEnabled: false,
     home: "/dashboard"
   },
   [ROLES.REVIEWER]: {
     userId: "user-a-reviewer",
-    name: "A. Reviewer",
-    initials: "AR",
-    email: "a.reviewer@vantage.local",
+    name: "Mei-Lin Tanaka",
+    initials: "MT",
+    email: "meilin.tanaka@vantage.local",
     title: "Reviewer",
     mfaEnabled: true,
     home: "/dashboard"
   },
   [ROLES.APPROVER]: {
     userId: "user-m-approver",
-    name: "M. Approver",
-    initials: "MA",
-    email: "m.approver@vantage.local",
+    name: "Rafael Castellanos",
+    initials: "RC",
+    email: "rafael.castellanos@vantage.local",
     title: "Approver",
     mfaEnabled: true,
     home: "/dashboard"
   },
   [ROLES.HQ_EXECUTIVE]: {
     userId: "user-demo-exec",
-    name: "Demo Executive",
-    initials: "DE",
-    email: "demo.exec@vantage.local",
+    name: "Sarah Chen",
+    initials: "SC",
+    email: "sarah.chen@vantage.local",
     title: "HQ Executive",
     mfaEnabled: true,
     home: "/dashboard"
   },
   [ROLES.ADMIN]: {
     userId: "user-demo-admin",
-    name: "Demo Admin",
-    initials: "DA",
-    email: "demo.admin@vantage.local",
+    name: "Olivia Bennett",
+    initials: "OB",
+    email: "olivia.bennett@vantage.local",
     title: "Administrator",
     mfaEnabled: true,
     home: "/admin"
   },
   [ROLES.MITIGATION_OWNER]: {
     userId: "user-j-doe",
-    name: "J. Doe",
-    initials: "JD",
-    email: "j.doe@operator-a.com",
+    name: "Marcus Johnson",
+    initials: "MJ",
+    email: "marcus.johnson@operator-a.com",
     title: "IT Security",
     mfaEnabled: false,
     home: "/mitigations"

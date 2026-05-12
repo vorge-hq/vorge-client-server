@@ -321,7 +321,7 @@ export function MitigationsPage() {
               roleLabel: "IT Security"
             });
             if (result?.error) {
-              workspace.showToast(result.error);
+              workspace.showToast(result.error, { tone: "error" });
               return;
             }
             workspace.showToast(

@@ -10,3 +10,6 @@ npm-debug.log*
 
 # Personal notes
 Notes.txt
+
+# Local tooling — homepage spec generator + Python venv (not part of the React app)
+website/

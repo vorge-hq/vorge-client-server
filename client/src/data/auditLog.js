@@ -170,5 +170,50 @@ export const AUDIT_LOG = Object.freeze([
     section: "Section 6",
     sectionId: 6,
     ip: "102.89.34.45"
+  },
+  {
+    id: "au14",
+    timestamp: "2026-04-26T10:12:44Z",
+    user: "Sarah Chen",
+    role: "HQ Executive",
+    facility: "Bonny Terminal",
+    assessment: "Bonny Terminal — 2026 SRA",
+    action: "comment",
+    commentKind: "advisory",
+    detail:
+      "Section 4 — Threat Assessment — \"Maritime threat ratings here read low compared to Lagos Refinery's last cycle. Worth a second look during review.\"",
+    section: "Section 4",
+    sectionId: 4,
+    ip: "102.89.34.18"
+  },
+  {
+    id: "au15",
+    timestamp: "2026-04-25T18:45:09Z",
+    user: "Rafael Castellanos",
+    role: "Approver",
+    facility: "Lagos Refinery",
+    assessment: "Lagos Refinery — 2026 SRA",
+    action: "comment",
+    commentKind: "advisory",
+    detail:
+      "Section 7 — Mitigation Tracking — \"Mitigation owner pool looks light. Consider widening before submission to avoid send-back.\"",
+    section: "Section 7",
+    sectionId: 7,
+    ip: "102.89.34.71"
+  },
+  {
+    id: "au16",
+    timestamp: "2026-04-24T08:22:15Z",
+    user: "Mei-Lin Tanaka",
+    role: "Reviewer",
+    facility: "Lagos Refinery",
+    assessment: "Lagos Refinery — 2026 SRA",
+    action: "comment",
+    commentKind: "advisory",
+    detail:
+      "Section 1 — Executive Summary — \"Spotted a typo in the third sentence ('opperator'). Easy fix before you submit.\"",
+    section: "Section 1",
+    sectionId: 1,
+    ip: "102.89.34.45"
   }
 ]);

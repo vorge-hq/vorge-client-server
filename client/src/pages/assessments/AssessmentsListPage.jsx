@@ -11,7 +11,8 @@ import { NewAssessmentModal } from "../../features/assessmentWorkspace/modals";
 import { FACILITIES } from "../../data/operators";
 import {
   ASSESSMENT_STATES,
-  STATE_DESCRIPTORS
+  STATE_DESCRIPTORS,
+  filterAssessmentsForRole
 } from "../../features/assessmentWorkspace/assessmentModel";
 
 const STATE_OPTIONS = Object.values(ASSESSMENT_STATES);
@@ -34,8 +35,14 @@ export function AssessmentsListPage() {
   );
 
   const filtered = useMemo(() => {
-    return Object.values(workspace.assessmentsById)
-      .filter((assessment) => accessibleFacilityIds.includes(assessment.facilityId))
+    return filterAssessmentsForRole(
+      {
+        actingRole: session.actingRole,
+        userId: session.user.id,
+        accessibleFacilityIds
+      },
+      Object.values(workspace.assessmentsById)
+    )
       .filter((assessment) =>
         facilityFilter === "All" ? true : assessment.facilityId === facilityFilter
       )
@@ -44,7 +51,15 @@ export function AssessmentsListPage() {
         search ? assessment.name.toLowerCase().includes(search.toLowerCase()) : true
       )
       .sort((a, b) => (a.lastUpdated < b.lastUpdated ? 1 : -1));
-  }, [accessibleFacilityIds, facilityFilter, search, stateFilter, workspace.assessmentsById]);
+  }, [
+    session.actingRole,
+    session.user.id,
+    accessibleFacilityIds,
+    facilityFilter,
+    search,
+    stateFilter,
+    workspace.assessmentsById
+  ]);
 
   const facilityOptions = useMemo(
     () => session.facilities.filter((facility) => accessibleFacilityIds.includes(facility.id)),

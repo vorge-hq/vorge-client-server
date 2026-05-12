@@ -12,7 +12,8 @@ const BASE_FILTER_TABS = [
   { id: "all", label: "All" },
   { id: "edits", label: "Edits" },
   { id: "creates", label: "Creates" },
-  { id: "comments", label: "Comments" }
+  { id: "comments", label: "Comments" },
+  { id: "advisory", label: "Advisory" }
 ];
 
 const ADMIN_FILTER_TABS = [
@@ -76,6 +77,9 @@ export function AuditLogPanel({
     if (filter === "edits") return pool.filter((e) => e.action === "edit");
     if (filter === "creates") return pool.filter((e) => e.action === "create");
     if (filter === "comments") return pool.filter((e) => e.action === "comment");
+    if (filter === "advisory") {
+      return pool.filter((e) => e.action === "comment" && e.commentKind === "advisory");
+    }
     if (filter === "sign-ins") return pool.filter((e) => e.action === "sign-in");
     if (filter === "system") {
       return pool.filter((e) => (e.user || "").includes("System") || e.action === "flag");
@@ -175,6 +179,11 @@ export function AuditLogPanel({
                         >
                           {style.label}
                         </span>
+                        {entry.action === "comment" && entry.commentKind === "advisory" ? (
+                          <span className="rounded border border-border-default bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                            Advisory
+                          </span>
+                        ) : null}
                       </div>
                       <div className="text-[12px] leading-snug text-text-secondary">
                         {entry.assessment ? `${entry.assessment} — ` : ""}

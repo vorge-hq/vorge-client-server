@@ -137,7 +137,8 @@ Reviews the Author's work after submission. Quality control before management si
 **Can:**
 - Read any Assessment in their queue (any facility where they hold Reviewer role).
 - Read assessments in `Draft` state (advance familiarisation) — see §5.2 sub-flow.
-- Add comments at section level or attached to a specific Asset, Threat, Evaluation, or Mitigation field — **only while the Assessment is in `In Review` state**.
+- Add **formal comments** at section level or attached to a specific Asset, Threat, Evaluation, or Mitigation field — **only while the Assessment is in `In Review` state**. These carry full review weight and surface to the Author as part of the formal review.
+- Add **advisory comments** in `Draft`, `Awaiting Approval`, or `Approved` states. Advisory comments are tagged as such in the audit log and do not block any workflow transition. See the "Comment kinds" subsection below.
 - Lock specific fields they have validated (Type 2 lock; see §11). Locked field cannot be edited by Author even after send-back.
 - Unlock fields they (or another Reviewer) previously locked.
 - Mark the review complete (their signature event — forwards to Approver).
@@ -145,7 +146,7 @@ Reviews the Author's work after submission. Quality control before management si
 
 **Cannot:**
 - Edit any Author-authored content under any circumstance.
-- Comment in `Draft` (pre-submission), `Awaiting Approval`, or `Approved` states.
+- Add a formal comment outside `In Review` (use an advisory comment instead).
 - Take Approver decisions (approve, send back to Reviewer, reject).
 - See the My Mitigations dashboard.
 
@@ -166,8 +167,30 @@ The facility manager who signs off on the assessment after the Reviewer has mark
 
 **Cannot:**
 - Edit any content. Approver is decision-only, not editor.
-- Leave per-field comments — comments are tied to decisions only (the optional Approve note, the mandatory Send-back / Reject reasons).
 - Work in the My Mitigations dashboard.
+
+**Note on Approver comments:** During `Awaiting Approval`, Approver input is bound to the formal decision affordances only (the optional Approve note, the mandatory Send-back / Reject reasons). Outside `Awaiting Approval` (i.e. while previewing a Draft, In-Review, or Approved assessment), Approvers may leave **advisory comments** — see "Comment kinds" below.
+
+##### Comment kinds
+
+Two kinds of comments exist on assessments:
+
+- **Formal comments** — Reviewer-only, In-Review state only. Carry full review weight, surface inline to the Author. This is the historical commenting model.
+- **Advisory comments** — early-stage / out-of-window observations, clearly tagged in the UI and audit log. Do not block any workflow transition. Capture input that previously happened off-platform (Slack, email).
+
+Permission matrix:
+
+| Role             | Draft     | In Review | Awaiting Approval | Approved  |
+|------------------|-----------|-----------|-------------------|-----------|
+| Author           | edits     | none      | none              | none      |
+| Reviewer         | advisory  | formal    | advisory          | advisory  |
+| Approver         | advisory  | advisory  | decisions only    | advisory  |
+| HQ Executive     | advisory  | advisory  | advisory          | advisory  |
+| Mitigation Owner | none      | none      | none              | none      |
+
+Advisory comments are visible to all roles who can see the assessment (same audit visibility rules as formal comments). They do not gate `submit`, `review-complete`, or `approve`; resolution UX (Author marks each one acknowledged) is reserved for a phase-2 polish.
+
+This resolves the Platform Overview vs. User Flows conflict that previously appeared in this document: HQ Executive **does** comment, but the comment is tagged **advisory** and lives in the audit log next to formal comments — not as a separate channel.
 
 #### HQ Executive
 
@@ -180,15 +203,14 @@ Headquarters leadership. Cross-facility / cross-operator-portfolio visibility.
 - See AI-generated consistency flags (when Cross-facility Consistency Flagging add-on is enabled).
 - Compare any two Versions of an Assessment side-by-side.
 - See audit summaries (who approved what when) across all facilities — but **NOT field-level edit details** (those are restricted to the facility's Approver and Admin).
-- Leave comments visible to that facility's Approver. `TODO:` confirm whether HQ comments are persistent inline annotations on assessments or a separate channel; the Platform Overview says "leave comments visible to the Approver" but the User Flows §3 says HQ Executive "cannot comment." Reconcile.
+- Leave **advisory comments** on any assessment in their portfolio (Draft, In Review, Awaiting Approval, or Approved). Advisory comments do not gate workflow; they land in the audit log alongside formal comments with an `Advisory` chip and are visible to the assessment's Author, Reviewer, and Approver. See the "Comment kinds" subsection above for the full permission matrix.
 
 **Cannot:**
 - Edit anything.
 - Take any workflow action (sign, approve, send back, reject).
+- Leave formal review comments — those are reserved for the assigned Reviewer during In Review.
 - See the Mitigation Owner My Mitigations dashboard.
 - Cross-operator data — HQ Executives are scoped to their operator's portfolio.
-
-> `TODO:` Resolve the comment-vs-no-comment conflict between Platform Overview and User Flows for HQ Executive. Suggested resolution: HQ Executive **may** leave a comment on an approved or in-review assessment that surfaces to the facility's Approver as a notification; the comment is read-only by the recipient and lives at the assessment level (not inline per field). Confirm.
 
 #### Admin
 
@@ -348,7 +370,7 @@ Every Assessment is in **exactly one** of four states. State transitions are tri
 
 | State | Who's editing | What's locked | Notes |
 |---|---|---|---|
-| **Draft** | Author | Type 2 fields locked by Reviewer (if any) remain locked even in Draft after a send-back | Author edits freely; Reviewer can navigate but cannot comment; Approver can navigate but cannot decide |
+| **Draft** | Author | Type 2 fields locked by Reviewer (if any) remain locked even in Draft after a send-back | Author edits freely; Reviewer / Approver / HQ Executive can navigate and leave advisory comments; formal review and approval actions remain locked |
 | **In Review** | (no editing) | All Author content locked; Reviewer comments and locks fields | Author cannot edit; Reviewer reviews and decides |
 | **Awaiting Approval** | (no editing) | All content locked; Reviewer's review is complete | Approver makes final decision |
 | **Approved** | (no editing on Sections 1–6, 8, 9) | Permanently locked; Section 7 mitigation Status and progress notes are editable by Mitigation Owners only | Versions are frozen at this point. New edits require a new Version. |
@@ -369,9 +391,9 @@ Every Assessment is in **exactly one** of four states. State transitions are tri
 
 ### 5.3 Pre-state advance navigation (sub-flows)
 
-- **Reviewer in Draft state**: can navigate the Assessment freely. Sees a banner: "This assessment is still in Draft. You're viewing in advance — you cannot comment or take review actions until the Author submits." Comment affordances are NOT rendered; action panel is NOT rendered. Server-side: any attempt to POST a comment or call review-action endpoints returns **403** with reason "Assessment not in In Review state."
+- **Reviewer in Draft state**: can navigate the Assessment freely. Sees a banner: "This assessment is still in Draft. You can leave advisory comments now; formal review actions unlock when the Author submits." Advisory comment affordances ARE rendered (visually muted, tagged "Advisory comment"); the formal action panel is NOT rendered. Server-side: the advisory comment endpoint accepts at any state, but any attempt to POST a *formal* comment or call review-action endpoints returns **403** with reason "Assessment not in In Review state."
 
-- **Approver in Draft or In Review state**: can navigate freely. Sees a banner: "You will review and decide on this assessment after the Reviewer marks it complete. Read-only until then." Decision panel is NOT rendered. Server-side: any attempt to call Approve / Send back / Reject endpoints returns **403** with reason "Assessment not in Awaiting Approval state."
+- **Approver in Draft or In Review state**: can navigate freely. Sees a banner: "Read-only preview. Advisory comments are available; approval actions unlock once the Reviewer marks the assessment complete." Advisory comment affordances ARE rendered; the decision panel is NOT rendered. Server-side: the advisory comment endpoint accepts at any state, but any attempt to call Approve / Send back / Reject endpoints returns **403** with reason "Assessment not in Awaiting Approval state."
 
 ### 5.4 Send-back / reject receipt banner
 
@@ -1820,7 +1842,7 @@ This section lists every `TODO:` and `QUESTION:` flagged inline. Resolve each be
 
 1. **§3.1 Author** — Is "Author" and "Lead Author" the same role-name, or do we need a separate "Contributor Author" / deputy role for handover targets? Recommended: treat "Lead Author" as a designation on the Assessment (the user currently filling that slot) and "Author" as the platform role. **Confirm.**
 
-2. **§3.1 HQ Executive — comment authority conflict.** Platform Overview says HQ Executive can leave comments visible to Approvers; User Flows says HQ Executive cannot comment. **Reconcile.** Recommended: HQ Executive **may** leave a comment on an approved or in-review assessment that surfaces to the facility's Approver as a notification; comment is read-only by recipient and lives at the assessment level (not inline per field).
+2. **§3.1 HQ Executive — comment authority conflict.** **RESOLVED.** HQ Executive (and Reviewer / Approver outside their formal window) may leave **advisory comments** at any state. See §3.1 Comment kinds for the full permission matrix. Advisory comments are tagged in the audit log and do not gate workflow.
 
 3. **§3.3 Dual-role policy scope.** Platform Overview says per-organisation, User Flows says per-facility, Workflow Validation says per-organisation. **Reconcile.** Recommended: per-facility (matches the rest of the configuration model).
 

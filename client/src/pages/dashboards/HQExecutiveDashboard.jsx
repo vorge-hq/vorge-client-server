@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Lock, Sparkles } from "lucide-react";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
-import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 
 const BAND_TOKENS = {
   low: {
@@ -139,9 +138,39 @@ export function HQExecutiveDashboard() {
     }
   ];
 
-  function drillIntoActive() {
-    navigate(`/assessments/${ACTIVE_ASSESSMENT_ID}/sections/6`);
-  }
+  /* Look up the first assessment for any facility (preferring active
+     cycles over historical) so the heatmap and Facilities table can
+     drill into every facility, not just the demo's primary one. */
+  const assessmentByFacility = useMemo(() => {
+    const map = new Map();
+    Object.values(workspace.assessmentsById).forEach((assessment) => {
+      const existing = map.get(assessment.facilityId);
+      if (!existing) {
+        map.set(assessment.facilityId, assessment);
+        return;
+      }
+      const existingYear = parseInt(existing.cycle, 10) || 0;
+      const candidateYear = parseInt(assessment.cycle, 10) || 0;
+      if (candidateYear > existingYear) {
+        map.set(assessment.facilityId, assessment);
+      }
+    });
+    return map;
+  }, [workspace.assessmentsById]);
+
+  const drillIntoFacility = useCallback(
+    (facilityId) => {
+      const assessment = assessmentByFacility.get(facilityId);
+      if (!assessment) return;
+      navigate(`/assessments/${assessment.id}/sections/6`);
+    },
+    [assessmentByFacility, navigate]
+  );
+
+  const hasAssessment = useCallback(
+    (facilityId) => assessmentByFacility.has(facilityId),
+    [assessmentByFacility]
+  );
 
   return (
     <div className="grid gap-5">
@@ -212,16 +241,19 @@ export function HQExecutiveDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {heatmapData.map((row) => (
+                {heatmapData.map((row) => {
+                  const drillable = hasAssessment(row.facilityId);
+                  return (
                   <tr key={row.facilityId} className="border-t border-border-subtle">
                     <td className="px-3 py-2 text-[13px] font-medium">
                       <button
                         type="button"
-                        onClick={row.facilityId === "fac-1" ? drillIntoActive : undefined}
+                        onClick={drillable ? () => drillIntoFacility(row.facilityId) : undefined}
+                        disabled={!drillable}
                         className={
-                          row.facilityId === "fac-1"
+                          drillable
                             ? "text-primary hover:underline"
-                            : "text-text-primary"
+                            : "text-text-disabled cursor-default"
                         }
                       >
                         {row.facility}
@@ -246,7 +278,8 @@ export function HQExecutiveDashboard() {
                       );
                     })}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -263,24 +296,35 @@ export function HQExecutiveDashboard() {
             <p className="mt-0.5 text-[11px] text-text-muted">Statistical outliers in ratings</p>
           </header>
           <div className="divide-y divide-border-subtle">
-            {flags.map((flag) => (
-              <div key={flag.id} className="px-4 py-2.5 hover:bg-surface-muted/40">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-600" />
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 text-[12px] font-medium text-text-primary">{flag.title}</div>
-                    <div className="text-[11px] leading-snug text-text-muted">{flag.detail}</div>
-                    <button
-                      type="button"
-                      onClick={drillIntoActive}
-                      className="mt-1 text-[11px] font-medium text-primary hover:text-primary-600"
-                    >
-                      Review →
-                    </button>
+            {flags.map((flag) => {
+              const flagFacility = allFacilities.find((f) => f.name === flag.facility);
+              const flagFacilityId = flagFacility?.facilityId;
+              const drillable = flagFacilityId ? hasAssessment(flagFacilityId) : false;
+              return (
+                <div key={flag.id} className="px-4 py-2.5 hover:bg-surface-muted/40">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-600" />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-0.5 text-[12px] font-medium text-text-primary">{flag.title}</div>
+                      <div className="text-[11px] leading-snug text-text-muted">{flag.detail}</div>
+                      {drillable ? (
+                        <button
+                          type="button"
+                          onClick={() => drillIntoFacility(flagFacilityId)}
+                          className="mt-1 text-[11px] font-medium text-primary hover:text-primary-600"
+                        >
+                          Review →
+                        </button>
+                      ) : (
+                        <span className="mt-1 inline-block text-[11px] text-text-disabled">
+                          No active assessment
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -306,7 +350,7 @@ export function HQExecutiveDashboard() {
           <tbody>
             {allFacilities.map((facility) => {
               const total = facility.open || 1;
-              const isLagos = facility.facilityId === "fac-1";
+              const drillable = hasAssessment(facility.facilityId);
               return (
                 <tr key={facility.facilityId} className="border-t border-border-subtle hover:bg-surface-muted/40">
                   <td className="px-4 py-2.5 font-medium">{facility.name}</td>
@@ -349,14 +393,15 @@ export function HQExecutiveDashboard() {
                   <td className="px-4 py-2.5 text-right">
                     <button
                       type="button"
-                      onClick={isLagos ? drillIntoActive : undefined}
+                      onClick={drillable ? () => drillIntoFacility(facility.facilityId) : undefined}
+                      disabled={!drillable}
                       className={`text-[12px] ${
-                        isLagos
+                        drillable
                           ? "font-medium text-primary hover:underline"
-                          : "text-text-disabled"
+                          : "text-text-disabled cursor-default"
                       }`}
                     >
-                      {isLagos ? "Open →" : "View"}
+                      {drillable ? "Open →" : "No assessment"}
                     </button>
                   </td>
                 </tr>

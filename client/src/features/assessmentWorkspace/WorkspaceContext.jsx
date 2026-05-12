@@ -296,6 +296,11 @@ export function WorkspaceProvider({ children }) {
       setState((current) => {
         const assessment = current.assessmentsById[current.activeAssessmentId];
         const ts = new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
+        /* commentKind ("formal" | "advisory") tags the entry so the
+           audit log can distinguish formal review commentary from
+           early-stage advisory observations. Defaults to "formal" so
+           existing call sites don't change behavior. */
+        const commentKind = options.kind === "advisory" ? "advisory" : "formal";
         const entry = {
           id: `au-comment-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           timestamp: ts,
@@ -304,6 +309,7 @@ export function WorkspaceProvider({ children }) {
           facility: assessment?.facilityName || "—",
           assessment: assessment?.name || "—",
           action: "comment",
+          commentKind,
           detail: options.anchor
             ? `${options.section} · ${options.anchor} — "${options.comment.trim()}"`
             : `${options.section} — "${options.comment.trim()}"`,

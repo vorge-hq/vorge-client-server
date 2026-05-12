@@ -21,12 +21,16 @@ import {
 } from "./navigation/navigation";
 import {
   ASSESSMENT_STATES,
+  COMMENT_KINDS,
   STATE_DESCRIPTORS,
   evaluationHasAnyData,
+  filterAssessmentsForRole,
   getActionTone,
   getAdvanceBanner,
   getAssessmentStateBanner,
+  getCommentPermission,
   getEvaluationStatus,
+  getQueueActionForState,
   getSectionProgress,
   getStateChipClasses,
   getWorkflowActionsForRole,
@@ -346,6 +350,194 @@ describe("assessment workspace model", () => {
         evaluations: []
       })
     ).toBe(false);
+  });
+});
+
+describe("comment permissions", () => {
+  test("Reviewer gets formal in In Review and advisory in every other state", () => {
+    expect(
+      getCommentPermission({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.IN_REVIEW })
+    ).toBe(COMMENT_KINDS.FORMAL);
+    expect(
+      getCommentPermission({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.DRAFT })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+    expect(
+      getCommentPermission({
+        actingRole: ROLES.REVIEWER,
+        state: ASSESSMENT_STATES.AWAITING_APPROVAL
+      })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+    expect(
+      getCommentPermission({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.APPROVED })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+  });
+
+  test("Approver gets advisory outside Awaiting Approval; null in Awaiting Approval (decisions only)", () => {
+    expect(
+      getCommentPermission({
+        actingRole: ROLES.APPROVER,
+        state: ASSESSMENT_STATES.AWAITING_APPROVAL
+      })
+    ).toBeNull();
+    expect(
+      getCommentPermission({ actingRole: ROLES.APPROVER, state: ASSESSMENT_STATES.DRAFT })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+    expect(
+      getCommentPermission({ actingRole: ROLES.APPROVER, state: ASSESSMENT_STATES.IN_REVIEW })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+    expect(
+      getCommentPermission({ actingRole: ROLES.APPROVER, state: ASSESSMENT_STATES.APPROVED })
+    ).toBe(COMMENT_KINDS.ADVISORY);
+  });
+
+  test("HQ Executive gets advisory in every state", () => {
+    Object.values(ASSESSMENT_STATES).forEach((state) => {
+      expect(getCommentPermission({ actingRole: ROLES.HQ_EXECUTIVE, state })).toBe(
+        COMMENT_KINDS.ADVISORY
+      );
+    });
+  });
+
+  test("Author / Mitigation Owner / Admin can never comment", () => {
+    Object.values(ASSESSMENT_STATES).forEach((state) => {
+      expect(getCommentPermission({ actingRole: ROLES.AUTHOR, state })).toBeNull();
+      expect(getCommentPermission({ actingRole: ROLES.MITIGATION_OWNER, state })).toBeNull();
+      expect(getCommentPermission({ actingRole: ROLES.ADMIN, state })).toBeNull();
+    });
+  });
+
+  test("unknown role and missing args return null safely", () => {
+    expect(getCommentPermission({ actingRole: "Unknown", state: ASSESSMENT_STATES.DRAFT })).toBeNull();
+    expect(getCommentPermission({})).toBeNull();
+    expect(getCommentPermission()).toBeNull();
+  });
+});
+
+describe("queue scoping", () => {
+  const assessments = [
+    { id: "a1", facilityId: "fac-1", leadAuthorUserId: "u1", reviewerUserId: "u2", approverUserId: "u3" },
+    { id: "a2", facilityId: "fac-2", leadAuthorUserId: "u9", reviewerUserId: "u2", approverUserId: "u3" },
+    { id: "a3", facilityId: "fac-3", leadAuthorUserId: "u1", reviewerUserId: "u9", approverUserId: "u3" },
+    { id: "a4", facilityId: "fac-4", leadAuthorUserId: "u1", reviewerUserId: "u2", approverUserId: "u3" }
+  ];
+  const accessibleFacilityIds = ["fac-1", "fac-2", "fac-3"];
+
+  test("filterAssessmentsForRole scopes by user id for Author/Reviewer/Approver", () => {
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.AUTHOR, userId: "u1", accessibleFacilityIds },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a1", "a3"]);
+
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.REVIEWER, userId: "u2", accessibleFacilityIds },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a1", "a2"]);
+
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.APPROVER, userId: "u3", accessibleFacilityIds },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a1", "a2", "a3"]);
+
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.REVIEWER, userId: "u9", accessibleFacilityIds },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a3"]);
+  });
+
+  test("filterAssessmentsForRole respects facility scope (drops fac-4 even when assigned)", () => {
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.AUTHOR, userId: "u1", accessibleFacilityIds },
+        assessments
+      ).map((a) => a.id)
+    ).not.toContain("a4");
+  });
+
+  test("filterAssessmentsForRole returns all (within facility scope) for HQ Executive and Admin", () => {
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.HQ_EXECUTIVE, userId: "any", accessibleFacilityIds: ["fac-1"] },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a1"]);
+
+    expect(
+      filterAssessmentsForRole(
+        {
+          actingRole: ROLES.ADMIN,
+          userId: "any",
+          accessibleFacilityIds: ["fac-1", "fac-2", "fac-3", "fac-4"]
+        },
+        assessments
+      ).map((a) => a.id)
+    ).toEqual(["a1", "a2", "a3", "a4"]);
+  });
+
+  test("filterAssessmentsForRole returns nothing on missing args", () => {
+    expect(filterAssessmentsForRole()).toEqual([]);
+    expect(filterAssessmentsForRole({}, [])).toEqual([]);
+    expect(
+      filterAssessmentsForRole(
+        { actingRole: ROLES.AUTHOR, userId: "u1", accessibleFacilityIds: [] },
+        assessments
+      )
+    ).toEqual([]);
+  });
+
+  test("getQueueActionForState returns role+state appropriate label/tone", () => {
+    expect(
+      getQueueActionForState({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.IN_REVIEW })
+    ).toEqual({ label: "Open", tone: "primary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.DRAFT })
+    ).toEqual({ label: "Preview", tone: "secondary" });
+    expect(
+      getQueueActionForState({
+        actingRole: ROLES.REVIEWER,
+        state: ASSESSMENT_STATES.AWAITING_APPROVAL
+      })
+    ).toEqual({ label: "Preview", tone: "secondary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.REVIEWER, state: ASSESSMENT_STATES.APPROVED })
+    ).toEqual({ label: "Preview", tone: "secondary" });
+
+    expect(
+      getQueueActionForState({
+        actingRole: ROLES.APPROVER,
+        state: ASSESSMENT_STATES.AWAITING_APPROVAL
+      })
+    ).toEqual({ label: "Decide", tone: "primary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.APPROVER, state: ASSESSMENT_STATES.IN_REVIEW })
+    ).toEqual({ label: "Preview", tone: "secondary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.APPROVER, state: ASSESSMENT_STATES.DRAFT })
+    ).toEqual({ label: "Preview", tone: "secondary" });
+
+    expect(
+      getQueueActionForState({ actingRole: ROLES.AUTHOR, state: ASSESSMENT_STATES.DRAFT })
+    ).toEqual({ label: "Edit", tone: "primary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.AUTHOR, state: ASSESSMENT_STATES.IN_REVIEW })
+    ).toEqual({ label: "View", tone: "secondary" });
+    expect(
+      getQueueActionForState({ actingRole: ROLES.AUTHOR, state: ASSESSMENT_STATES.APPROVED })
+    ).toEqual({ label: "View", tone: "secondary" });
+
+    /* Unknown role falls back to a primary Open so callers still get
+       a usable button rather than nothing. */
+    expect(
+      getQueueActionForState({ actingRole: "Unknown", state: ASSESSMENT_STATES.DRAFT })
+    ).toEqual({ label: "Open", tone: "primary" });
+    expect(getQueueActionForState()).toEqual({ label: "Open", tone: "primary" });
   });
 });
 

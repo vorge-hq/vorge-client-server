@@ -11,6 +11,7 @@ import { useWorkspace } from "../WorkspaceContext";
 import {
   ASSESSMENT_STATES,
   evaluationHasAnyData,
+  getCommentPermission,
   getEvaluationStatus,
   isEvaluationComplete
 } from "../assessmentModel";
@@ -213,7 +214,7 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
   );
 }
 
-function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canComment }) {
+function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commentKind }) {
   const { libraryScenarios } = useWorkspace();
   const r1 = calcRisk(evaluation.consequenceR1, evaluation.likelihoodR1);
   const r2 = calcRisk(evaluation.consequenceR2, evaluation.likelihoodR2);
@@ -241,11 +242,12 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {canComment ? (
+          {commentKind ? (
             <CommentAffordance
               section="Section 6 — Vulnerability Assessment"
               sectionId={6}
               anchor={`${asset?.name} × ${threat?.name || threat?.classification}`}
+              kind={commentKind}
             />
           ) : null}
           <div className="text-right">
@@ -460,9 +462,11 @@ export function EvaluationSection({ assessment, errors }) {
   }, [searchParams, setSearchParams, evaluations]);
 
   const isAuthor = session.actingRole === ROLES.AUTHOR;
-  const isReviewer = session.actingRole === ROLES.REVIEWER;
   const canEdit = isAuthor && assessment?.state === ASSESSMENT_STATES.DRAFT;
-  const canComment = isReviewer && assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   function assetById(id) {
     return assets.find((a) => a.id === id);
@@ -705,7 +709,7 @@ export function EvaluationSection({ assessment, errors }) {
               threat={threatById(active.threatId)}
               onChange={handleEditorChange}
               canEdit={canEdit}
-              canComment={canComment}
+              commentKind={commentKind}
             />
           ) : (
             <div className="rounded-lg border border-border-default bg-surface-raised p-8 text-center text-sm text-text-muted">

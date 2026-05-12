@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { getCommentPermission } from "../assessmentModel";
 import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
@@ -212,9 +211,10 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
   const { threats, updateThreat, addThreat, removeThreat } = useWorkspace();
   const [expandedId, setExpandedId] = useState(null);
 
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   const completeCount = threats.filter(isThreatComplete).length;
 
@@ -248,8 +248,12 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
       description="Threat classifications with general history, facility-specific history, capability and intent, and an overall rating."
       actions={
         <>
-          {canComment ? (
-            <CommentAffordance section="Section 4 — Threat Assessment" sectionId={4} />
+          {commentKind ? (
+            <CommentAffordance
+              section="Section 4 — Threat Assessment"
+              sectionId={4}
+              kind={commentKind}
+            />
           ) : null}
           {readOnly ? null : (
             <button

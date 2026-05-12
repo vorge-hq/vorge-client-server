@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -13,6 +13,7 @@ import {
   Wand2
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { ROLES } from "../../auth/session";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
 import {
@@ -22,7 +23,10 @@ import {
   NewAssessmentModal
 } from "../../features/assessmentWorkspace/modals";
 import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
-import { ASSESSMENT_STATES } from "../../features/assessmentWorkspace/assessmentModel";
+import {
+  filterAssessmentsForRole,
+  getQueueActionForState
+} from "../../features/assessmentWorkspace/assessmentModel";
 
 function StatCard({ label, value, sub, tone = "default" }) {
   return (
@@ -115,7 +119,24 @@ export function AuthorDashboard() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [fieldModeOpen, setFieldModeOpen] = useState(false);
 
-  const assessments = Object.values(workspace.assessmentsById);
+  const accessibleFacilityIds = useMemo(
+    () => session.facilities.map((facility) => facility.id),
+    [session.facilities]
+  );
+
+  /* Personal queue: assessments where this user is the Lead Author. */
+  const assessments = useMemo(
+    () =>
+      filterAssessmentsForRole(
+        {
+          actingRole: ROLES.AUTHOR,
+          userId: session.user.id,
+          accessibleFacilityIds
+        },
+        Object.values(workspace.assessmentsById)
+      ),
+    [workspace.assessmentsById, session.user.id, accessibleFacilityIds]
+  );
   const active = workspace.assessmentsById[workspace.activeAssessmentId];
 
   const totalEvals = workspace.evaluations.length;
@@ -199,6 +220,13 @@ export function AuthorDashboard() {
                 ((assessment.completedSectionIds?.length || 0) / 9) * 100
               );
               const isActive = assessment.id === workspace.activeAssessmentId;
+              const reviewer = workspace.users.find(
+                (u) => u.id === assessment.reviewerUserId
+              );
+              const action = getQueueActionForState({
+                actingRole: ROLES.AUTHOR,
+                state: assessment.state
+              });
               return (
                 <tr key={assessment.id} className="group border-t border-border-subtle hover:bg-surface-muted/60">
                   <td className="px-4 py-3">
@@ -226,7 +254,7 @@ export function AuthorDashboard() {
                       <span className="w-8 text-[11px] tabular-nums text-text-muted">{completion}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-text-muted">Mei-Lin Tanaka</td>
+                  <td className="px-4 py-3 text-text-muted">{reviewer?.name || "—"}</td>
                   <td className="px-4 py-3 text-[13px] text-text-muted">
                     {new Date(assessment.lastUpdated).toLocaleDateString()}
                   </td>
@@ -234,9 +262,11 @@ export function AuthorDashboard() {
                     <button
                       type="button"
                       onClick={() => navigate(`/assessments/${assessment.id}/sections/2`)}
-                      className="text-[13px] font-medium text-text-primary hover:underline"
+                      className={`text-[13px] font-medium hover:underline ${
+                        action.tone === "primary" ? "text-text-primary" : "text-text-muted"
+                      }`}
                     >
-                      Open →
+                      {action.label} →
                     </button>
                   </td>
                 </tr>

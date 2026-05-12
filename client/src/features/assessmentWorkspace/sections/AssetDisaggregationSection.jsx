@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { detectAssetAnomaly } from "../../../data/assets";
 import { useWorkspace } from "../WorkspaceContext";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { getCommentPermission } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -207,9 +206,10 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
   const { assets, updateAsset, addAsset, removeAsset } = useWorkspace();
   const [expandedId, setExpandedId] = useState(null);
 
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   const completeCount = assets.filter(isAssetComplete).length;
 
@@ -238,8 +238,12 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
       description="Master list of assets at the facility. Section 5 cross-reference and Section 6 evaluations derive from this list."
       actions={
         <>
-          {canComment ? (
-            <CommentAffordance section="Section 3 — Asset Disaggregation" sectionId={3} />
+          {commentKind ? (
+            <CommentAffordance
+              section="Section 3 — Asset Disaggregation"
+              sectionId={3}
+              kind={commentKind}
+            />
           ) : null}
           {readOnly ? null : (
             <button

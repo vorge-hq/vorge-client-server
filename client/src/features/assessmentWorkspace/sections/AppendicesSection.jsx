@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { FileText, Lock, Plus, Trash2, Upload, Users } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { Tabs } from "../../../components/Tabs";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { CONSEQUENCE_AXES, RISK_BANDS } from "../riskMatrix";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { ASSESSMENT_STATES, getCommentPermission } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -337,9 +336,10 @@ export function AppendicesSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
   const [tab, setTab] = useState("team");
   const isApproved = assessment?.state === ASSESSMENT_STATES.APPROVED;
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   return (
     <SectionShell
@@ -347,8 +347,12 @@ export function AppendicesSection({ assessment, readOnly, errors }) {
       title="Appendices"
       description="Document approvals, contributors, references, and the frozen risk matrix snapshot."
       actions={
-        canComment ? (
-          <CommentAffordance section="Section 9 — Appendices" sectionId={9} />
+        commentKind ? (
+          <CommentAffordance
+            section="Section 9 — Appendices"
+            sectionId={9}
+            kind={commentKind}
+          />
         ) : null
       }
     >

@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { FormField, Select, TextArea, TextInput } from "../../../components/FormField";
 import { useOperatorMemory } from "../../../hooks/useOperatorMemory";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { getCommentPermission } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -41,9 +40,10 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
       "Lagos Refinery is the primary refining and export facility for Operator A in the Lagos region. The site comprises a process unit, tank farm, control room, marine loading terminal, fuel loading skid, and supporting administration buildings. Operations run 24/7 with shift handovers at 06:00 and 18:00 local time."
   });
 
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   function update(field, value) {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -85,10 +85,11 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
       title="Facility Information"
       description="Core identifying information for the facility. Section 3 breaks the facility into its assets (control room, tank farm, etc.)."
       actions={
-        canComment ? (
+        commentKind ? (
           <CommentAffordance
             section="Section 2 — Facility Information"
             sectionId={2}
+            kind={commentKind}
           />
         ) : null
       }

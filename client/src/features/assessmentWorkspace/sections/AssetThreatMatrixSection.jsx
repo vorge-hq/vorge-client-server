@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import {
-  ASSESSMENT_STATES,
   evaluationHasAnyData,
+  getCommentPermission,
   getEvaluationStatus
 } from "../assessmentModel";
 import { AssetThreatMatrix, MatrixLegend } from "../AssetThreatMatrix";
@@ -49,9 +48,10 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
   const [view, setView] = useState("grid");
   const [removeTarget, setRemoveTarget] = useState(null);
 
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   function isTicked(assetId, threatId) {
     return Boolean(matrix[`${assetId}|${threatId}`]);
@@ -117,10 +117,11 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
       description="Tick the threats that materially apply to each asset. Cells show evaluation status. Click a ticked cell to jump to Section 6; right-click to remove from scope."
       actions={
         <div className="flex items-center gap-2">
-          {canComment ? (
+          {commentKind ? (
             <CommentAffordance
               section="Section 5 — Asset Attractiveness Cross-Reference"
               sectionId={5}
+              kind={commentKind}
             />
           ) : null}
           <div className="inline-flex rounded-md border border-border-default p-0.5 text-[11px]">

@@ -209,16 +209,110 @@ export function getActionTone(tone) {
 export const ADVANCE_BANNER_BY_ROLE = Object.freeze({
   [ROLES.REVIEWER]: {
     [ASSESSMENT_STATES.DRAFT]:
-      "This assessment is still in Draft. You can navigate in advance — comments and review actions unlock when the Author submits."
+      "This assessment is still in Draft. You can leave advisory comments now; formal review actions unlock when the Author submits."
   },
   [ROLES.APPROVER]: {
     [ASSESSMENT_STATES.DRAFT]:
-      "Read-only preview. Approval actions unlock once the Reviewer marks the assessment complete.",
+      "Read-only preview. Advisory comments are available; approval actions unlock once the Reviewer marks the assessment complete.",
     [ASSESSMENT_STATES.IN_REVIEW]:
-      "Read-only preview while the Reviewer is working. Approval actions unlock once review is marked complete."
+      "Read-only preview while the Reviewer is working. Advisory comments are available; approval actions unlock once review is marked complete."
   }
 });
 
 export function getAdvanceBanner({ state, actingRole }) {
   return ADVANCE_BANNER_BY_ROLE[actingRole]?.[state] ?? null;
+}
+
+/* ============================================================
+   Comment permissions
+
+   Two kinds of comments exist on assessments:
+
+   - "formal"   : the canonical Reviewer commentary captured during
+                  the In Review phase. Carries full review weight,
+                  surfaces to the Author as part of the formal review.
+                  This is the only kind that existed before.
+
+   - "advisory" : early-stage / out-of-window observations from
+                  Reviewer, Approver, or HQ Executive. Clearly tagged
+                  in the UI and audit log. Does not block any workflow
+                  transition. Captures input that previously happened
+                  off-platform (Slack, email).
+
+   Author and Mitigation Owner cannot comment in any state.
+   Approver during Awaiting Approval is intentionally restricted to
+   the formal decision affordances (approve / send-back / reject)
+   with their attached notes — see businesslogic.md.
+   ============================================================ */
+export const COMMENT_KINDS = Object.freeze({
+  FORMAL: "formal",
+  ADVISORY: "advisory"
+});
+
+export function getCommentPermission({ actingRole, state } = {}) {
+  if (actingRole === ROLES.REVIEWER) {
+    if (state === ASSESSMENT_STATES.IN_REVIEW) return COMMENT_KINDS.FORMAL;
+    return COMMENT_KINDS.ADVISORY;
+  }
+  if (actingRole === ROLES.APPROVER) {
+    if (state === ASSESSMENT_STATES.AWAITING_APPROVAL) return null;
+    return COMMENT_KINDS.ADVISORY;
+  }
+  if (actingRole === ROLES.HQ_EXECUTIVE) {
+    return COMMENT_KINDS.ADVISORY;
+  }
+  return null;
+}
+
+/* ============================================================
+   Personal-queue scoping
+
+   Author / Reviewer / Approver dashboards show only the
+   assessments where the logged-in user is personally assigned
+   (Lead Author / Reviewer / Approver). HQ Executive and Admin
+   see every assessment within their accessible facilities.
+   Mitigation Owner uses a separate myMitigations path and isn't
+   handled here.
+
+   The discriminator is user id on the assessment, not the role
+   permission. A user can hold the Reviewer role at three
+   facilities yet only see two assessments because they're the
+   assigned Reviewer on only two of them.
+   ============================================================ */
+export function filterAssessmentsForRole(
+  { actingRole, userId, accessibleFacilityIds = [] } = {},
+  assessments = []
+) {
+  return assessments.filter((a) => {
+    if (!accessibleFacilityIds.includes(a.facilityId)) return false;
+    if (actingRole === ROLES.AUTHOR) return a.leadAuthorUserId === userId;
+    if (actingRole === ROLES.REVIEWER) return a.reviewerUserId === userId;
+    if (actingRole === ROLES.APPROVER) return a.approverUserId === userId;
+    return true;
+  });
+}
+
+/* ============================================================
+   State-aware action buttons for personal queues
+
+   Returns { label, tone } so each dashboard renders a primary
+   "do your job" button when it's the user's moment, and a muted
+   "preview" button at every other state. Both navigate to the
+   same route — the visual difference signals intent (am I being
+   asked to act, or just looking?).
+   ============================================================ */
+export function getQueueActionForState({ actingRole, state } = {}) {
+  if (actingRole === ROLES.AUTHOR) {
+    if (state === ASSESSMENT_STATES.DRAFT) return { label: "Edit", tone: "primary" };
+    return { label: "View", tone: "secondary" };
+  }
+  if (actingRole === ROLES.REVIEWER) {
+    if (state === ASSESSMENT_STATES.IN_REVIEW) return { label: "Open", tone: "primary" };
+    return { label: "Preview", tone: "secondary" };
+  }
+  if (actingRole === ROLES.APPROVER) {
+    if (state === ASSESSMENT_STATES.AWAITING_APPROVAL) return { label: "Decide", tone: "primary" };
+    return { label: "Preview", tone: "secondary" };
+  }
+  return { label: "Open", tone: "primary" };
 }

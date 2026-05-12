@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
-import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { getCommentPermission } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -12,9 +11,10 @@ export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors 
   const { session } = useAuth();
   const [text, setText] = useState(assessment?.conclusion || "");
   const wordCount = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
-  const canComment =
-    session.actingRole === ROLES.REVIEWER &&
-    assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   return (
     <SectionShell
@@ -23,8 +23,12 @@ export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors 
       description="Closing position on residual risk, mitigation acceptance, and sign-off readiness."
       actions={
         <>
-          {canComment ? (
-            <CommentAffordance section="Section 8 — Conclusion" sectionId={8} />
+          {commentKind ? (
+            <CommentAffordance
+              section="Section 8 — Conclusion"
+              sectionId={8}
+              kind={commentKind}
+            />
           ) : null}
           {readOnly ? null : (
             <button

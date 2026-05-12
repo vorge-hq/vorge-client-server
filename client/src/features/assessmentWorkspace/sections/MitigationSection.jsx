@@ -5,7 +5,7 @@ import { ROLES } from "../../../auth/session";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { OWNER_POOL } from "../../../data/admin";
 import { generateMitigations } from "../../../data/mitigations";
-import { ASSESSMENT_STATES } from "../assessmentModel";
+import { ASSESSMENT_STATES, getCommentPermission } from "../assessmentModel";
 import { calculateRisk } from "../riskMatrix";
 import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
@@ -140,7 +140,10 @@ export function MitigationSection({ assessment, errors }) {
   const isApprover = session.actingRole === ROLES.APPROVER;
   const isApproved = assessment?.state === ASSESSMENT_STATES.APPROVED;
   const canEdit = isAuthor && !isApproved;
-  const canComment = isReviewer && assessment?.state === ASSESSMENT_STATES.IN_REVIEW;
+  const commentKind = getCommentPermission({
+    actingRole: session.actingRole,
+    state: assessment?.state
+  });
 
   const rows = useMemo(
     () => buildMitigationView(mitigations, evaluations, activeAssessmentId),
@@ -191,8 +194,12 @@ export function MitigationSection({ assessment, errors }) {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle bg-surface-muted/60 px-4 py-2.5">
           <div className="text-[13px] font-medium text-text-secondary">Tracked actions</div>
           <div className="flex items-center gap-3">
-            {canComment ? (
-              <CommentAffordance section="Section 7 — Mitigation Tracking" sectionId={7} />
+            {commentKind ? (
+              <CommentAffordance
+                section="Section 7 — Mitigation Tracking"
+                sectionId={7}
+                kind={commentKind}
+              />
             ) : null}
             <div className="text-[11px] text-text-muted">
               All status changes are recorded in the audit log

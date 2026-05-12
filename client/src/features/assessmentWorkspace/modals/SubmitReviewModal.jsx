@@ -50,16 +50,16 @@ export function SubmitReviewModal({ assets, evaluations, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
+      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border-default bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between border-b border-border-subtle px-5 py-3">
           <div>
             <div className="text-[14px] font-semibold">Submit for review</div>
-            <div className="text-[11px] text-zinc-500">
+            <div className="text-[11px] text-text-muted">
               The Reviewer is notified once the assessment moves to In Review. Authors cannot edit until the
               Reviewer sends back or marks complete.
             </div>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:bg-zinc-100" aria-label="Close">
+          <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted" aria-label="Close">
             <X size={16} />
           </button>
         </div>
@@ -68,7 +68,7 @@ export function SubmitReviewModal({ assets, evaluations, onClose, onSubmit }) {
           {checks.map((check) => (
             <div
               key={check.id}
-              className="flex items-start gap-2 rounded-lg border border-zinc-200 px-3 py-2"
+              className="flex items-start gap-2 rounded-lg border border-border-default px-3 py-2"
             >
               {check.ok ? (
                 <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-700" />
@@ -76,14 +76,14 @@ export function SubmitReviewModal({ assets, evaluations, onClose, onSubmit }) {
                 <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-700" />
               )}
               <div className="flex-1 text-[12px]">
-                <div className="font-medium text-zinc-900">{check.label}</div>
-                <div className="text-zinc-600">{check.detail}</div>
+                <div className="font-medium text-text-primary">{check.label}</div>
+                <div className="text-text-muted">{check.detail}</div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle bg-surface-muted/50 px-5 py-3">
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancel
           </button>
@@ -92,7 +92,6 @@ export function SubmitReviewModal({ assets, evaluations, onClose, onSubmit }) {
             onClick={onSubmit}
             disabled={!allOk}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
           >
             Submit to Reviewer
           </button>

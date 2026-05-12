@@ -37,14 +37,14 @@ function SectionRail({
               to={`/assessments/${assessmentId}/sections/${section.id}`}
               className={`group flex items-center gap-3 rounded-lg border py-2 pl-3 ${linkRightPadding} text-[13px] transition ${
                 isActive
-                  ? "border-brand-muted-border bg-brand-muted text-vantage-navy shadow-sm"
-                  : "border-transparent text-zinc-700 hover:border-zinc-200 hover:bg-zinc-50"
+                  ? "border-primary-100 bg-primary-50 text-primary shadow-sm dark:border-primary-700 dark:bg-primary-900/40"
+                  : "border-transparent text-text-secondary hover:border-border-default hover:bg-surface-muted"
               }`}
             >
               <span
                 className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${
                   isActive
-                    ? "bg-white text-vantage-navy ring-1 ring-brand-muted-border"
+                    ? "bg-surface-raised text-primary ring-1 ring-primary-100"
                     : isComplete
                       ? "bg-emerald-50 text-emerald-700"
                       : "bg-zinc-100 text-zinc-700"
@@ -105,7 +105,7 @@ function ToolButton({ Icon: ToolIcon, label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex w-full items-center gap-2 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-left text-[12px] text-zinc-700 transition hover:border-[#1E3A5F]/40 hover:bg-[#EFF4FB]/30 hover:text-[#1E3A5F]"
+      className="inline-flex w-full items-center gap-2 rounded-md border border-border-default bg-surface-raised px-2.5 py-1.5 text-left text-[12px] text-text-secondary transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/40"
     >
       <ToolIcon size={12} aria-hidden /> {label}
     </button>
@@ -159,13 +159,13 @@ export function AssessmentShell({
           <button
             type="button"
             onClick={() => (onBack ? onBack() : navigate("/assessments"))}
-            className="focus-ring mb-2 inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-zinc-900"
+            className="focus-ring mb-2 inline-flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-text-primary"
           >
             <span aria-hidden="true">←</span> Back to assessments
           </button>
           <p className="section-eyebrow">{facilityLabel}</p>
-          <h1 className="mt-1 text-xl font-bold text-zinc-900 sm:text-2xl">{assessment.name}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+          <h1 className="mt-1 text-xl font-bold text-text-primary sm:text-2xl">{assessment.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-text-muted">
             <StateChip state={assessment.state} />
             {readOnly ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-zinc-600">
@@ -188,11 +188,6 @@ export function AssessmentShell({
               type="button"
               onClick={() => onAction?.(action.id)}
               className={getActionTone(action.tone)}
-              style={
-                action.tone === "primary"
-                  ? { background: "#1E3A5F", borderColor: "#1E3A5F" }
-                  : undefined
-              }
             >
               {action.label}
             </button>
@@ -226,7 +221,6 @@ export function AssessmentShell({
               type="button"
               onClick={onRecallApprove}
               className="btn-primary inline-flex items-center gap-1 text-[12px]"
-              style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
             >
               <Check size={12} aria-hidden /> Approve recall
             </button>
@@ -254,11 +248,11 @@ export function AssessmentShell({
       ) : null}
 
       <div
-        className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm text-zinc-700"
+        className="rounded-lg border border-border-default bg-surface-muted/80 px-4 py-3 text-sm text-text-secondary"
         role="status"
       >
-        <span className="font-semibold text-zinc-900">State: {assessment.state}</span>
-        <span className="mt-1 block text-[13px] leading-snug text-zinc-600">
+        <span className="font-semibold text-text-primary">State: {assessment.state}</span>
+        <span className="mt-1 block text-[13px] leading-snug text-text-muted">
           {getAssessmentStateBanner(assessment.state)}
         </span>
       </div>
@@ -268,12 +262,12 @@ export function AssessmentShell({
           <div>
             <div className="flex items-center justify-between">
               <p className="section-eyebrow">Section progress</p>
-              <span className="text-xs font-semibold text-zinc-700">
+              <span className="text-xs font-semibold text-text-secondary">
                 {progress.completed}/{progress.total}
               </span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100">
-              <div className="h-full bg-vantage-navy" style={{ width: `${progress.percent}%` }} />
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted">
+              <div className="h-full bg-primary" style={{ width: `${progress.percent}%` }} />
             </div>
           </div>
 
@@ -286,7 +280,7 @@ export function AssessmentShell({
             onOpenAuditFor={onOpenAuditFor}
           />
 
-          <div className="border-t border-zinc-100 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <p className="section-eyebrow mb-2">Tools</p>
             <div className="grid gap-1.5">
               <ToolButton Icon={BookOpen} label="Library suggestions" onClick={onOpenLibrary} />
@@ -295,8 +289,8 @@ export function AssessmentShell({
             </div>
           </div>
 
-          <div className="border-t border-zinc-100 pt-3 text-[11px] text-zinc-500">
-            <p className="inline-flex items-center gap-1 font-semibold text-zinc-600">
+          <div className="border-t border-border-subtle pt-3 text-[11px] text-text-muted">
+            <p className="inline-flex items-center gap-1 font-semibold text-text-muted">
               <Activity size={11} aria-hidden /> Acting as {session.actingRole}
             </p>
             <p className="mt-1">{readOnly ? "You can navigate and view." : "Edits flow into autosave."}</p>

@@ -121,7 +121,7 @@ describe("assessment workspace model", () => {
       expect(getStateChipClasses(state)).toContain("bg-");
     });
     expect(getAssessmentStateBanner("Unknown")).toContain("unavailable");
-    expect(getStateChipClasses("Unknown")).toContain("text-zinc-600");
+    expect(getStateChipClasses("Unknown")).toContain("text-text-muted");
   });
 
   test("read-only logic respects role and state", () => {
@@ -241,8 +241,8 @@ describe("risk matrix calculations", () => {
     expect(calculateRisk(5, 5)).toMatchObject({ score: 25, band: "Very High" });
     expect(getBandForScore(null)).toBeNull();
     expect(getBandForScore(0)?.id).toBe("Low");
-    expect(getBandClasses("High")).toContain("bg-risk-high-bg");
-    expect(getBandClasses("Unknown")).toContain("bg-zinc-100");
+    expect(getBandClasses("High")).toContain("bg-severity-high-bg");
+    expect(getBandClasses("Unknown")).toContain("bg-surface-muted");
   });
 });
 

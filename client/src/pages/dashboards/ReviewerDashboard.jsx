@@ -8,7 +8,7 @@ import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 
 function StatusPill({ status }) {
   const styles = {
-    "Awaiting Review": "bg-[#FEF3C7] text-[#92400E]",
+    "Awaiting Review": "bg-secondary-50 text-secondary-800",
     "Not yet submitted": "bg-zinc-100 text-zinc-700"
   };
   return (
@@ -88,10 +88,7 @@ export function ReviewerDashboard() {
             Assessments submitted for your review. You can comment and lock fields, but cannot edit content.
           </p>
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: "#FEF3C7", color: "#92400E" }}
-        >
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
           <Eye size={10} aria-hidden /> Reviewer: A. Reviewer
         </span>
       </header>
@@ -107,8 +104,7 @@ export function ReviewerDashboard() {
         <div className="rounded-lg border border-zinc-200 bg-white p-4">
           <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">Overdue</div>
           <div
-            className="text-2xl font-semibold tabular-nums"
-            style={{ color: overdueCount > 0 ? "#B45309" : undefined }}
+            className={`text-2xl font-semibold tabular-nums ${overdueCount > 0 ? "text-secondary-700" : ""}`}
           >
             {overdueCount}
           </div>
@@ -149,15 +145,12 @@ export function ReviewerDashboard() {
                 <td className="px-3 py-2.5 text-[12px] text-zinc-700">{row.submitted}</td>
                 <td className="px-3 py-2.5">
                   <div
-                    className="text-[12px] tabular-nums text-zinc-700"
-                    style={{ color: row.overdue ? "#B91C1C" : undefined }}
+                    className={`text-[12px] tabular-nums ${row.overdue ? "text-destructive" : "text-zinc-700"}`}
                   >
                     {row.due}
                   </div>
                   {row.overdue ? (
-                    <div className="text-[10px]" style={{ color: "#B91C1C" }}>
-                      ⚠ Overdue
-                    </div>
+                    <div className="text-[10px] text-destructive">⚠ Overdue</div>
                   ) : null}
                 </td>
                 <td className="px-3 py-2.5">
@@ -169,7 +162,6 @@ export function ReviewerDashboard() {
                       type="button"
                       onClick={() => navigate(`/assessments/${ACTIVE_ASSESSMENT_ID}/sections/1`)}
                       className="btn-primary inline-flex items-center gap-1 text-[12px]"
-                      style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
                     >
                       Open <ArrowRight size={11} aria-hidden />
                     </button>

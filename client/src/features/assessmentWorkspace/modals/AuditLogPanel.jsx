@@ -90,28 +90,28 @@ export function AuditLogPanel({
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
       <div className="flex-1 bg-zinc-900/30 backdrop-blur-[2px]" />
       <div
-        className="flex w-full max-w-[560px] flex-col border-l border-zinc-200 bg-white shadow-2xl"
+        className="flex w-full max-w-[560px] flex-col border-l border-border-default bg-surface-raised shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
+        <div className="flex items-start justify-between border-b border-border-subtle px-5 py-3">
           <div>
             <div className="flex items-center gap-2">
-              <Activity size={14} className="text-zinc-700" />
+              <Activity size={14} className="text-text-secondary" />
               <span className="text-[14px] font-semibold">Audit log</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">
                 <Lock size={9} /> Immutable
               </span>
             </div>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
+            <p className="mt-0.5 text-[11px] text-text-muted">
               {assessmentName} · {entries.length} entries · Retained for 7 years
             </p>
           </div>
-          <button onClick={onClose} className="rounded p-1.5 hover:bg-zinc-100" aria-label="Close">
+          <button onClick={onClose} className="rounded p-1.5 hover:bg-surface-muted" aria-label="Close">
             <X size={16} />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-zinc-100 px-5 py-2.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border-subtle px-5 py-2.5">
           {filterTabs.map((tab) => (
             <button
               key={tab.id}
@@ -129,7 +129,7 @@ export function AuditLogPanel({
         </div>
 
         {sectionFilter != null ? (
-          <div className="flex items-center justify-between gap-2 border-b border-zinc-100 bg-[#EFF4FB]/40 px-5 py-2 text-[11px] text-[#1E3A5F]">
+          <div className="flex items-center justify-between gap-2 border-b border-border-subtle bg-primary-50 px-5 py-2 text-[11px] text-primary dark:bg-primary-900/40">
             <span>
               Filtered to <span className="font-semibold">{sectionLabel}</span>
               {filter === "comments" ? " comments" : ""}
@@ -137,7 +137,7 @@ export function AuditLogPanel({
             <button
               type="button"
               onClick={() => setSectionFilter(null)}
-              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium hover:bg-white"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium hover:bg-surface-raised"
             >
               <X size={11} aria-hidden /> Clear filter
             </button>
@@ -146,27 +146,27 @@ export function AuditLogPanel({
 
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="py-12 text-center text-[13px] text-zinc-500">No entries match the filter.</div>
+            <div className="py-12 text-center text-[13px] text-text-muted">No entries match the filter.</div>
           ) : null}
           {filtered.map((entry) => {
             const style = ACTION_STYLES[entry.action] || ACTION_STYLES.edit;
             const isExpanded = expanded === entry.id;
             const hasDetail = Boolean(entry.detail);
             return (
-              <div key={entry.id} className="border-b border-zinc-100 hover:bg-zinc-50/40">
+              <div key={entry.id} className="border-b border-border-subtle hover:bg-surface-muted/40">
                 <button
                   type="button"
                   onClick={() => hasDetail && setExpanded(isExpanded ? null : entry.id)}
                   className={`w-full px-5 py-3 text-left ${hasDetail ? "cursor-pointer" : "cursor-default"}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-28 shrink-0 text-[10px] tabular-nums leading-relaxed text-zinc-400">
+                    <div className="w-28 shrink-0 text-[10px] tabular-nums leading-relaxed text-text-disabled">
                       {formatTimestamp(entry.timestamp || entry.ts)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="mb-0.5 flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-medium text-zinc-900">{entry.user}</span>
-                        <span className="text-[10px] text-zinc-500">({entry.role})</span>
+                        <span className="text-[13px] font-medium text-text-primary">{entry.user}</span>
+                        <span className="text-[10px] text-text-muted">({entry.role})</span>
                         <span
                           className="rounded px-1.5 py-0.5 text-[10px] font-medium"
                           style={{ color: style.color, background: style.bg }}
@@ -174,12 +174,12 @@ export function AuditLogPanel({
                           {style.label}
                         </span>
                       </div>
-                      <div className="text-[12px] leading-snug text-zinc-700">
+                      <div className="text-[12px] leading-snug text-text-secondary">
                         {entry.assessment ? `${entry.assessment} — ` : ""}
                         {entry.detail || entry.action}
                       </div>
                       {visibleIp(session.actingRole, entry.ip) ? (
-                        <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400">
+                        <div className="mt-0.5 text-[10px] tabular-nums text-text-disabled">
                           IP {entry.ip}
                         </div>
                       ) : null}
@@ -187,14 +187,14 @@ export function AuditLogPanel({
                     {hasDetail ? (
                       <ChevronDown
                         size={14}
-                        className={`mt-1 text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        className={`mt-1 text-text-disabled transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       />
                     ) : null}
                   </div>
                 </button>
                 {isExpanded && hasDetail ? (
-                  <div className="bg-zinc-50/60 px-5 pb-3 pl-[140px]">
-                    <div className="rounded-md border border-zinc-200 bg-white p-2.5 text-[11px] text-zinc-700">
+                  <div className="bg-surface-muted/60 px-5 pb-3 pl-[140px]">
+                    <div className="rounded-md border border-border-default bg-surface-raised p-2.5 text-[11px] text-text-secondary">
                       {entry.detail}
                     </div>
                   </div>
@@ -204,13 +204,13 @@ export function AuditLogPanel({
           })}
         </div>
 
-        <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/40 px-5 py-3 text-[11px] text-zinc-500">
+        <div className="flex items-center justify-between border-t border-border-subtle bg-surface-muted/40 px-5 py-3 text-[11px] text-text-muted">
           <div className="flex items-center gap-1.5">
             <Lock size={11} aria-hidden /> No role can modify or delete entries
           </div>
           <button
             type="button"
-            className="font-medium text-[#1E3A5F] hover:text-[#16294A]"
+            className="font-medium text-primary hover:text-primary-600"
             onClick={() => alert("Audit log exported to CSV. Export action recorded to audit trail.")}
           >
             Export CSV →

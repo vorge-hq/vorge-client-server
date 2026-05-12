@@ -138,7 +138,6 @@ function MitigationDetailModal({ mitigation, onClose, onSave }) {
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
                 >
                   {movingToDone ? "Mark as Done" : status === mitigation.status ? "Add note" : "Update status"}
                 </button>
@@ -212,10 +211,7 @@ export function MitigationsPage() {
             Approved.
           </p>
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: "#FEF3C7", color: "#92400E" }}
-        >
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
           <Lock size={10} aria-hidden /> Acting as Mitigation Owner
         </span>
       </header>
@@ -232,8 +228,7 @@ export function MitigationsPage() {
         <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
           <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Overdue</div>
           <div
-            className="mt-1 text-2xl font-semibold tabular-nums"
-            style={{ color: kpis.overdue > 0 ? "#B91C1C" : undefined }}
+            className={`mt-1 text-2xl font-semibold tabular-nums ${kpis.overdue > 0 ? "text-destructive" : ""}`}
           >
             {kpis.overdue}
           </div>

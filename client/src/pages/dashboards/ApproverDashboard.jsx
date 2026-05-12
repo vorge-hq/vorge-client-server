@@ -8,7 +8,7 @@ import { ACTIVE_ASSESSMENT_ID } from "../../data/assessments";
 
 function StatusPill({ status }) {
   const styles = {
-    "Awaiting Approval": "bg-[#FEF3C7] text-[#92400E]",
+    "Awaiting Approval": "bg-secondary-50 text-secondary-800",
     "Not yet reviewed": "bg-zinc-100 text-zinc-700"
   };
   return (
@@ -93,10 +93,7 @@ export function ApproverDashboard() {
             with comments at decision points.
           </p>
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: "#FEF3C7", color: "#92400E" }}
-        >
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
           <CheckCircle2 size={10} aria-hidden /> Approver: M. Approver
         </span>
       </header>
@@ -157,7 +154,6 @@ export function ApproverDashboard() {
                       type="button"
                       onClick={() => navigate(`/assessments/${ACTIVE_ASSESSMENT_ID}/sections/1`)}
                       className="btn-primary inline-flex items-center gap-1 text-[12px]"
-                      style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
                     >
                       Open <ArrowRight size={11} aria-hidden />
                     </button>

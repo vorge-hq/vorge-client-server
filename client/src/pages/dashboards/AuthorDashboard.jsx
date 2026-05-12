@@ -26,8 +26,8 @@ import { ASSESSMENT_STATES } from "../../features/assessmentWorkspace/assessment
 
 function StatCard({ label, value, sub, tone = "default" }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
-      <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</div>
+    <div className="rounded-lg border border-border-default bg-surface-raised px-4 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-text-muted">{label}</div>
       <div className="mt-1 flex items-baseline gap-2">
         <div
           className={`text-2xl font-semibold tabular-nums ${tone === "warn" ? "text-amber-700" : ""}`}
@@ -35,7 +35,7 @@ function StatCard({ label, value, sub, tone = "default" }) {
           {value}
         </div>
       </div>
-      <div className="mt-0.5 text-[11px] text-zinc-500">{sub}</div>
+      <div className="mt-0.5 text-[11px] text-text-muted">{sub}</div>
     </div>
   );
 }
@@ -53,11 +53,11 @@ function CapabilityRow({ icon: ItemIcon, label, state = "active", tooltip, onCli
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         className={`flex w-full items-center justify-between rounded px-2 py-1 text-left transition-colors ${
-          isAddon ? "cursor-help hover:bg-amber-50/40" : "hover:bg-zinc-50"
+          isAddon ? "cursor-help hover:bg-amber-50/40" : "hover:bg-surface-muted"
         }`}
       >
-        <div className={`flex items-center gap-2 ${isAddon ? "text-zinc-600" : "text-zinc-700"}`}>
-          <span className={isAddon ? "text-zinc-400" : "text-zinc-500"}>
+        <div className={`flex items-center gap-2 ${isAddon ? "text-text-muted" : "text-text-secondary"}`}>
+          <span className={isAddon ? "text-text-disabled" : "text-text-muted"}>
             <ItemIcon size={11} />
           </span>
           {label}
@@ -68,10 +68,7 @@ function CapabilityRow({ icon: ItemIcon, label, state = "active", tooltip, onCli
           </span>
         ) : null}
         {isAddon ? (
-          <span
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ background: "#FEF3C7", color: "#92400E" }}
-          >
+          <span className="inline-flex items-center gap-1 rounded bg-secondary-50 px-1.5 py-0.5 text-[10px] font-medium text-secondary-800">
             <Lock size={9} aria-hidden /> Add-on
           </span>
         ) : null}
@@ -134,8 +131,8 @@ export function AuthorDashboard() {
     <div className="grid gap-6">
       <header className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">Assessments</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">
+          <h1 className="text-xl font-semibold tracking-tight text-text-primary">Assessments</h1>
+          <p className="mt-0.5 text-sm text-text-muted">
             All SRAs assigned to you across facilities you have access to.
           </p>
         </div>
@@ -158,7 +155,6 @@ export function AuthorDashboard() {
             type="button"
             onClick={() => setNewAssessmentOpen(true)}
             className="btn-primary inline-flex items-center gap-1.5"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
           >
             <Plus size={14} aria-hidden /> New assessment
           </button>
@@ -181,14 +177,14 @@ export function AuthorDashboard() {
         />
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
-        <header className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/60 px-4 py-2.5">
-          <p className="text-[13px] font-medium text-zinc-700">All assessments</p>
-          <p className="text-[11px] text-zinc-500">Showing {visibleAssessments.length} of {assessments.length}</p>
+      <section className="overflow-hidden rounded-lg border border-border-default bg-surface-raised">
+        <header className="flex items-center justify-between border-b border-border-subtle bg-surface-muted/60 px-4 py-2.5">
+          <p className="text-[13px] font-medium text-text-secondary">All assessments</p>
+          <p className="text-[11px] text-text-muted">Showing {visibleAssessments.length} of {assessments.length}</p>
         </header>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            <tr className="text-[11px] font-medium uppercase tracking-wider text-text-muted">
               <th className="px-4 py-2 text-left font-medium">Name</th>
               <th className="px-4 py-2 text-left font-medium">Status</th>
               <th className="px-4 py-2 text-left font-medium">Completion</th>
@@ -204,16 +200,13 @@ export function AuthorDashboard() {
               );
               const isActive = assessment.id === workspace.activeAssessmentId;
               return (
-                <tr key={assessment.id} className="group border-t border-zinc-100 hover:bg-zinc-50/60">
+                <tr key={assessment.id} className="group border-t border-border-subtle hover:bg-surface-muted/60">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <FileText size={14} className="text-zinc-400" />
+                      <FileText size={14} className="text-text-disabled" />
                       <span className="font-medium">{assessment.name}</span>
                       {isActive ? (
-                        <span
-                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                          style={{ background: "#FEF3C7", color: "#92400E" }}
-                        >
+                        <span className="inline-flex items-center rounded-full bg-secondary-50 px-2 py-0.5 text-[10px] font-semibold text-secondary-800">
                           You · Active
                         </span>
                       ) : null}
@@ -224,24 +217,24 @@ export function AuthorDashboard() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-zinc-100">
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-muted">
                         <div
-                          className="h-full rounded-full bg-zinc-700"
+                          className="h-full rounded-full bg-text-secondary"
                           style={{ width: `${completion}%` }}
                         />
                       </div>
-                      <span className="w-8 text-[11px] tabular-nums text-zinc-500">{completion}%</span>
+                      <span className="w-8 text-[11px] tabular-nums text-text-muted">{completion}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-600">A. Reviewer</td>
-                  <td className="px-4 py-3 text-[13px] text-zinc-500">
+                  <td className="px-4 py-3 text-text-muted">A. Reviewer</td>
+                  <td className="px-4 py-3 text-[13px] text-text-muted">
                     {new Date(assessment.lastUpdated).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
                       onClick={() => navigate(`/assessments/${assessment.id}/sections/2`)}
-                      className="text-[13px] font-medium text-zinc-900 hover:underline"
+                      className="text-[13px] font-medium text-text-primary hover:underline"
                     >
                       Open →
                     </button>
@@ -254,28 +247,28 @@ export function AuthorDashboard() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 lg:col-span-2">
+        <div className="rounded-lg border border-border-default bg-surface-raised p-4 lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[13px] font-semibold text-zinc-700">Recent activity</h3>
+            <h3 className="text-[13px] font-semibold text-text-secondary">Recent activity</h3>
             <button
               type="button"
               onClick={() => setAuditOpen(true)}
-              className="text-[11px] text-zinc-500 hover:text-zinc-900"
+              className="text-[11px] text-text-muted hover:text-text-primary"
             >
               View audit log →
             </button>
           </div>
           <div className="space-y-2.5 text-[13px]">
             {recent.map((row) => (
-              <div key={row.id} className="flex items-center gap-3 text-zinc-600">
-                <div className="w-16 shrink-0 text-[11px] tabular-nums text-zinc-400">
+              <div key={row.id} className="flex items-center gap-3 text-text-muted">
+                <div className="w-16 shrink-0 text-[11px] tabular-nums text-text-disabled">
                   {(row.timestamp || row.ts || "").slice(11, 16) || "—"}
                 </div>
                 <div className="flex-1">
-                  <span className="font-medium text-zinc-900">{row.user}</span>{" "}
-                  <span className="text-zinc-600">{row.action}</span>{" "}
+                  <span className="font-medium text-text-primary">{row.user}</span>{" "}
+                  <span className="text-text-muted">{row.action}</span>{" "}
                   {row.detail ? (
-                    <span className="text-zinc-700">— {row.detail}</span>
+                    <span className="text-text-secondary">— {row.detail}</span>
                   ) : null}
                 </div>
                 {row.action === "flag" ? (
@@ -284,25 +277,25 @@ export function AuthorDashboard() {
                   </span>
                 ) : null}
                 {row.action === "comment" ? (
-                  <MessageSquare size={12} className="text-zinc-400" aria-hidden />
+                  <MessageSquare size={12} className="text-text-disabled" aria-hidden />
                 ) : null}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="rounded-lg border border-border-default bg-surface-raised p-4">
           <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-[#EFF4FB]">
-              <Sparkles size={11} className="text-[#1E3A5F]" />
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-primary-50 dark:bg-primary-900/40">
+              <Sparkles size={11} className="text-primary" />
             </div>
-            <h3 className="text-[13px] font-semibold text-zinc-700">Active capabilities</h3>
+            <h3 className="text-[13px] font-semibold text-text-secondary">Active capabilities</h3>
           </div>
-          <p className="mb-3 text-[12px] leading-relaxed text-zinc-500">
+          <p className="mb-3 text-[12px] leading-relaxed text-text-muted">
             Capabilities available for this facility. AI output is advisory and requires human review.
           </p>
 
-          <div className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+          <div className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-text-disabled">
             Active
           </div>
           <div className="mb-3 space-y-1 text-[12px]">
@@ -311,10 +304,10 @@ export function AuthorDashboard() {
             <CapabilityRow icon={Tag} label="Smart tagging of scenarios" state="active" />
           </div>
 
-          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wider text-text-disabled">
             Additional capabilities
             <span className="text-zinc-300">·</span>
-            <span className="font-normal normal-case tracking-normal text-zinc-400">enquire to enable</span>
+            <span className="font-normal normal-case tracking-normal text-text-disabled">enquire to enable</span>
           </div>
           <div className="space-y-1 text-[12px]">
             <CapabilityRow
@@ -340,7 +333,7 @@ export function AuthorDashboard() {
 
           <Link
             to={`/assessments/${ACTIVE_ASSESSMENT_ID}/sections/6`}
-            className="mt-4 inline-block text-[12px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+            className="mt-4 inline-block text-[12px] font-medium text-primary hover:text-primary-600"
           >
             See evaluation drill-down →
           </Link>

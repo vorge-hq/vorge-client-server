@@ -103,8 +103,8 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
                           aria-pressed={ticked}
                           className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] transition-colors ${
                             ticked
-                              ? "border-[#1E3A5F] bg-[#EFF4FB] text-[#1E3A5F]"
-                              : "border-zinc-200 bg-white text-zinc-400 hover:bg-zinc-50"
+                              ? "border-primary bg-primary-50 text-primary dark:bg-primary-900/40"
+                              : "border-border-default bg-surface-raised text-text-disabled hover:bg-surface-muted"
                           } ${readOnly ? "cursor-not-allowed" : ""}`}
                         >
                           {ticked ? <Check size={12} strokeWidth={2.5} /> : ""}
@@ -156,8 +156,8 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
                           disabled={readOnly}
                           className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold ${
                             ticked
-                              ? "border-[#1E3A5F] bg-[#EFF4FB] text-[#1E3A5F]"
-                              : "border-zinc-200 bg-white text-zinc-600"
+                              ? "border-primary bg-primary-50 text-primary dark:bg-primary-900/40"
+                              : "border-border-default bg-surface-raised text-text-muted"
                           }`}
                         >
                           {ticked ? <Check size={10} /> : <Plus size={10} />}

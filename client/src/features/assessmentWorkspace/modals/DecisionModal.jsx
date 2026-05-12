@@ -7,9 +7,9 @@ const KIND_CONFIG = {
     description: "Forward this assessment to the Approver. Reviewer signature is stamped.",
     submitLabel: "Mark complete",
     submitClass: "btn-primary",
-    submitStyle: { background: "#1E3A5F", borderColor: "#1E3A5F" },
+    submitStyle: undefined,
     icon: Check,
-    iconColor: "#065f46",
+    iconClass: "text-severity-low-text",
     requireReason: false,
     placeholder: "Optional note for the Approver",
     fieldLabel: "Note (optional)"
@@ -21,7 +21,7 @@ const KIND_CONFIG = {
     submitClass: "btn-warn",
     submitStyle: undefined,
     icon: ArrowLeft,
-    iconColor: "#9a3412",
+    iconClass: "text-severity-high-text",
     requireReason: true,
     placeholder: "Tell the Author what needs to change",
     fieldLabel: "Reason"
@@ -31,9 +31,9 @@ const KIND_CONFIG = {
     description: "Approver signature is stamped and the version is frozen.",
     submitLabel: "Approve",
     submitClass: "btn-primary",
-    submitStyle: { background: "#1E3A5F", borderColor: "#1E3A5F" },
+    submitStyle: undefined,
     icon: Check,
-    iconColor: "#065f46",
+    iconClass: "text-severity-low-text",
     requireReason: false,
     placeholder: "Optional approval note",
     fieldLabel: "Approval note (optional)"
@@ -45,7 +45,7 @@ const KIND_CONFIG = {
     submitClass: "btn-warn",
     submitStyle: undefined,
     icon: ArrowLeft,
-    iconColor: "#9a3412",
+    iconClass: "text-severity-high-text",
     requireReason: true,
     placeholder: "What does the Reviewer need to revisit?",
     fieldLabel: "Reason"
@@ -57,7 +57,7 @@ const KIND_CONFIG = {
     submitClass: "btn-danger",
     submitStyle: undefined,
     icon: AlertTriangle,
-    iconColor: "#991b1b",
+    iconClass: "text-severity-very-high-text",
     requireReason: true,
     placeholder: "Reason for rejection",
     fieldLabel: "Reason"
@@ -74,21 +74,18 @@ export function DecisionModal({ kind, onClose, onConfirm }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-border-default bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between border-b border-border-subtle px-5 py-3">
           <div className="flex items-start gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-md"
-              style={{ background: "#EFF4FB", color: config.iconColor }}
-            >
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md bg-primary-50 dark:bg-primary-900/40 ${config.iconClass}`}>
               <KindIcon size={16} />
             </div>
             <div>
               <div className="text-[14px] font-semibold">{config.title}</div>
-              <div className="text-[11px] text-zinc-500">{config.description}</div>
+              <div className="text-[11px] text-text-muted">{config.description}</div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:bg-zinc-100" aria-label="Close">
+          <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted" aria-label="Close">
             <X size={16} />
           </button>
         </div>
@@ -109,7 +106,7 @@ export function DecisionModal({ kind, onClose, onConfirm }) {
           </label>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle bg-surface-muted/50 px-5 py-3">
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancel
           </button>

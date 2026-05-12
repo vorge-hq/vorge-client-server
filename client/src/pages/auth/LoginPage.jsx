@@ -103,29 +103,21 @@ export function LoginPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center p-6 text-zinc-900"
-      style={{ background: "#F1F2F4", fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2">
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-md"
-            style={{ background: "#1E3A5F" }}
-          >
-            <Shield size={15} strokeWidth={2.5} style={{ color: "#F59E0B" }} aria-hidden />
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+            <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight" style={{ color: "#1E3A5F" }}>
-            Vantage
-          </div>
+          <div className="font-semibold tracking-tight text-primary">Vantage</div>
           <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
         </div>
 
         {stage === STAGES.MFA ? (
           <>
-            <h1
-              className="mb-1 text-[22px] font-semibold tracking-tight"
-              style={{ color: "#1E3A5F" }}
-            >
+            <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
               Multi-factor authentication
             </h1>
             <p className="mb-8 text-sm text-zinc-500">
@@ -166,7 +158,6 @@ export function LoginPage() {
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
                 >
                   Verify and continue
                 </button>
@@ -175,10 +166,7 @@ export function LoginPage() {
           </>
         ) : (
           <>
-            <h1
-              className="mb-1 text-[22px] font-semibold tracking-tight"
-              style={{ color: "#1E3A5F" }}
-            >
+            <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
               Sign in to continue
             </h1>
             <p className="mb-8 text-sm text-zinc-500">
@@ -217,7 +205,6 @@ export function LoginPage() {
               <button
                 type="submit"
                 className="btn-primary mt-2 w-full justify-center py-2.5"
-                style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
               >
                 Sign in
               </button>
@@ -274,7 +261,7 @@ export function LoginPage() {
                     key={role}
                     type="button"
                     onClick={() => pickRole(role)}
-                    className="group w-full rounded-lg border border-zinc-200 p-3 text-left transition-colors hover:border-[#1E3A5F]/40 hover:bg-[#EFF4FB]/30"
+                    className="group w-full rounded-lg border border-zinc-200 p-3 text-left transition-colors hover:border-primary-200 hover:bg-primary-10"
                   >
                     <div className="mb-0.5 flex items-center justify-between">
                       <span className="text-sm font-medium text-zinc-900">{role}</span>

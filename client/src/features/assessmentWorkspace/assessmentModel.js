@@ -23,23 +23,23 @@ export const STATE_DESCRIPTORS = Object.freeze({
   [ASSESSMENT_STATES.DRAFT]: {
     short: "Draft",
     description: "Authors can edit unlocked assessment content.",
-    chip: { fg: "text-state-draft", bg: "bg-state-draft-bg" }
+    chip: { fg: "text-text-secondary", bg: "bg-surface-muted" }
   },
   [ASSESSMENT_STATES.IN_REVIEW]: {
     short: "In Review",
     description: "Reviewers can comment and lock validated fields.",
-    chip: { fg: "text-state-review", bg: "bg-state-review-bg" }
+    chip: { fg: "text-primary-700", bg: "bg-primary-50" }
   },
   [ASSESSMENT_STATES.AWAITING_APPROVAL]: {
     short: "Awaiting Approval",
     description: "Approver decision is required; content is read-only.",
-    chip: { fg: "text-state-approval", bg: "bg-state-approval-bg" }
+    chip: { fg: "text-secondary-800", bg: "bg-secondary-50" }
   },
   [ASSESSMENT_STATES.APPROVED]: {
     short: "Approved",
     description:
       "Assessment content is frozen. Mitigation progress is updated by Mitigation Owners only.",
-    chip: { fg: "text-state-approved", bg: "bg-state-approved-bg" }
+    chip: { fg: "text-severity-low-text", bg: "bg-severity-low-bg" }
   }
 });
 
@@ -49,7 +49,7 @@ export function getAssessmentStateBanner(state) {
 
 export function getStateChipClasses(state) {
   const chip = STATE_DESCRIPTORS[state]?.chip;
-  return chip ? `${chip.fg} ${chip.bg}` : "text-zinc-600 bg-zinc-100";
+  return chip ? `${chip.fg} ${chip.bg}` : "text-text-muted bg-surface-muted";
 }
 
 export function isAssessmentReadOnly({ state, actingRole, serverCanEditContent = false }) {

@@ -88,7 +88,7 @@ export function FieldModePage() {
               const checked = selected.has(option.id);
               return (
                 <li key={option.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 p-3 hover:border-vantage-navy">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 p-3 hover:border-primary">
                     <input
                       type="checkbox"
                       checked={checked}

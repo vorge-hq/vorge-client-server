@@ -9,7 +9,7 @@ export function Chip({ children, tone = "slate", className = "" }) {
     success: "bg-emerald-50 text-emerald-800 border border-emerald-200",
     warn: "bg-amber-50 text-amber-900 border border-amber-200",
     danger: "bg-red-50 text-red-800 border border-red-200",
-    dark: "bg-vantage-navy text-white border border-vantage-navy"
+    dark: "bg-primary text-primary-foreground border border-primary"
   };
 
   return (

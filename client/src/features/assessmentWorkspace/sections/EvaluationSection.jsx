@@ -26,34 +26,45 @@ const LIKELIHOOD_LEVELS = [
   { v: 5, label: "Very High", desc: ">1×/year at this location" }
 ];
 
-const RISK_BAND_STYLES = {
-  low: { bg: "#ecfdf5", text: "#065f46", dot: "#10b981", border: "#a7f3d0" },
-  med: { bg: "#fefce8", text: "#854d0e", dot: "#eab308", border: "#fde68a" },
-  high: { bg: "#fff7ed", text: "#9a3412", dot: "#f97316", border: "#fed7aa" },
-  vhigh: { bg: "#fef2f2", text: "#991b1b", dot: "#dc2626", border: "#fecaca" }
+const BAND_TOKENS = {
+  low: {
+    chip: "bg-severity-low-bg text-severity-low-text border-severity-low-fill",
+    fill: "bg-severity-low-fill"
+  },
+  medium: {
+    chip: "bg-severity-medium-bg text-severity-medium-text border-severity-medium-fill",
+    fill: "bg-severity-medium-fill"
+  },
+  high: {
+    chip: "bg-severity-high-bg text-severity-high-text border-severity-high-fill",
+    fill: "bg-severity-high-fill"
+  },
+  "very-high": {
+    chip: "bg-severity-very-high-bg text-severity-very-high-text border-severity-very-high-fill",
+    fill: "bg-severity-very-high-fill"
+  }
 };
 
 function calcRisk(consequence, likelihood) {
   if (!consequence || !likelihood) return null;
   const score = consequence * likelihood;
   if (score <= 4) return { band: "Low", score, color: "low" };
-  if (score <= 9) return { band: "Medium", score, color: "med" };
+  if (score <= 9) return { band: "Medium", score, color: "medium" };
   if (score <= 15) return { band: "High", score, color: "high" };
-  return { band: "Very High", score, color: "vhigh" };
+  return { band: "Very High", score, color: "very-high" };
 }
 
 function RiskChip({ rating, size = "sm" }) {
   if (!rating) {
-    return <span className="text-xs text-zinc-400">—</span>;
+    return <span className="text-xs text-text-disabled">—</span>;
   }
-  const style = RISK_BAND_STYLES[rating.color];
+  const tokens = BAND_TOKENS[rating.color];
   const dim = size === "lg" ? "px-3 py-1.5 text-sm" : "px-2 py-0.5 text-[11px]";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md border font-medium ${dim}`}
-      style={{ background: style.bg, color: style.text, borderColor: style.border }}
+      className={`inline-flex items-center gap-1.5 rounded-md border font-medium ${tokens.chip} ${dim}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: style.dot }} />
+      <span className={`h-1.5 w-1.5 rounded-full ${tokens.fill}`} />
       {rating.band}
       <span className="font-normal opacity-60 tabular-nums">· {rating.score}</span>
     </span>
@@ -63,7 +74,7 @@ function RiskChip({ rating, size = "sm" }) {
 function Field({ label, required, children }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-medium text-zinc-700">
+      <label className="mb-1.5 block text-[11px] font-medium text-text-secondary">
         {label}
         {required ? <span className="ml-0.5 text-red-500">*</span> : null}
       </label>
@@ -79,14 +90,14 @@ function MiniMatrix({ consequence, likelihood }) {
     <div className="inline-block">
       <div className="flex">
         <div className="w-3" aria-hidden />
-        <div className="flex flex-1 justify-around text-[8px] font-medium text-zinc-400">
+        <div className="flex flex-1 justify-around text-[8px] font-medium text-text-disabled">
           {cols.map((c) => (
             <span key={c}>{c}</span>
           ))}
         </div>
       </div>
       <div className="flex">
-        <div className="flex w-3 flex-col justify-around pr-1 text-[8px] font-medium text-zinc-400">
+        <div className="flex w-3 flex-col justify-around pr-1 text-[8px] font-medium text-text-disabled">
           {rows.map((r) => (
             <span key={r}>{r}</span>
           ))}
@@ -95,23 +106,23 @@ function MiniMatrix({ consequence, likelihood }) {
           {rows.flatMap((r) =>
             cols.map((c) => {
               const score = r * c;
-              const band = score <= 4 ? "low" : score <= 9 ? "med" : score <= 15 ? "high" : "vhigh";
-              const style = RISK_BAND_STYLES[band];
+              const band =
+                score <= 4 ? "low" : score <= 9 ? "medium" : score <= 15 ? "high" : "very-high";
+              const tokens = BAND_TOKENS[band];
               const isActive = consequence === r && likelihood === c;
               return (
                 <div
                   key={`${r}-${c}`}
-                  className="relative aspect-square rounded-sm"
+                  className={`relative aspect-square rounded-sm ${tokens.fill}`}
                   style={{
-                    background: style.dot,
                     opacity: isActive ? 1 : 0.18,
-                    outline: isActive ? "2px solid #18181b" : "none",
+                    outline: isActive ? "2px solid var(--text-primary)" : "none",
                     outlineOffset: isActive ? "1px" : "0"
                   }}
                   title={`Consequence ${r} × Likelihood ${c} = ${score}`}
                 >
                   {isActive ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white">
+                    <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-text-inverse">
                       {score}
                     </div>
                   ) : null}
@@ -121,7 +132,7 @@ function MiniMatrix({ consequence, likelihood }) {
           )}
         </div>
       </div>
-      <div className="mt-2 flex items-center gap-2 text-[9px] text-zinc-500">
+      <div className="mt-2 flex items-center gap-2 text-[9px] text-text-muted">
         <span>Likelihood →</span>
       </div>
     </div>
@@ -132,18 +143,18 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[12px] font-medium text-zinc-700">{label}</div>
+        <div className="text-[12px] font-medium text-text-secondary">{label}</div>
         <RiskChip rating={rating} />
       </div>
 
       <div className="space-y-2">
         <div>
-          <div className="mb-1 text-[10px] font-semibold uppercase text-zinc-500">Consequence</div>
+          <div className="mb-1 text-[10px] font-semibold uppercase text-text-muted">Consequence</div>
           <select
             value={consequence || 0}
             onChange={(event) => onChange(parseInt(event.target.value, 10), likelihood)}
             disabled={!canEdit}
-            className="w-full rounded border border-zinc-200 bg-white px-2 py-1.5 text-[12px] focus:border-zinc-400 focus:outline-none disabled:cursor-default disabled:bg-zinc-50 disabled:text-zinc-700"
+            className="w-full rounded border border-border-default bg-surface-base px-2 py-1.5 text-[12px] focus:border-border-focus focus:outline-none disabled:cursor-default disabled:bg-surface-muted disabled:text-text-muted"
           >
             <option value={0}>Select severity…</option>
             {CONSEQUENCE_LEVELS.filter((c) => c.v > 0).map((c) => (
@@ -154,12 +165,12 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
           </select>
         </div>
         <div>
-          <div className="mb-1 text-[10px] font-semibold uppercase text-zinc-500">Likelihood</div>
+          <div className="mb-1 text-[10px] font-semibold uppercase text-text-muted">Likelihood</div>
           <select
             value={likelihood || 0}
             onChange={(event) => onChange(consequence, parseInt(event.target.value, 10))}
             disabled={!canEdit}
-            className="w-full rounded border border-zinc-200 bg-white px-2 py-1.5 text-[12px] focus:border-zinc-400 focus:outline-none disabled:cursor-default disabled:bg-zinc-50 disabled:text-zinc-700"
+            className="w-full rounded border border-border-default bg-surface-base px-2 py-1.5 text-[12px] focus:border-border-focus focus:outline-none disabled:cursor-default disabled:bg-surface-muted disabled:text-text-muted"
           >
             <option value={0}>Select likelihood…</option>
             {LIKELIHOOD_LEVELS.map((l) => (
@@ -192,17 +203,17 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
   }, [evaluation.scenario, libraryScenarios]);
 
   const textareaClass =
-    "w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-[13px] focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-100 resize-none disabled:bg-zinc-50 disabled:text-zinc-700 disabled:cursor-default";
+    "w-full rounded-md border border-border-default bg-surface-base px-3 py-2 text-[13px] focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-border-focus resize-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-default";
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3">
+    <div className="overflow-hidden rounded-lg border border-border-default bg-surface-raised">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle bg-surface-muted/40 px-5 py-3">
         <div>
-          <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+          <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
             Evaluation
           </div>
-          <div className="text-[15px] font-semibold text-zinc-900">
-            {asset?.name} <span className="font-normal text-zinc-400">×</span> {threat?.name || threat?.classification}
+          <div className="text-[15px] font-semibold text-text-primary">
+            {asset?.name} <span className="font-normal text-text-disabled">×</span> {threat?.name || threat?.classification}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -214,10 +225,10 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
             />
           ) : null}
           <div className="text-right">
-            <div className="text-[10px] font-semibold uppercase text-zinc-500">R1 → R2</div>
+            <div className="text-[10px] font-semibold uppercase text-text-muted">R1 → R2</div>
             <div className="mt-0.5 flex items-center gap-1">
               <RiskChip rating={r1} />
-              <ArrowRight size={11} className="text-zinc-400" aria-hidden />
+              <ArrowRight size={11} className="text-text-disabled" aria-hidden />
               <RiskChip rating={r2} />
             </div>
           </div>
@@ -225,7 +236,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
       </div>
 
       <div className="grid grid-cols-1 gap-0 lg:grid-cols-3">
-        <div className="space-y-4 border-r border-zinc-100 p-5 lg:col-span-2">
+        <div className="space-y-4 border-r border-border-subtle p-5 lg:col-span-2">
           <Field label="Risk scenario" required>
             <div className="relative">
               <textarea
@@ -237,13 +248,13 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
                 className={textareaClass}
               />
               {suggestions.length > 0 ? (
-                <div className="mt-1.5 rounded-md border border-[#C5D5E8] bg-[#EFF4FB]/50 p-2">
+                <div className="mt-1.5 rounded-md border border-primary-200 bg-primary-50 p-2 dark:border-primary-700 dark:bg-primary-900/40">
                   <div className="mb-1.5 flex items-center gap-1.5">
-                    <FileSearch size={10} className="text-[#1E3A5F]" aria-hidden />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#1E3A5F]">
+                    <FileSearch size={10} className="text-primary" aria-hidden />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
                       Library matches (semantic)
                     </span>
-                    <span className="ml-auto text-[10px] text-[#1E3A5F]">advisory</span>
+                    <span className="ml-auto text-[10px] text-primary">advisory</span>
                   </div>
                   <div className="space-y-1">
                     {suggestions.map((entry) => (
@@ -252,10 +263,10 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
                         type="button"
                         onClick={() => onChange({ scenario: entry.text })}
                         disabled={!canEdit}
-                        className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left hover:bg-white/80 disabled:cursor-default disabled:hover:bg-transparent"
+                        className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left hover:bg-surface-base disabled:cursor-default disabled:hover:bg-transparent"
                       >
-                        <div className="flex-1 truncate text-[12px] text-zinc-700">{entry.text}</div>
-                        <div className="shrink-0 text-[10px] text-[#1E3A5F] tabular-nums">
+                        <div className="flex-1 truncate text-[12px] text-text-secondary">{entry.text}</div>
+                        <div className="shrink-0 text-[10px] text-primary tabular-nums">
                           {(entry.score * 100).toFixed(0)}% match
                         </div>
                       </button>
@@ -307,8 +318,8 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
           </Field>
         </div>
 
-        <div className="bg-zinc-50/40 p-5">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+        <div className="bg-surface-muted/40 p-5">
+          <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
             Risk calculation
           </div>
 
@@ -321,7 +332,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, canCom
             canEdit={canEdit}
           />
 
-          <div className="my-4 border-t border-zinc-200" />
+          <div className="my-4 border-t border-border-default" />
 
           <RiskBlock
             label="Post-mitigation (R2)"
@@ -432,14 +443,14 @@ export function EvaluationSection({ assessment, errors }) {
     >
       <ValidationSummary errors={errors} />
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white lg:w-[260px] lg:shrink-0">
-          <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/60 px-3 py-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Evaluations</div>
-            <span className="text-[11px] tabular-nums text-zinc-500">{evaluations.length}</span>
+        <div className="overflow-hidden rounded-lg border border-border-default bg-surface-raised lg:w-[260px] lg:shrink-0">
+          <div className="flex items-center justify-between border-b border-border-subtle bg-surface-muted/60 px-3 py-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Evaluations</div>
+            <span className="text-[11px] tabular-nums text-text-muted">{evaluations.length}</span>
           </div>
           <div className="max-h-[520px] overflow-y-auto">
             {candidates.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-zinc-500">
+              <p className="px-3 py-6 text-center text-[12px] text-text-muted">
                 No matrix cells ticked yet. Use Section 5 to link assets to threats.
               </p>
             ) : null}
@@ -455,22 +466,22 @@ export function EvaluationSection({ assessment, errors }) {
                   key={cell.key}
                   type="button"
                   onClick={() => handleRowClick(cell)}
-                  className={`w-full border-b border-zinc-100 px-3 py-2 text-left transition-colors hover:bg-zinc-50/60 ${
-                    isActive ? "border-l-2 border-l-[#1E3A5F] bg-[#EFF4FB]/40" : ""
+                  className={`w-full border-b border-border-subtle px-3 py-2 text-left transition-colors hover:bg-surface-muted/60 ${
+                    isActive ? "border-l-2 border-l-primary bg-primary-50 dark:bg-primary-900/40" : ""
                   }`}
                 >
                   <div className="mb-1 flex items-center justify-between">
-                    <div className="truncate text-[12px] font-medium text-zinc-900">
+                    <div className="truncate text-[12px] font-medium text-text-primary">
                       {asset?.name} × {threat?.short || threat?.classification}
                     </div>
-                    {!cell.existing ? <Plus size={10} className="text-zinc-400" aria-hidden /> : null}
+                    {!cell.existing ? <Plus size={10} className="text-text-disabled" aria-hidden /> : null}
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 truncate text-[11px] text-zinc-500">
+                    <div className="flex-1 truncate text-[11px] text-text-muted">
                       {cell.existing?.scenario ? (
                         cell.existing.scenario
                       ) : (
-                        <span className="italic text-zinc-400">No evaluation yet</span>
+                        <span className="italic text-text-disabled">No evaluation yet</span>
                       )}
                     </div>
                     {r1 ? <RiskChip rating={r1} /> : null}
@@ -493,7 +504,7 @@ export function EvaluationSection({ assessment, errors }) {
               canComment={canComment}
             />
           ) : (
-            <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
+            <div className="rounded-lg border border-border-default bg-surface-raised p-8 text-center text-sm text-text-muted">
               Select an evaluation from the list to edit.
             </div>
           )}

@@ -15,6 +15,7 @@ import {
   Wand2
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { ThemeToggle } from "../components/ThemeToggle";
 import {
   ROLES,
   canDemoSwitchToRole,
@@ -31,13 +32,13 @@ import { useWorkspace } from "../features/assessmentWorkspace/WorkspaceContext";
 const SEVERITY_ICONS = {
   warn: { Icon: AlertTriangle, className: "text-amber-700", bg: "bg-amber-50" },
   danger: { Icon: AlertTriangle, className: "text-red-700", bg: "bg-red-50" },
-  info: { Icon: MessageSquare, className: "text-[#1E3A5F]", bg: "bg-[#EFF4FB]" }
+  info: { Icon: MessageSquare, className: "text-primary", bg: "bg-primary-10" }
 };
 
 const TYPE_ICONS = {
   approved: { Icon: CheckCircle2, className: "text-emerald-700", bg: "bg-emerald-50" },
-  "ai-flag": { Icon: Sparkles, className: "text-[#1E3A5F]", bg: "bg-[#EFF4FB]" },
-  "config-change": { Icon: Settings, className: "text-[#1E3A5F]", bg: "bg-[#EFF4FB]" },
+  "ai-flag": { Icon: Sparkles, className: "text-primary", bg: "bg-primary-10" },
+  "config-change": { Icon: Settings, className: "text-primary", bg: "bg-primary-10" },
   "user-added": { Icon: Users, className: "text-zinc-700", bg: "bg-zinc-100" },
   "version-created": { Icon: FileText, className: "text-zinc-700", bg: "bg-zinc-100" },
   "mitigation-done": { Icon: Wand2, className: "text-emerald-700", bg: "bg-emerald-50" }
@@ -83,11 +84,11 @@ function RoleSwitcher({ session, onSwitchRole }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-md border border-[#F59E0B]/40 bg-white/5 px-2 py-1 text-[11px] font-medium text-white/85 transition hover:bg-white/10"
+        className="flex items-center gap-1 rounded-md border border-secondary-300 bg-white/5 px-2 py-1 text-[11px] font-medium text-white/85 transition hover:bg-white/10"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span style={{ color: "#F59E0B" }} className="font-semibold">
+        <span className="font-semibold text-warning">
           {session.demo ? "Demo:" : "Role:"}
         </span>
         <span className="max-w-[120px] truncate">{session.actingRole}</span>
@@ -102,10 +103,10 @@ function RoleSwitcher({ session, onSwitchRole }) {
             onClick={() => setOpen(false)}
           />
           <div
-            className="absolute right-0 top-full z-50 mt-1 w-64 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-xl"
+            className="absolute right-0 top-full z-50 mt-1 w-64 overflow-hidden rounded-lg border border-border-default bg-surface-raised py-1 shadow-xl"
             role="listbox"
           >
-            <div className="border-b border-zinc-100 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <div className="border-b border-border-subtle px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
               {session.demo ? "Demo: switch role" : "Switch acting role"}
             </div>
             {switchableRoles.map((role) => {
@@ -118,7 +119,7 @@ function RoleSwitcher({ session, onSwitchRole }) {
                   role="option"
                   aria-selected={isActive}
                   className={`flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition ${
-                    isActive ? "bg-[#EFF4FB] text-[#1E3A5F]" : "text-zinc-800 hover:bg-zinc-50"
+                    isActive ? "bg-primary-50 text-primary dark:bg-primary-900/40" : "text-text-secondary hover:bg-surface-muted"
                   }`}
                   onClick={() => {
                     onSwitchRole(role);
@@ -128,11 +129,11 @@ function RoleSwitcher({ session, onSwitchRole }) {
                   <span className="flex-1">
                     <span className="block font-medium">{role}</span>
                     {persona ? (
-                      <span className="mt-0.5 block text-[11px] text-zinc-500">{persona.name}</span>
+                      <span className="mt-0.5 block text-[11px] text-text-muted">{persona.name}</span>
                     ) : null}
                   </span>
                   {isRoleMfaRequired(role) ? (
-                    <span className="text-[10px] text-zinc-500">MFA</span>
+                    <span className="text-[10px] text-text-muted">MFA</span>
                   ) : null}
                 </button>
               );
@@ -176,23 +177,23 @@ function NotificationDropdown({ actingRole, unreadCount, notifications }) {
             aria-label="Close notifications"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full z-50 mt-1 w-[min(100vw-2rem,360px)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-4 py-2.5">
+          <div className="absolute right-0 top-full z-50 mt-1 w-[min(100vw-2rem,360px)] overflow-hidden rounded-lg border border-border-default bg-surface-raised shadow-xl">
+            <div className="flex items-center justify-between border-b border-border-subtle bg-surface-muted/50 px-4 py-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-[13px] font-semibold text-zinc-900">Notifications</span>
+                <span className="text-[13px] font-semibold text-text-primary">Notifications</span>
                 {unreadCount > 0 ? (
                   <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
                     {unreadCount} unread
                   </span>
                 ) : null}
               </div>
-              <button type="button" className="text-[11px] text-zinc-500 hover:text-zinc-900">
+              <button type="button" className="text-[11px] text-text-muted hover:text-text-primary">
                 Mark all read
               </button>
             </div>
             <div className="max-h-[min(60vh,420px)] overflow-y-auto">
               {items.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-zinc-500">
+                <p className="px-4 py-6 text-center text-sm text-text-muted">
                   No notifications for this role.
                 </p>
               ) : (
@@ -203,8 +204,8 @@ function NotificationDropdown({ actingRole, unreadCount, notifications }) {
                       key={n.id}
                       to={n.href || "/notifications"}
                       onClick={() => setOpen(false)}
-                      className={`block border-b border-zinc-100 px-4 py-2.5 text-left hover:bg-zinc-50/60 ${
-                        !n.read ? "bg-[#EFF4FB]/30" : ""
+                      className={`block border-b border-border-subtle px-4 py-2.5 text-left hover:bg-surface-muted/60 ${
+                        !n.read ? "bg-primary-50 dark:bg-primary-900/40" : ""
                       }`}
                     >
                       <div className="flex items-start gap-2.5">
@@ -213,15 +214,15 @@ function NotificationDropdown({ actingRole, unreadCount, notifications }) {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[12px] font-medium text-zinc-900">{n.title}</span>
+                            <span className="truncate text-[12px] font-medium text-text-primary">{n.title}</span>
                             {!n.read ? (
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E3A5F]" />
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                             ) : null}
                           </div>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-600">
+                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-text-muted">
                             {n.body}
                           </p>
-                          <p className="mt-1 text-[10px] text-zinc-400">
+                          <p className="mt-1 text-[10px] text-text-disabled">
                             {new Date(n.timestamp).toLocaleString(undefined, {
                               dateStyle: "medium",
                               timeStyle: "short"
@@ -234,8 +235,8 @@ function NotificationDropdown({ actingRole, unreadCount, notifications }) {
                 })
               )}
             </div>
-            <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/40 px-4 py-2">
-              <button type="button" className="text-[11px] text-zinc-500 hover:text-zinc-900">
+            <div className="flex items-center justify-between border-t border-border-subtle bg-surface-muted/40 px-4 py-2">
+              <button type="button" className="text-[11px] text-text-muted hover:text-text-primary">
                 Notification settings
               </button>
               <button
@@ -244,7 +245,7 @@ function NotificationDropdown({ actingRole, unreadCount, notifications }) {
                   setOpen(false);
                   navigate("/notifications");
                 }}
-                className="text-[11px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+                className="text-[11px] font-medium text-primary hover:text-primary-600"
               >
                 View all →
               </button>
@@ -297,8 +298,8 @@ export function AppShell() {
 
   return (
     <div
-      className="min-h-screen text-zinc-900"
-      style={{ background: "#F1F2F4", fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
+      className="min-h-screen bg-surface-sunken text-text-primary"
+      style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <a
         href="#main"
@@ -310,11 +311,8 @@ export function AppShell() {
       <header className="app-topbar sticky top-0 z-30">
         <div className="flex min-w-0 flex-1 items-center gap-5">
           <Link to={home} className="flex shrink-0 items-center gap-2">
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-md"
-              style={{ background: "#F59E0B" }}
-            >
-              <Shield size={13} strokeWidth={2.5} style={{ color: "#1E3A5F" }} aria-hidden />
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-warning">
+              <Shield size={13} strokeWidth={2.5} className="text-primary" aria-hidden />
             </div>
             <span className="text-sm font-semibold tracking-tight text-white">Vantage</span>
           </Link>
@@ -346,13 +344,12 @@ export function AppShell() {
 
           <RoleSwitcher session={session} onSwitchRole={handleSwitchRole} />
 
+          <ThemeToggle tone="topbar" />
+
           <div className="hidden h-4 w-px bg-white/20 sm:block" aria-hidden />
 
           <div className="flex items-center gap-2">
-            <span
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold"
-              style={{ background: "#F59E0B", color: "#1E3A5F" }}
-            >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-warning text-[10px] font-semibold text-primary">
               {session.user.initials}
             </span>
             <span className="hidden text-left text-[12px] leading-tight sm:block">

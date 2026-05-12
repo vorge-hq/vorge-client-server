@@ -62,7 +62,6 @@ export function AssessmentsListPage() {
             type="button"
             onClick={() => setNewOpen(true)}
             className="btn-primary inline-flex items-center gap-1.5"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
           >
             <Plus size={14} aria-hidden /> New assessment
           </button>
@@ -131,7 +130,7 @@ export function AssessmentsListPage() {
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100">
                         <div
-                          className="h-full bg-vantage-navy"
+                          className="h-full bg-primary"
                           style={{ width: `${completion}%` }}
                         />
                       </div>
@@ -144,7 +143,6 @@ export function AssessmentsListPage() {
                     <Link
                       to={`/assessments/${assessment.id}/sections/1`}
                       className="btn-primary"
-                      style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
                     >
                       Open
                     </Link>

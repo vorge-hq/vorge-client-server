@@ -18,10 +18,42 @@ export const CONSEQUENCE_LABELS = Object.freeze([
 export const CONSEQUENCE_AXES = Object.freeze(["People", "Assets", "Environment", "Reputation"]);
 
 export const RISK_BANDS = Object.freeze({
-  LOW: { id: "Low", min: 1, max: 4, fg: "text-risk-low", bg: "bg-risk-low-bg" },
-  MEDIUM: { id: "Medium", min: 5, max: 9, fg: "text-risk-medium", bg: "bg-risk-medium-bg" },
-  HIGH: { id: "High", min: 10, max: 15, fg: "text-risk-high", bg: "bg-risk-high-bg" },
-  VERY_HIGH: { id: "Very High", min: 16, max: 25, fg: "text-risk-very-high", bg: "bg-risk-very-high-bg" }
+  LOW: {
+    id: "Low",
+    key: "low",
+    min: 1,
+    max: 4,
+    fg: "text-severity-low-text",
+    bg: "bg-severity-low-bg",
+    fill: "bg-severity-low-fill"
+  },
+  MEDIUM: {
+    id: "Medium",
+    key: "medium",
+    min: 5,
+    max: 9,
+    fg: "text-severity-medium-text",
+    bg: "bg-severity-medium-bg",
+    fill: "bg-severity-medium-fill"
+  },
+  HIGH: {
+    id: "High",
+    key: "high",
+    min: 10,
+    max: 15,
+    fg: "text-severity-high-text",
+    bg: "bg-severity-high-bg",
+    fill: "bg-severity-high-fill"
+  },
+  VERY_HIGH: {
+    id: "Very High",
+    key: "very-high",
+    min: 16,
+    max: 25,
+    fg: "text-severity-very-high-text",
+    bg: "bg-severity-very-high-bg",
+    fill: "bg-severity-very-high-fill"
+  }
 });
 
 export const SEVERITY_BANDS = RISK_BANDS;
@@ -59,5 +91,10 @@ export function getBandForScore(score) {
 
 export function getBandClasses(bandId) {
   const band = Object.values(RISK_BANDS).find((entry) => entry.id === bandId);
-  return band ? `${band.fg} ${band.bg}` : "text-zinc-600 bg-zinc-100";
+  return band ? `${band.fg} ${band.bg}` : "text-text-muted bg-surface-muted";
+}
+
+export function getBandFillClass(bandId) {
+  const band = Object.values(RISK_BANDS).find((entry) => entry.id === bandId);
+  return band ? band.fill : "bg-surface-muted";
 }

@@ -46,7 +46,6 @@ function UsersTab() {
           <button
             type="button"
             className="btn-primary inline-flex items-center gap-1.5"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
           >
             <Plus size={14} aria-hidden /> Invite user
           </button>
@@ -141,7 +140,7 @@ function MatrixTab() {
                     <td key={likelihood} className="border-b border-zinc-200 p-2 text-center">
                       <span
                         className={`inline-flex h-12 w-full items-center justify-center rounded-lg text-xs font-semibold ${
-                          band ? getBandClasses(band.id) : "bg-zinc-100 text-zinc-500"
+                          band ? getBandClasses(band.id) : "bg-surface-muted text-text-muted"
                         }`}
                       >
                         {severity === 0 ? "—" : score}

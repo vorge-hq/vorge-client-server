@@ -15,10 +15,10 @@ function AdminTile({ Icon: TileIcon, title, description, count, to }) {
   return (
     <Link
       to={to}
-      className="group rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-[#1E3A5F]/40 hover:bg-[#EFF4FB]/30"
+      className="group rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-primary-200 hover:bg-primary-10"
     >
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#EFF4FB] text-[#1E3A5F]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-10 text-primary">
           <TileIcon size={16} />
         </div>
         <span className="text-[14px] font-semibold text-zinc-900">{title}</span>
@@ -47,10 +47,7 @@ export function AdminDashboard() {
             People, roles, default assignments, and platform configuration for this facility.
           </p>
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: "#FEF3C7", color: "#92400E" }}
-        >
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
           <Settings size={10} aria-hidden /> Facility: Operator A — Lagos Refinery
         </span>
       </header>
@@ -96,7 +93,7 @@ export function AdminDashboard() {
             <button
               type="button"
               onClick={() => navigate("/admin?tab=users")}
-              className="text-[11px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+              className="text-[11px] font-medium text-primary hover:text-primary-600"
             >
               Manage users →
             </button>
@@ -147,7 +144,7 @@ export function AdminDashboard() {
             <button
               type="button"
               onClick={() => navigate("/admin?tab=teams")}
-              className="text-[11px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+              className="text-[11px] font-medium text-primary hover:text-primary-600"
             >
               Manage →
             </button>
@@ -174,7 +171,7 @@ export function AdminDashboard() {
           <button
             type="button"
             onClick={() => navigate("/admin?tab=pool")}
-            className="text-[11px] font-medium text-[#1E3A5F] hover:text-[#16294A]"
+            className="text-[11px] font-medium text-primary hover:text-primary-600"
           >
             Edit pool →
           </button>

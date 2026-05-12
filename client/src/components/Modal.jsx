@@ -21,7 +21,7 @@ export function Modal({ open, title, children, onClose, footer, tone = "default"
   }
 
   const toneAccent = {
-    default: "border-zinc-200",
+    default: "border-border-default",
     danger: "border-red-200",
     warn: "border-amber-200"
   };
@@ -34,22 +34,22 @@ export function Modal({ open, title, children, onClose, footer, tone = "default"
       aria-label={title}
     >
       <div
-        className={`relative w-full max-w-lg overflow-hidden rounded-2xl border bg-white shadow-elevated ${toneAccent[tone] || toneAccent.default}`}
+        className={`relative w-full max-w-lg overflow-hidden rounded-2xl border bg-surface-raised shadow-elevated ${toneAccent[tone] || toneAccent.default}`}
       >
-        <header className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
-          <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+        <header className="flex items-center justify-between border-b border-border-default px-5 py-4">
+          <h2 className="text-base font-semibold text-text-primary">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="focus-ring rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            className="focus-ring rounded-md p-1 text-text-muted hover:bg-surface-muted hover:text-text-primary"
             aria-label="Close dialog"
           >
             <span aria-hidden="true">×</span>
           </button>
         </header>
-        <div className="space-y-4 px-5 py-5 text-sm text-zinc-700">{children}</div>
+        <div className="space-y-4 px-5 py-5 text-sm text-text-secondary">{children}</div>
         {footer ? (
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-zinc-200 bg-zinc-50 px-5 py-4">
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border-default bg-surface-muted px-5 py-4">
             {footer}
           </footer>
         ) : null}

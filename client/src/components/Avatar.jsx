@@ -9,7 +9,7 @@ export function Avatar({ initials, name, size = "md" }) {
     <span
       title={name}
       aria-label={name}
-      className={`inline-flex items-center justify-center rounded-full bg-vantage-navy font-semibold text-white ${sizes[size] || sizes.md}`}
+      className={`inline-flex items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground ${sizes[size] || sizes.md}`}
     >
       {initials}
     </span>

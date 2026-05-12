@@ -32,7 +32,7 @@ export function CommentAffordance({ section, sectionId, anchor, mini = false }) 
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-zinc-500 transition-colors hover:bg-[#EFF4FB] hover:text-[#1E3A5F]"
+        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted transition-colors hover:bg-primary-50 hover:text-primary dark:hover:bg-primary-900/40"
         title={`Comment on ${anchor || section}`}
       >
         <MessageSquare size={10} aria-hidden />
@@ -46,7 +46,7 @@ export function CommentAffordance({ section, sectionId, anchor, mini = false }) 
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-[#C5D5E8] bg-[#EFF4FB] px-2 py-1 text-[11px] text-[#1E3A5F] transition-colors hover:bg-[#DBE6F2]"
+        className="inline-flex items-center gap-1.5 rounded-md border border-primary-100 bg-primary-50 px-2 py-1 text-[11px] text-primary transition-colors hover:bg-primary-100 dark:border-primary-700 dark:bg-primary-900/40 dark:hover:bg-primary-900/60"
       >
         <MessageSquare size={11} aria-hidden />
         Add comment
@@ -93,8 +93,7 @@ export function CommentAffordance({ section, sectionId, anchor, mini = false }) 
                     type="button"
                     onClick={handlePost}
                     disabled={!comment.trim()}
-                    className="rounded px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
-                    style={{ background: "#1E3A5F" }}
+                    className="rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground disabled:opacity-50"
                   >
                     Post comment
                   </button>

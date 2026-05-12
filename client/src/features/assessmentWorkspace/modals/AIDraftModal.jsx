@@ -37,28 +37,25 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-3">
+      <div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border-default bg-surface-raised shadow-xl">
+        <div className="flex items-start justify-between border-b border-border-subtle px-5 py-3">
           <div className="flex items-start gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-md"
-              style={{ background: "#EFF4FB" }}
-            >
-              <Sparkles size={16} className="text-[#1E3A5F]" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-50 dark:bg-primary-900/40">
+              <Sparkles size={16} className="text-primary" />
             </div>
             <div>
               <div className="text-[14px] font-semibold">AI drafted summary</div>
-              <div className="text-[11px] text-zinc-500">{target}</div>
+              <div className="text-[11px] text-text-muted">{target}</div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:bg-zinc-100" aria-label="Close">
+          <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted" aria-label="Close">
             <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {stage === "loading" ? (
-            <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-6 text-[13px] text-zinc-600">
+            <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-muted px-4 py-6 text-[13px] text-text-muted">
               <Loader2 size={14} className="animate-spin" />
               Drafting from assets and evaluations…
             </div>
@@ -72,14 +69,14 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
                 rows={14}
                 className="field-control resize-y text-[13px] leading-relaxed"
               />
-              <p className="mt-2 text-[10px] text-zinc-400">
+              <p className="mt-2 text-[10px] text-text-disabled">
                 Tokens: 612 · Latency 0.7s · Audit entry will record AI usage.
               </p>
             </>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle bg-surface-muted/50 px-5 py-3">
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancel
           </button>
@@ -91,7 +88,6 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
             }}
             disabled={stage !== "ready"}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "#1E3A5F", borderColor: "#1E3A5F" }}
           >
             Accept draft
           </button>

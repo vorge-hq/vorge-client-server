@@ -9,11 +9,11 @@ import {
   LogOut,
   MessageSquare,
   Settings,
-  Shield,
   Sparkles,
   Users,
   Wand2
 } from "lucide-react";
+import vantageLogoOnDark from "../assets/vantage-logo-on-dark.svg";
 import { useAuth } from "../auth/AuthContext";
 import { ThemeToggle } from "../components/ThemeToggle";
 import {
@@ -310,11 +310,8 @@ export function AppShell() {
 
       <header className="app-topbar sticky top-0 z-30">
         <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Link to={home} className="flex shrink-0 items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-warning">
-              <Shield size={13} strokeWidth={2.5} className="text-primary" aria-hidden />
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-white">Vantage</span>
+          <Link to={home} className="flex shrink-0 items-center" aria-label="Vantage home">
+            <img src={vantageLogoOnDark} alt="Vantage" className="h-7 w-auto" />
           </Link>
 
           <div className="hidden h-4 w-px bg-white/20 sm:block" aria-hidden />

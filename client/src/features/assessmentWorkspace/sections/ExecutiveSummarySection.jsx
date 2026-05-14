@@ -34,7 +34,7 @@ export function ExecutiveSummarySection({ assessment, readOnly, onOpenAIDraft, e
             <button
               type="button"
               onClick={onOpenAIDraft}
-              className="inline-flex items-center gap-1.5 rounded-md border border-primary bg-surface-base px-3 py-1.5 text-[12px] font-medium text-primary hover:bg-primary-50 dark:hover:bg-primary-900/40"
+              className="btn-accent inline-flex items-center gap-1.5"
             >
               <Sparkles size={12} aria-hidden /> Draft with AI
             </button>

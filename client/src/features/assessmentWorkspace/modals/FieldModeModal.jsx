@@ -48,7 +48,7 @@ export function FieldModeModal({ onClose }) {
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[13px]">
-          <section className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+          <section className="rounded-lg border bg-[var(--semantic-warning-bg)] p-3 text-[var(--semantic-warning-text)] border-[var(--semantic-warning-text)]">
             <div className="flex items-start gap-2">
               <ShieldAlert size={13} className="mt-0.5 shrink-0" />
               <div>

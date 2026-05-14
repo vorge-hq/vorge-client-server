@@ -61,7 +61,7 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
             </div>
           ) : (
             <>
-              <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] text-blue-900">
+              <div className="mb-3 rounded-lg border bg-[var(--semantic-info-bg)] px-3 py-2 text-[11px] text-[var(--semantic-info-text)] border-[var(--semantic-info-text)]">
                 AI generated draft — clearly labelled and audit-logged. Review and edit before saving.
               </div>
               <textarea

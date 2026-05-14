@@ -64,7 +64,7 @@ export function RecallModal({ mode = "recall-immediate", onClose, onConfirm }) {
         </div>
 
         <div className="space-y-3 px-5 py-4 text-[13px]">
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+          <div className="flex items-start gap-2 rounded-lg border bg-[var(--semantic-warning-bg)] px-3 py-2 text-[var(--semantic-warning-text)] border-[var(--semantic-warning-text)]">
             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
             <span>{config.banner}</span>
           </div>

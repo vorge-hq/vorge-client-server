@@ -102,7 +102,7 @@
     --text-inverse:    #FFFFFF;
     --text-link:       var(--primary-600);
     --text-on-primary: #FFFFFF;
-    --text-on-accent:  var(--secondary-900);
+    --text-on-accent:  var(--tertiary-700);
 
     --surface-base:    #FFFFFF;
     --surface-raised:  #FFFFFF;
@@ -125,10 +125,23 @@
     --action-secondary-hover:   var(--gray-50);
     --action-secondary-active:  var(--gray-100);
 
-    --action-accent-default: var(--secondary-500);
-    --action-accent-hover:   var(--secondary-600);
+    --action-accent-default: var(--tertiary-50);
+    --action-accent-hover:   var(--tertiary-100);
+
+    --action-primary-border: transparent;
+    --action-accent-border:  var(--tertiary-300);
 
     --action-destructive-default: var(--semantic-error);
+
+    /* Tinted-pill semantic roles (bg + text pair per state) */
+    --semantic-success-bg:   #DCFCE7;
+    --semantic-success-text: #166534;
+    --semantic-warning-bg:   #FEF3C7;
+    --semantic-warning-text: #92400E;
+    --semantic-error-bg:     #FEE2E2;
+    --semantic-error-text:   #991B1B;
+    --semantic-info-bg:      #DBEAFE;
+    --semantic-info-text:    #1E40AF;
 
     /* shadcn mappings (light) */
     --background:           var(--surface-base);
@@ -163,48 +176,59 @@
      ============================================================ */
   .dark {
     /* Surfaces — elevation increases brightness on dark */
-    --surface-base:    #0E1623;
-    --surface-sunken:  #080E18;
+    --surface-base:    var(--gray-900);
+    --surface-sunken:  var(--gray-900);
     --surface-raised:  var(--gray-800);
-    --surface-muted:   #1A2434;
+    --surface-muted:   var(--primary-800);
     --surface-overlay: var(--gray-700);
     --surface-inverse: #FFFFFF;
+    --surface-primary: var(--primary-700);
 
     /* Text — never pure white */
-    --text-primary:    var(--gray-50);
+    --text-primary:    var(--gray-200);
     --text-secondary:  var(--gray-300);
     --text-muted:      var(--gray-400);
     --text-disabled:   var(--gray-500);
     --text-inverse:    var(--gray-900);
     --text-link:       var(--primary-300);
-    --text-on-primary: #FFFFFF;
-    --text-on-accent:  var(--secondary-900);
+    --text-on-primary: var(--primary-100);
+    --text-on-accent:  var(--tertiary-300);
 
     /* Borders — lighter so they're visible on dark */
     --border-subtle:  #1F2A3A;
-    --border-default: var(--gray-700);
-    --border-strong:  var(--gray-600);
+    --border-default: var(--gray-600);
+    --border-strong:  var(--gray-500);
     --border-focus:   var(--primary-300);
 
-    /* Actions
-       action-primary-default uses a custom shade (#4D7494) that
-       passes both white-text contrast (4.95:1) AND button-on-
-       surface contrast (3.66:1). Neither Primary 400 nor 500
-       alone could clear both bars in dark mode. */
-    --action-primary-default:  #4D7494;
-    --action-primary-hover:    var(--primary-300);
-    --action-primary-active:   var(--primary-400);
+    --action-primary-default:  var(--primary-500);
+    --action-primary-hover:    var(--primary-600);
+    --action-primary-active:   var(--primary-700);
     --action-primary-disabled: var(--primary-800);
 
     --action-secondary-default: var(--gray-800);
     --action-secondary-hover:   var(--gray-700);
     --action-secondary-active:  var(--gray-600);
 
-    --action-accent-default: var(--secondary-500);
-    --action-accent-hover:   var(--secondary-400);
+    --action-accent-default: var(--tertiary-900);
+    --action-accent-hover:   var(--tertiary-800);
+
+    --action-primary-border: var(--primary-400);
+    --action-accent-border:  var(--tertiary-700);
 
     --action-destructive-default: var(--semantic-error);
 
+    /* Tinted-pill semantic roles — designer-verified WCAG AA pairs */
+    --semantic-success-bg:   #052A14;
+    --semantic-success-text: #4ADE80;
+    --semantic-warning-bg:   #271B05;
+    --semantic-warning-text: #FCD34D;
+    --semantic-error-bg:     #280A0A;
+    --semantic-error-text:   #F87171;
+    --semantic-info-bg:      #071937;
+    --semantic-info-text:    #93C5FD;
+
+    /* TEMP — dark-mode severity values are placeholder pending designer spec.
+       Do not refactor or replace without final values from design review. */
     /* Severity — dark backgrounds with lighter text and fills */
     --severity-low-fill:        #6FA882;
     --severity-low-bg:          #1E2D24;
@@ -317,7 +341,23 @@
   }
 
   .btn-primary {
-    @apply btn border border-primary bg-primary text-primary-foreground hover:border-primary-600 hover:bg-primary-600;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary-600;
+    border: 1px solid var(--action-primary-border);
+  }
+
+  .btn-accent {
+    @apply btn;
+    background: var(--action-accent-default);
+    color: var(--text-on-accent);
+    border: 1px solid var(--action-accent-border);
+  }
+
+  .btn-accent:hover {
+    background: var(--action-accent-hover);
+  }
+
+  .btn-accent svg {
+    color: var(--secondary-500);
   }
 
   .btn-secondary {

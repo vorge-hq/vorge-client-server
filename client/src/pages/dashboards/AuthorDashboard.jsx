@@ -168,7 +168,7 @@ export function AuthorDashboard() {
           <button
             type="button"
             onClick={() => setAiDraftOpen(true)}
-            className="btn-secondary inline-flex items-center gap-1.5"
+            className="btn-accent inline-flex items-center gap-1.5"
           >
             <Sparkles size={13} aria-hidden /> AI-draft summary
           </button>

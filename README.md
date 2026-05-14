@@ -1,6 +1,6 @@
-# Vantage
+# Vantage SRA
 
-Vantage is a mobile-first, multi-tenant Security Risk Assessment platform. It replaces Word-document-based SRA workflows with a structured, multi-user, audit-defensible client/server application.
+Vantage SRA is a mobile-first, multi-tenant Security Risk Assessment platform. It replaces Word-document-based SRA workflows with a structured, multi-user, audit-defensible client/server application.
 
 `docs/BusinessLogic.md` is the canonical source for business behavior.
 

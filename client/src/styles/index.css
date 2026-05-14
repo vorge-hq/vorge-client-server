@@ -289,6 +289,10 @@
   textarea {
     font: inherit;
   }
+
+  input::-webkit-calendar-picker-indicator {
+    display: none !important;
+  }
 }
 
 @layer components {
@@ -334,6 +338,19 @@
 
   .field-control {
     @apply focus-ring w-full rounded-md border border-border-default bg-surface-base px-3 py-2 text-sm text-text-primary placeholder:text-text-disabled disabled:bg-surface-sunken disabled:text-text-muted;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  select.field-control {
+    @apply pr-9 bg-no-repeat;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'><path stroke='%236B7C93' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m6 8 4 4 4-4'/></svg>");
+    background-position: right 0.625rem center;
+    background-size: 1rem 1rem;
+  }
+
+  .dark select.field-control {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'><path stroke='%23B8C5D6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.6' d='m6 8 4 4 4-4'/></svg>");
   }
 
   .section-eyebrow {

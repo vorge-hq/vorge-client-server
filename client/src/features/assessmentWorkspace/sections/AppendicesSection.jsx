@@ -4,7 +4,12 @@ import { useAuth } from "../../../auth/AuthContext";
 import { Tabs } from "../../../components/Tabs";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { CONSEQUENCE_AXES, RISK_BANDS } from "../riskMatrix";
+import {
+  CONSEQUENCE_AXES,
+  CONSEQUENCE_LABELS,
+  LIKELIHOOD_LABELS,
+  RISK_BANDS
+} from "../riskMatrix";
 import { ASSESSMENT_STATES, getCommentPermission } from "../assessmentModel";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
@@ -50,9 +55,9 @@ function ApprovalsTable({ assessment }) {
   ];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200">
+    <div className="overflow-hidden rounded-lg border border-border-default">
       <table className="min-w-full text-left text-[12px]">
-        <thead className="bg-zinc-50 text-[10px] uppercase tracking-wide text-zinc-500">
+        <thead className="bg-surface-muted/60 text-[10px] uppercase tracking-wide text-text-muted">
           <tr>
             <th className="px-3 py-2">Role</th>
             <th className="px-3 py-2">Person</th>
@@ -60,12 +65,12 @@ function ApprovalsTable({ assessment }) {
             <th className="px-3 py-2">Status</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 bg-white">
+        <tbody className="divide-y divide-border-subtle bg-surface-raised">
           {rows.map((row) => (
             <tr key={row.role}>
-              <td className="px-3 py-2 font-medium text-zinc-900">{row.role}</td>
-              <td className="px-3 py-2 text-zinc-700">{row.name}</td>
-              <td className="px-3 py-2 tabular-nums text-zinc-600">{row.timestamp}</td>
+              <td className="px-3 py-2 font-medium text-text-primary">{row.role}</td>
+              <td className="px-3 py-2 text-text-secondary">{row.name}</td>
+              <td className="px-3 py-2 tabular-nums text-text-secondary">{row.timestamp}</td>
               <td className="px-3 py-2">
                 <Chip tone={row.status === "Signed" ? "success" : "warn"}>{row.status}</Chip>
               </td>
@@ -97,21 +102,21 @@ function ContributorsCard({ readOnly }) {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200">
-      <header className="flex items-center justify-between border-b border-zinc-100 px-3 py-2">
+    <div className="rounded-lg border border-border-default">
+      <header className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
         <div className="inline-flex items-center gap-2">
-          <Users size={13} className="text-zinc-700" />
+          <Users size={13} className="text-text-secondary" />
           <span className="text-[12px] font-semibold">Contributors</span>
         </div>
         {readOnly ? null : (
-          <button type="button" onClick={addRow} className="btn-secondary text-[11px]">
+          <button type="button" onClick={addRow} className="btn-primary inline-flex items-center gap-1.5 text-[11px]">
             <Plus size={11} aria-hidden /> Add contributor
           </button>
         )}
       </header>
       <div className="overflow-x-auto">
         <table className="min-w-full text-[12px]">
-          <thead className="bg-zinc-50 text-[10px] uppercase tracking-wide text-zinc-500">
+          <thead className="bg-surface-muted/60 text-[10px] uppercase tracking-wide text-text-muted">
             <tr>
               <th className="px-3 py-2 text-left">Type</th>
               <th className="px-3 py-2 text-left">Name</th>
@@ -121,7 +126,7 @@ function ContributorsCard({ readOnly }) {
               <th className="px-3 py-2" aria-label="actions" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 bg-white">
+          <tbody className="divide-y divide-border-subtle bg-surface-raised">
             {team.map((row) => (
               <tr key={row.id}>
                 <td className="px-3 py-1.5">
@@ -173,7 +178,7 @@ function ContributorsCard({ readOnly }) {
                     <button
                       type="button"
                       onClick={() => remove(row.id)}
-                      className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700"
+                      className="rounded p-1 text-text-disabled hover:bg-red-50 hover:text-red-700"
                       aria-label={`Remove ${row.name || "contributor"}`}
                     >
                       <Trash2 size={12} />
@@ -205,19 +210,19 @@ function ReferencesTable({ readOnly }) {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200">
-      <header className="flex items-center justify-between border-b border-zinc-100 px-3 py-2">
+    <div className="rounded-lg border border-border-default">
+      <header className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
         <div className="inline-flex items-center gap-2">
-          <FileText size={13} className="text-zinc-700" />
+          <FileText size={13} className="text-text-secondary" />
           <span className="text-[12px] font-semibold">References</span>
         </div>
         {readOnly ? null : (
-          <button type="button" onClick={addRow} className="btn-secondary text-[11px]">
+          <button type="button" onClick={addRow} className="btn-primary inline-flex items-center gap-1.5 text-[11px]">
             <Upload size={11} aria-hidden /> Add reference
           </button>
         )}
       </header>
-      <ul className="divide-y divide-zinc-100">
+      <ul className="divide-y divide-border-subtle">
         {refs.map((row) => (
           <li key={row.id} className="grid gap-2 px-3 py-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
             <input
@@ -242,7 +247,7 @@ function ReferencesTable({ readOnly }) {
               <button
                 type="button"
                 onClick={() => remove(row.id)}
-                className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-700"
+                className="rounded p-1 text-text-disabled hover:bg-red-50 hover:text-red-700"
                 aria-label="Remove reference"
               >
                 <Trash2 size={12} />
@@ -257,75 +262,99 @@ function ReferencesTable({ readOnly }) {
 
 function RiskMatrixView({ frozen }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[12px] font-semibold text-zinc-900">Risk matrix · 5 × 5</p>
+    <div className="rounded-lg border border-border-default bg-surface-raised p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold text-text-primary">Risk matrix · 5 × 5</p>
         {frozen ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
             <Lock size={9} aria-hidden /> Frozen with this version
           </span>
         ) : null}
       </div>
-      <div className="overflow-x-auto">
-        <table className="text-[10px]">
-          <thead>
-            <tr>
-              <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500" />
-              {[1, 2, 3, 4, 5].map((l) => (
-                <th key={l} className="px-2 py-1 text-center text-[10px] font-semibold text-zinc-600">
-                  L{l}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[5, 4, 3, 2, 1].map((c) => (
-              <tr key={c}>
-                <th className="px-2 py-1 text-left text-[10px] font-semibold text-zinc-600">C{c}</th>
-                {[1, 2, 3, 4, 5].map((l) => {
-                  const score = c * l;
-                  const band = score <= 4 ? "low" : score <= 9 ? "med" : score <= 15 ? "high" : "vhigh";
-                  const colors = {
-                    low: "bg-emerald-50 text-emerald-800",
-                    med: "bg-amber-50 text-amber-900",
-                    high: "bg-orange-50 text-orange-800",
-                    vhigh: "bg-red-50 text-red-800"
-                  };
-                  return (
-                    <td
-                      key={l}
-                      className={`px-3 py-2 text-center font-semibold ${colors[band]}`}
-                    >
-                      {score}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-3 grid gap-1 text-[11px] text-zinc-600 sm:grid-cols-2">
-        <div>
-          <p className="font-semibold text-zinc-700">Risk bands</p>
-          <ul className="mt-1 space-y-0.5">
-            {Object.values(RISK_BANDS).map((band) => (
-              <li key={band.id} className="flex items-center gap-2">
-                <span className={`h-3 w-3 rounded ${band.bg}`} />
-                <span>
-                  {band.id} ({band.min}–{band.max})
-                </span>
-              </li>
-            ))}
-          </ul>
+
+      <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
+        <div className="overflow-x-auto">
+          <div className="mb-1 ml-[88px] text-center text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            Likelihood &rarr;
+          </div>
+          <div className="flex items-stretch">
+            <div className="flex w-4 items-center justify-center pr-2">
+              <div className="rotate-[270deg] whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                Consequence &rarr;
+              </div>
+            </div>
+
+            <table className="text-[12px]">
+              <thead>
+                <tr>
+                  <th className="w-[80px]" aria-hidden />
+                  {[1, 2, 3, 4, 5].map((l) => (
+                    <th key={l} className="px-2 py-2 align-bottom">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">L{l}</div>
+                      <div className="mt-0.5 text-[12px] font-medium text-text-primary">
+                        {LIKELIHOOD_LABELS[l - 1]}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[5, 4, 3, 2, 1].map((c) => (
+                  <tr key={c}>
+                    <th className="pr-3 align-middle text-right">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">C{c}</div>
+                      <div className="text-[12px] font-medium text-text-primary">
+                        {CONSEQUENCE_LABELS[c]}
+                      </div>
+                    </th>
+                    {[1, 2, 3, 4, 5].map((l) => {
+                      const score = c * l;
+                      const band = score <= 4 ? "low" : score <= 9 ? "med" : score <= 15 ? "high" : "vhigh";
+                      const colors = {
+                        low: "bg-emerald-50 text-emerald-800",
+                        med: "bg-amber-50 text-amber-900",
+                        high: "bg-orange-50 text-orange-800",
+                        vhigh: "bg-red-50 text-red-800"
+                      };
+                      return (
+                        <td
+                          key={l}
+                          className={`h-[50px] w-[64px] text-center text-[13px] font-semibold ${colors[band]}`}
+                        >
+                          {score}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-zinc-700">Consequence axes</p>
-          <ul className="mt-1 list-disc pl-4">
-            {CONSEQUENCE_AXES.map((axis) => (
-              <li key={axis}>{axis}</li>
-            ))}
-          </ul>
+
+        <div className="text-[11px] text-text-secondary lg:max-w-xs">
+          <div>
+            <p className="text-[12px] font-semibold text-text-primary">Risk bands</p>
+            <ul className="mt-2 space-y-1">
+              {Object.values(RISK_BANDS).map((band) => (
+                <li key={band.id} className="flex items-center gap-2">
+                  <span className={`h-3 w-3 rounded ${band.fill}`} />
+                  <span>
+                    {band.id} ({band.min}&ndash;{band.max})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="my-4 border-t border-border-default" />
+          <div>
+            <p className="text-[12px] font-semibold text-text-primary">Consequence axes</p>
+            <ul className="mt-2 list-disc space-y-0.5 pl-4">
+              {CONSEQUENCE_AXES.map((axis) => (
+                <li key={axis}>{axis}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -366,7 +395,7 @@ export function AppendicesSection({ assessment, readOnly, errors }) {
       {tab === "team" ? (
         <div className="grid gap-4">
           <div>
-            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-text-muted">
               Document approvals
             </p>
             <ApprovalsTable assessment={assessment} />

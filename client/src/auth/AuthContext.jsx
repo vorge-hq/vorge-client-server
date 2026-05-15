@@ -7,11 +7,36 @@ import {
   getDemoPersona,
   isRoleMfaRequired
 } from "./session";
+import { isDemoEnabled } from "./demoFlag";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children, initialSession = demoSession }) {
-  const [session, setSession] = useState(initialSession);
+const SESSION_STORAGE_KEY = "vantage.session";
+const TOKEN_STORAGE_KEY = "vantage.session.token";
+
+function readStoredSession() {
+  if (isDemoEnabled()) return null;
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    return null;
+  }
+}
+
+function defaultInitialSession() {
+  if (isDemoEnabled()) return demoSession;
+  return readStoredSession();
+}
+
+export function AuthProvider({ children, initialSession }) {
+  const [session, setSession] = useState(() =>
+    initialSession === undefined ? defaultInitialSession() : initialSession
+  );
 
   const switchRole = useCallback(
     (role) => {
@@ -35,6 +60,7 @@ export function AuthProvider({ children, initialSession = demoSession }) {
 
   const switchDemoRole = useCallback(
     (role) => {
+      if (!isDemoEnabled()) return null;
       if (!session) return null;
       if (!canDemoSwitchToRole(session, role)) return null;
 
@@ -88,7 +114,13 @@ export function AuthProvider({ children, initialSession = demoSession }) {
     [session]
   );
 
-  const logout = useCallback(() => setSession(null), []);
+  const logout = useCallback(() => {
+    setSession(null);
+    if (!isDemoEnabled() && typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+  }, []);
 
   const login = useCallback((nextSession) => setSession(nextSession), []);
 

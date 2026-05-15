@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import vantageLogoOnDark from "../assets/vantage-logo-on-dark.svg";
 import { useAuth } from "../auth/AuthContext";
+import { isDemoEnabled } from "../auth/demoFlag";
 import { ThemeToggle } from "../components/ThemeToggle";
 import {
   ROLES,
   canDemoSwitchToRole,
+  canSwitchToRole,
   getDemoPersona,
   isRoleMfaRequired
 } from "../auth/session";
@@ -64,10 +66,16 @@ function NavTab({ to, end, children }) {
 }
 
 function RoleSwitcher({ session, onSwitchRole }) {
+  const demoMode = isDemoEnabled();
   const allRoles = Object.values(ROLES);
-  const switchableRoles = session.demo
-    ? allRoles
-    : allRoles.filter((role) => canDemoSwitchToRole(session, role));
+  let switchableRoles;
+  if (demoMode && session.demo) {
+    switchableRoles = allRoles;
+  } else if (demoMode) {
+    switchableRoles = allRoles.filter((role) => canDemoSwitchToRole(session, role));
+  } else {
+    switchableRoles = allRoles.filter((role) => canSwitchToRole(session, role));
+  }
   const single = switchableRoles.length <= 1;
   const [open, setOpen] = useState(false);
 
@@ -110,7 +118,7 @@ function RoleSwitcher({ session, onSwitchRole }) {
               {session.demo ? "Demo: switch role" : "Switch acting role"}
             </div>
             {switchableRoles.map((role) => {
-              const persona = getDemoPersona(role);
+              const persona = demoMode ? getDemoPersona(role) : null;
               const isActive = session.actingRole === role;
               return (
                 <button
@@ -266,7 +274,7 @@ export function AppShell() {
   const unreadCount = countUnread(workspace.notifications, session.actingRole);
 
   function handleSwitchRole(role) {
-    if (session.demo && switchDemoRole) {
+    if (isDemoEnabled() && session.demo && switchDemoRole) {
       const target = switchDemoRole(role);
       if (target) {
         if (workspace?.applyDemoRoleSwitch) {

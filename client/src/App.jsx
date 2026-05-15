@@ -15,6 +15,7 @@ import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { WorkspaceProvider } from "./features/assessmentWorkspace/WorkspaceContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toast } from "./components/Toast";
+import { useTheme } from "./hooks/useTheme";
 
 export function AppRoutes() {
   return (
@@ -46,6 +47,7 @@ export function AppRoutes() {
 }
 
 export default function App() {
+  useTheme();
   return (
     <ErrorBoundary>
       <AuthProvider>

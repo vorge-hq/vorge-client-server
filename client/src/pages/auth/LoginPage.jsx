@@ -2,10 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Shield, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { isDemoEnabled } from "../../auth/demoFlag";
 import { ROLES, demoSession, getDemoPersona, isRoleMfaRequired } from "../../auth/session";
+import { ApiError, apiRequest } from "../../api/client";
 import { Banner } from "../../components/Banner";
 import { FormField, TextInput } from "../../components/FormField";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import { getHomeRouteForRole } from "../../features/navigation/navigation";
+
+const SESSION_STORAGE_KEY = "vantage.session";
+const TOKEN_STORAGE_KEY = "vantage.session.token";
 
 const PERSONA_HINTS = {
   [ROLES.AUTHOR]: "Drafts and edits assessments; field mode and submissions.",
@@ -49,6 +55,13 @@ function buildSessionForRole(role, users) {
 }
 
 export function LoginPage() {
+  if (isDemoEnabled()) {
+    return <DemoLoginPage />;
+  }
+  return <ProdLoginPage />;
+}
+
+function DemoLoginPage() {
   const { login } = useAuth();
   const workspace = useWorkspace();
   const navigate = useNavigate();
@@ -286,6 +299,129 @@ export function LoginPage() {
           </div>
         </div>
       ) : null}
+    </main>
+  );
+}
+
+function ProdLoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const result = await apiRequest("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password })
+      });
+
+      const { token, user, actingRole, roles, facilities } = result;
+      const session = {
+        user,
+        facility: facilities?.[0] || null,
+        facilities: facilities || [],
+        roles: roles || [],
+        actingRole,
+        token,
+        mfaSatisfied: true,
+        demo: false
+      };
+
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      }
+
+      login(session);
+      navigate(getHomeRouteForRole(actingRole));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401 && err.code === "INVALID_CREDENTIALS") {
+        setError({ tone: "credentials", message: "Incorrect email or password." });
+      } else {
+        setError({ tone: "generic", message: "Something went wrong, try again." });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
+    >
+      <div className="w-full max-w-[400px]">
+        <div className="mb-10 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+            <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
+          </div>
+          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+        </div>
+
+        <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
+          Sign in to continue
+        </h1>
+        <p className="mb-8 text-sm text-zinc-500">Use your Vantage credentials.</p>
+
+        <form className="space-y-3" onSubmit={handleSubmit} noValidate>
+          <div>
+            <label htmlFor="email" className="field-label mb-1.5 block">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              placeholder="you@company.com"
+              className="field-control"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="field-label mb-1.5 block">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="field-control"
+              required
+            />
+          </div>
+
+          {error ? (
+            <Banner tone="danger" title={error.tone === "credentials" ? "Sign-in failed" : "Sign-in error"}>
+              {error.message}
+            </Banner>
+          ) : null}
+
+          <button
+            type="submit"
+            className="btn-primary mt-2 w-full justify-center py-2.5"
+            disabled={submitting}
+          >
+            {submitting ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+          <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
+          All sign-in attempts are logged to the immutable audit trail.
+        </div>
+      </div>
     </main>
   );
 }

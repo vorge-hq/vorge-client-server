@@ -17,7 +17,7 @@
 SHELL := /bin/bash
 COMPOSE := docker compose
 
-.PHONY: help start stop restart logs build build-first setup-first test migrate clean
+.PHONY: help start stop restart logs build build-first setup-first test migrate clean dev-demo dev-prod
 
 help:
 	@echo "Vantage developer commands:"
@@ -26,6 +26,8 @@ help:
 	@echo "  make stop         Stop Docker services only"
 	@echo "  make restart      Restart Docker services"
 	@echo "  make logs         View Docker logs"
+	@echo "  make dev-demo     Start stack with demo personas enabled (client-only flag)"
+	@echo "  make dev-prod     Start stack in prod mode (real login, no demo personas)"
 	@echo "  make build        Run tests, then build Docker artifacts"
 	@echo "  make build-first  First-time build with setup/migrations"
 	@echo "  make setup-first  Prepare first-time local/dev environment"
@@ -64,3 +66,9 @@ migrate:
 
 clean:
 	$(COMPOSE) down
+
+dev-demo:
+	VITE_ENABLE_DEMO=true $(COMPOSE) up -d
+
+dev-prod:
+	VITE_ENABLE_DEMO=false $(COMPOSE) up -d

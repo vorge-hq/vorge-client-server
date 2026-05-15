@@ -15,3 +15,9 @@ Notes.txt
 website/
 
 .vercel/
+
+# Claude Code local state (commit settings.json + hooks; ignore user-local + caches)
+.claude/settings.local.json
+.claude/sessions/
+.claude/cache/
+.claude/.credentials*

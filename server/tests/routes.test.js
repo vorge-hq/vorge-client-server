@@ -41,10 +41,25 @@ jest.mock("../src/repositories/mitigationRepository", () => ({
   listMine: jest.fn()
 }));
 
+jest.mock("../src/repositories/sessionRepository", () => {
+  const active = new Set();
+  return {
+    __active: active,
+    createSession: jest.fn(async ({ id, userId }) => {
+      active.add(id);
+      return { id, userId };
+    }),
+    findActiveSessionById: jest.fn(async (sid) => (active.has(sid) ? { id: sid } : null)),
+    revokeSession: jest.fn(async (sid) => (active.delete(sid) ? 1 : 0)),
+    cleanupExpiredSessions: jest.fn(async () => 0)
+  };
+});
+
 const app = require("../src/app");
 const userRepository = require("../src/repositories/userRepository");
 const assessmentRepository = require("../src/repositories/assessmentRepository");
 const mitigationRepository = require("../src/repositories/mitigationRepository");
+const sessionRepository = require("../src/repositories/sessionRepository");
 
 const user = {
   id: "user-1",
@@ -61,12 +76,14 @@ const user = {
   facilities: [{ id: "facility-1", name: "Demo Facility", operatorId: "operator-1" }]
 };
 
-function tokenFor(actingRole = ROLES.AUTHOR) {
-  return jwt.sign({ email: user.email, actingRole }, env.jwtSecret, { subject: user.id, expiresIn: "1h" });
+function tokenFor(actingRole = ROLES.AUTHOR, sid = "test-sid", subject = user.id, email = user.email) {
+  return jwt.sign({ email, actingRole, sid }, env.jwtSecret, { subject, expiresIn: "1h" });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  sessionRepository.__active.clear();
+  sessionRepository.__active.add("test-sid");
   userRepository.findUserByEmail.mockResolvedValue(user);
   userRepository.findUserById.mockResolvedValue(user);
 });
@@ -154,5 +171,140 @@ describe("database-backed route wiring", () => {
 
     expect(response.body.update.status).toBe(MITIGATION_STATUSES.DONE);
     expect(response.body.progressLog).toEqual({ id: "log-1", note: "Installed" });
+  });
+});
+
+describe("auth session lifecycle", () => {
+  test("login mints a token carrying both sub and sid claims", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const payload = jwt.verify(response.body.token, env.jwtSecret);
+    expect(payload.sub).toBe(user.id);
+    expect(payload.sid).toEqual(expect.any(String));
+    expect(sessionRepository.__active.has(payload.sid)).toBe(true);
+  });
+
+  test("logout revokes the session and subsequent requests with the same token are rejected", async () => {
+    const loginResponse = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const token = loginResponse.body.token;
+
+    await request(app).get("/api/auth/me").set("Authorization", `Bearer ${token}`).expect(200);
+
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${token}`).expect(204);
+
+    const meAfter = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(401);
+    expect(meAfter.body.error.code).toBe("INVALID_TOKEN");
+
+    const logoutAgain = await request(app)
+      .post("/api/auth/logout")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(401);
+    expect(logoutAgain.body.error.code).toBe("INVALID_TOKEN");
+  });
+
+  test("switch-role rotates the session: old token rejected, new token works", async () => {
+    const loginResponse = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const oldToken = loginResponse.body.token;
+    const oldSid = jwt.verify(oldToken, env.jwtSecret).sid;
+
+    const switchResponse = await request(app)
+      .post("/api/auth/switch-role")
+      .set("Authorization", `Bearer ${oldToken}`)
+      .send({ role: ROLES.REVIEWER })
+      .expect(200);
+
+    const newToken = switchResponse.body.token;
+    const newSid = jwt.verify(newToken, env.jwtSecret).sid;
+
+    expect(newSid).not.toBe(oldSid);
+    expect(sessionRepository.__active.has(oldSid)).toBe(false);
+    expect(sessionRepository.__active.has(newSid)).toBe(true);
+
+    await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${oldToken}`)
+      .expect(401);
+
+    await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${newToken}`)
+      .expect(200);
+  });
+
+  test("a token issued without a sid (legacy) is rejected as INVALID_TOKEN", async () => {
+    const legacyToken = jwt.sign({ email: user.email, actingRole: ROLES.AUTHOR }, env.jwtSecret, {
+      subject: user.id,
+      expiresIn: "1h"
+    });
+
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${legacyToken}`)
+      .expect(401);
+
+    expect(response.body.error.code).toBe("INVALID_TOKEN");
+  });
+
+  test("cross-tenant: user A logging out does not revoke user B's session", async () => {
+    const userB = {
+      id: "user-2",
+      email: "reviewer@example.com",
+      name: "Demo Reviewer",
+      mfaEnabled: true,
+      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      roleAssignments: [
+        { role: ROLES.REVIEWER, facilityId: "facility-2", operatorId: "operator-2" }
+      ],
+      roles: [ROLES.REVIEWER],
+      facilities: [{ id: "facility-2", name: "Other Facility", operatorId: "operator-2" }]
+    };
+
+    userRepository.findUserByEmail.mockImplementation(async (email) => {
+      if (email === user.email) return user;
+      if (email === userB.email) return userB;
+      return null;
+    });
+    userRepository.findUserById.mockImplementation(async (id) => {
+      if (id === user.id) return user;
+      if (id === userB.id) return userB;
+      return null;
+    });
+
+    const loginA = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+    const loginB = await request(app)
+      .post("/api/auth/login")
+      .send({ email: userB.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const tokenA = loginA.body.token;
+    const tokenB = loginB.body.token;
+    const sidA = jwt.verify(tokenA, env.jwtSecret).sid;
+    const sidB = jwt.verify(tokenB, env.jwtSecret).sid;
+
+    expect(sidA).not.toBe(sidB);
+
+    await request(app).post("/api/auth/logout").set("Authorization", `Bearer ${tokenA}`).expect(204);
+
+    expect(sessionRepository.__active.has(sidA)).toBe(false);
+    expect(sessionRepository.__active.has(sidB)).toBe(true);
+
+    await request(app).get("/api/auth/me").set("Authorization", `Bearer ${tokenB}`).expect(200);
   });
 });

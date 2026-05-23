@@ -8,6 +8,7 @@ import {
   isRoleMfaRequired
 } from "./session";
 import { isDemoEnabled } from "./demoFlag";
+import { apiRequest } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -115,6 +116,13 @@ export function AuthProvider({ children, initialSession }) {
   );
 
   const logout = useCallback(() => {
+    if (!isDemoEnabled()) {
+      // Fire-and-forget: dispatch the revocation request before we clear the
+      // token, but never block the UI on it. apiRequest reads the token
+      // synchronously, so the Authorization header is captured before the
+      // localStorage removeItem calls below.
+      apiRequest("/api/auth/logout", { method: "POST" }).catch(() => {});
+    }
     setSession(null);
     if (!isDemoEnabled() && typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem(SESSION_STORAGE_KEY);

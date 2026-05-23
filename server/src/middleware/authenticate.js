@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
+const sessionService = require("../services/sessionService");
 const { findUserById, hasAssignedRole } = require("../repositories/userRepository");
 
 async function authenticate(req, res, next) {
@@ -12,6 +13,20 @@ async function authenticate(req, res, next) {
 
   try {
     const payload = jwt.verify(token, env.jwtSecret);
+
+    if (!payload.sid) {
+      return res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });
+    }
+
+    try {
+      await sessionService.validateSession(payload.sid, new Date());
+    } catch (sessionError) {
+      if (sessionError.code === "INVALID_TOKEN") {
+        return res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });
+      }
+      throw sessionError;
+    }
+
     const user = await findUserById(payload.sub);
 
     if (!user) {
@@ -32,6 +47,7 @@ async function authenticate(req, res, next) {
     req.user = user;
     req.actingRole = actingRole;
     req.tokenActingRole = payload.actingRole || null;
+    req.tokenSid = payload.sid;
     return next();
   } catch (_error) {
     return res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });

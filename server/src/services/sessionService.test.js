@@ -91,11 +91,15 @@ describe("sessionService.validateSession", () => {
 });
 
 describe("sessionService.revokeSession", () => {
-  test("delegates to the repository", async () => {
+  test("delegates to the repository with default now/trx", async () => {
     sessionRepository.revokeSession.mockResolvedValue(1);
 
     await expect(sessionService.revokeSession("sid-1")).resolves.toBe(1);
-    expect(sessionRepository.revokeSession).toHaveBeenCalledWith("sid-1");
+    expect(sessionRepository.revokeSession).toHaveBeenCalledWith(
+      "sid-1",
+      expect.any(Date),
+      expect.anything()
+    );
   });
 
   test("is idempotent: a second call still resolves and does not throw", async () => {
@@ -104,9 +108,31 @@ describe("sessionService.revokeSession", () => {
     await sessionService.revokeSession("sid-1");
     await expect(sessionService.revokeSession("sid-1")).resolves.toBe(0);
   });
+
+  test("forwards an explicit trx and now to the repository", async () => {
+    sessionRepository.revokeSession.mockResolvedValue(1);
+    const now = new Date();
+
+    await sessionService.revokeSession("sid-1", now, "explicit-trx");
+
+    expect(sessionRepository.revokeSession).toHaveBeenCalledWith("sid-1", now, "explicit-trx");
+  });
 });
 
 describe("sessionService.rotateSession", () => {
+  test("participates in an outer transaction when one is supplied", async () => {
+    sessionRepository.revokeSession.mockResolvedValue(1);
+    await sessionService.rotateSession({
+      user,
+      previousSid: "old-sid",
+      actingRole: "Reviewer",
+      req,
+      trx: "outer-trx"
+    });
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(sessionRepository.revokeSession).toHaveBeenCalledWith("old-sid", expect.any(Date), "outer-trx");
+  });
+
   test("revokes the previous session and issues a new one in a transaction", async () => {
     const result = await sessionService.rotateSession({
       user,

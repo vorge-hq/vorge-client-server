@@ -37,6 +37,14 @@ async function createSession(
   return mapSession(row);
 }
 
+async function findSessionById(sid, trx = db) {
+  if (!sid) {
+    return null;
+  }
+  const row = await trx("sessions").where({ id: sid }).first();
+  return mapSession(row);
+}
+
 async function findActiveSessionById(sid, now = new Date(), trx = db) {
   if (!sid) {
     return null;
@@ -86,6 +94,7 @@ async function cleanupExpiredSessions(now = new Date(), trx = db) {
 
 module.exports = {
   createSession,
+  findSessionById,
   findActiveSessionById,
   revokeSession,
   cleanupExpiredSessions

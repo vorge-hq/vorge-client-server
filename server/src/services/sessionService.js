@@ -48,14 +48,15 @@ async function validateSession(sid, now = new Date()) {
   return session;
 }
 
-async function revokeSession(sid) {
-  return sessionRepository.revokeSession(sid);
+async function revokeSession(sid, now = new Date(), trx = db) {
+  return sessionRepository.revokeSession(sid, now, trx);
 }
 
-async function rotateSession({ user, previousSid, actingRole, req }) {
-  return db.transaction(async (trx) => {
-    await sessionRepository.revokeSession(previousSid, new Date(), trx);
-    const { sid, expiresAt } = await issueSession({ user, actingRole, req }, trx);
+async function rotateSession({ user, previousSid, actingRole, req, trx }) {
+  const run = async (work) => (trx ? work(trx) : db.transaction(work));
+  return run(async (activeTrx) => {
+    await sessionRepository.revokeSession(previousSid, new Date(), activeTrx);
+    const { sid, expiresAt } = await issueSession({ user, actingRole, req }, activeTrx);
     return { sid, expiresAt, previousSid };
   });
 }

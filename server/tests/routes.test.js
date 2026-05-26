@@ -24,7 +24,8 @@ jest.mock("../src/repositories/userRepository", () => ({
     mfaEnabled: user.mfaEnabled,
     roleAssignments: user.roleAssignments,
     roles: user.roleAssignments
-  }))
+  })),
+  updatePasswordHash: jest.fn(async () => 1)
 }));
 
 jest.mock("../src/repositories/assessmentRepository", () => ({
@@ -56,6 +57,16 @@ jest.mock("../src/repositories/sessionRepository", () => {
     findSessionById: jest.fn(async (sid) => sessions.get(sid) || null),
     findActiveSessionById: jest.fn(async (sid) => (active.has(sid) ? sessions.get(sid) || { id: sid } : null)),
     revokeSession: jest.fn(async (sid) => (active.delete(sid) ? 1 : 0)),
+    revokeAllForUser: jest.fn(async (userId) => {
+      let count = 0;
+      for (const [sid, row] of sessions.entries()) {
+        if (row.userId === userId && active.has(sid)) {
+          active.delete(sid);
+          count += 1;
+        }
+      }
+      return count;
+    }),
     cleanupExpiredSessions: jest.fn(async () => 0)
   };
 });
@@ -120,6 +131,17 @@ jest.mock("../src/repositories/refreshTokenRepository", () => {
       }
       return count;
     }),
+    revokeAllForUser: jest.fn(async (userId, now) => {
+      let count = 0;
+      for (const row of byHash.values()) {
+        if (row.userId === userId && !row.revokedAt) {
+          row.revokedAt = now;
+          revokedFamilies.add(row.familyId);
+          count++;
+        }
+      }
+      return count;
+    }),
     revokeByHash: jest.fn(async (tokenHash, now) => {
       const row = byHash.get(tokenHash);
       if (row && !row.revokedAt) {
@@ -132,6 +154,49 @@ jest.mock("../src/repositories/refreshTokenRepository", () => {
   };
 });
 
+jest.mock("../src/repositories/passwordResetTokenRepository", () => {
+  const byHash = new Map();
+  const byId = new Map();
+  return {
+    __byHash: byHash,
+    __byId: byId,
+    createToken: jest.fn(async ({ id, tokenHash, userId, expiresAt }) => {
+      const row = {
+        id,
+        tokenHash,
+        userId,
+        createdAt: new Date(),
+        expiresAt,
+        usedAt: null
+      };
+      byHash.set(tokenHash, row);
+      byId.set(id, row);
+      return row;
+    }),
+    findActiveByHash: jest.fn(async (tokenHash, now = new Date()) => {
+      const row = byHash.get(tokenHash);
+      if (!row) return null;
+      if (row.usedAt) return null;
+      if (row.expiresAt && new Date(row.expiresAt) <= now) return null;
+      return row;
+    }),
+    markUsed: jest.fn(async (id, now) => {
+      const row = byId.get(id);
+      if (row && !row.usedAt) {
+        row.usedAt = now;
+        return 1;
+      }
+      return 0;
+    }),
+    revokeAllForUser: jest.fn(async () => 0),
+    cleanupExpired: jest.fn(async () => 0)
+  };
+});
+
+jest.mock("../src/services/emailService", () => ({
+  sendPasswordResetEmail: jest.fn()
+}));
+
 const app = require("../src/app");
 const userRepository = require("../src/repositories/userRepository");
 const assessmentRepository = require("../src/repositories/assessmentRepository");
@@ -139,6 +204,9 @@ const mitigationRepository = require("../src/repositories/mitigationRepository")
 const sessionRepository = require("../src/repositories/sessionRepository");
 const refreshTokenRepository = require("../src/repositories/refreshTokenRepository");
 const refreshTokenService = require("../src/services/refreshTokenService");
+const passwordResetTokenRepository = require("../src/repositories/passwordResetTokenRepository");
+const passwordResetService = require("../src/services/passwordResetService");
+const emailService = require("../src/services/emailService");
 
 const user = {
   id: "user-1",
@@ -173,6 +241,8 @@ beforeEach(() => {
   refreshTokenRepository.__byHash.clear();
   refreshTokenRepository.__byId.clear();
   refreshTokenRepository.__revokedFamilies.clear();
+  passwordResetTokenRepository.__byHash.clear();
+  passwordResetTokenRepository.__byId.clear();
   userRepository.findUserByEmail.mockResolvedValue(user);
   userRepository.findUserById.mockResolvedValue(user);
 });
@@ -622,5 +692,195 @@ describe("auth refresh-token lifecycle", () => {
       .get("/api/auth/me")
       .set("Authorization", `Bearer ${stillFineB.body.token}`)
       .expect(200);
+  });
+});
+
+describe("auth password reset lifecycle", () => {
+  test("POST /forgot-password with existing email → 200, email stub called, token row created", async () => {
+    const response = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: user.email })
+      .expect(200);
+
+    expect(response.body).toEqual({ ok: true });
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    const [emailArg, urlArg] = emailService.sendPasswordResetEmail.mock.calls[0];
+    expect(emailArg).toBe(user.email);
+    expect(urlArg).toMatch(/\/reset-password\?token=[0-9a-f]{64}$/);
+
+    expect(passwordResetTokenRepository.createToken).toHaveBeenCalledTimes(1);
+    expect(passwordResetTokenRepository.__byId.size).toBe(1);
+  });
+
+  test("POST /forgot-password with unknown email → 200, NO email, NO token row", async () => {
+    userRepository.findUserByEmail.mockResolvedValueOnce(null);
+
+    const response = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: "nobody@nowhere.example" })
+      .expect(200);
+
+    expect(response.body).toEqual({ ok: true });
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+    expect(passwordResetTokenRepository.createToken).not.toHaveBeenCalled();
+    expect(passwordResetTokenRepository.__byId.size).toBe(0);
+  });
+
+  test("POST /reset-password with valid token → 200, password updated, sessions+refresh revoked", async () => {
+    // Set up: log in to create an active session + refresh family.
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+    const sid = jwt.verify(login.body.token, env.jwtSecret).sid;
+    expect(sessionRepository.__active.has(sid)).toBe(true);
+    const cookie = extractRefreshCookie(login);
+    const refreshRow = refreshTokenRepository.__byHash.get(
+      refreshTokenService.hashToken(refreshCookieValue(cookie))
+    );
+    expect(refreshRow.revokedAt).toBeFalsy();
+
+    // Request a reset.
+    await request(app).post("/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const [, resetUrl] = emailService.sendPasswordResetEmail.mock.calls[0];
+    const tokenParam = new URL(resetUrl).searchParams.get("token");
+
+    const response = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: tokenParam, password: "NewSecurePassword123!" })
+      .expect(200);
+
+    expect(response.body).toEqual({ ok: true, userId: user.id });
+    expect(userRepository.updatePasswordHash).toHaveBeenCalledWith(
+      user.id,
+      expect.stringMatching(/^\$2[aby]\$/),
+      expect.anything()
+    );
+    expect(sessionRepository.__active.has(sid)).toBe(false);
+    expect(refreshRow.revokedAt).toBeTruthy();
+
+    // Original access token is dead.
+    await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .expect(401);
+
+    // Re-using the same reset token → 401 INVALID_RESET_TOKEN.
+    await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: tokenParam, password: "AnotherPassword123!" })
+      .expect(401);
+  });
+
+  test("POST /reset-password with expired token → 401", async () => {
+    await request(app).post("/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const [, resetUrl] = emailService.sendPasswordResetEmail.mock.calls[0];
+    const tokenParam = new URL(resetUrl).searchParams.get("token");
+
+    // Backdate expiry
+    const hash = passwordResetService.hashToken(tokenParam);
+    const row = passwordResetTokenRepository.__byHash.get(hash);
+    row.expiresAt = new Date(Date.now() - 1000);
+
+    const response = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: tokenParam, password: "NewSecurePassword123!" })
+      .expect(401);
+    expect(response.body.error.code).toBe("INVALID_RESET_TOKEN");
+  });
+
+  test("POST /reset-password with unknown token → 401", async () => {
+    const response = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: "f".repeat(64), password: "NewSecurePassword123!" })
+      .expect(401);
+    expect(response.body.error.code).toBe("INVALID_RESET_TOKEN");
+  });
+
+  test("POST /reset-password with short password → 400 PASSWORD_TOO_SHORT", async () => {
+    await request(app).post("/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const [, resetUrl] = emailService.sendPasswordResetEmail.mock.calls[0];
+    const tokenParam = new URL(resetUrl).searchParams.get("token");
+
+    const response = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: tokenParam, password: "short" })
+      .expect(400);
+    expect(response.body.error.code).toBe("PASSWORD_TOO_SHORT");
+  });
+
+  test("cross-tenant: User A's password reset does not touch User B's password, sessions, or refresh tokens", async () => {
+    const userB = {
+      id: "user-2",
+      email: "reviewer@example.com",
+      name: "Demo Reviewer",
+      mfaEnabled: true,
+      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      roleAssignments: [
+        { role: ROLES.REVIEWER, facilityId: "facility-2", operatorId: "operator-2" }
+      ],
+      roles: [ROLES.REVIEWER],
+      facilities: [{ id: "facility-2", name: "Other Facility", operatorId: "operator-2" }]
+    };
+
+    userRepository.findUserByEmail.mockImplementation(async (email) => {
+      if (email === user.email) return user;
+      if (email === userB.email) return userB;
+      return null;
+    });
+    userRepository.findUserById.mockImplementation(async (id) => {
+      if (id === user.id) return user;
+      if (id === userB.id) return userB;
+      return null;
+    });
+
+    // Both users log in.
+    const loginA = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+    const loginB = await request(app)
+      .post("/api/auth/login")
+      .send({ email: userB.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const sidA = jwt.verify(loginA.body.token, env.jwtSecret).sid;
+    const sidB = jwt.verify(loginB.body.token, env.jwtSecret).sid;
+    const cookieB = extractRefreshCookie(loginB);
+    const refreshRowB = refreshTokenRepository.__byHash.get(
+      refreshTokenService.hashToken(refreshCookieValue(cookieB))
+    );
+
+    // Request a reset for User A and consume the token.
+    await request(app).post("/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const [, resetUrl] = emailService.sendPasswordResetEmail.mock.calls.at(-1);
+    const tokenParam = new URL(resetUrl).searchParams.get("token");
+
+    await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: tokenParam, password: "NewSecurePassword123!" })
+      .expect(200);
+
+    // updatePasswordHash was called for User A — never with User B's id.
+    const passwordUpdateCalls = userRepository.updatePasswordHash.mock.calls;
+    expect(passwordUpdateCalls.some(([uid]) => uid === user.id)).toBe(true);
+    expect(passwordUpdateCalls.some(([uid]) => uid === userB.id)).toBe(false);
+
+    // Session revoke fanned out to A's sid but NOT to B's.
+    expect(sessionRepository.__active.has(sidA)).toBe(false);
+    expect(sessionRepository.__active.has(sidB)).toBe(true);
+
+    // B's refresh row is untouched.
+    expect(refreshRowB.revokedAt).toBeFalsy();
+    expect(refreshTokenRepository.__revokedFamilies.has(refreshRowB.familyId)).toBe(false);
+
+    // B's access token still works.
+    await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${loginB.body.token}`)
+      .expect(200);
+
+    // B's refresh cookie still rotates cleanly.
+    await request(app).post("/api/auth/refresh").set("Cookie", cookieB).expect(200);
   });
 });

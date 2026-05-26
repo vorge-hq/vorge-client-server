@@ -9,6 +9,8 @@ const sessionService = require("../../services/sessionService");
 const refreshTokenService = require("../../services/refreshTokenService");
 const refreshTokenRepository = require("../../repositories/refreshTokenRepository");
 const sessionRepository = require("../../repositories/sessionRepository");
+const passwordResetService = require("../../services/passwordResetService");
+const emailService = require("../../services/emailService");
 const {
   findUserByEmail,
   findUserById,
@@ -351,6 +353,63 @@ router.post("/refresh", async (req, res, next) => {
         .status(401)
         .json({ error: { code: "INVALID_REFRESH_TOKEN", message: error.message } });
     }
+    return next(error);
+  }
+});
+
+// TODO: rate-limit POST /forgot-password (see chunk 3 plan §Out of scope).
+router.post("/forgot-password", async (req, res, next) => {
+  const { email } = req.body || {};
+
+  try {
+    await db.transaction(async (trx) => {
+      const result = await passwordResetService.requestReset({ email, req }, trx);
+      if (result) {
+        emailService.sendPasswordResetEmail(email, result.resetUrl);
+        await auditAuthEvent(
+          {
+            user: result.user,
+            actionType: "auth.password_reset_requested",
+            actingRole: firstRoleAssignment(result.user)?.role || "Unauthenticated",
+            req,
+            metadata: { tokenId: result.tokenId }
+          },
+          trx
+        );
+      }
+    });
+
+    // Always 200 — enumeration protection.
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/reset-password", async (req, res, next) => {
+  const { token, password } = req.body || {};
+
+  try {
+    const user = await db.transaction(async (trx) => {
+      const updatedUser = await passwordResetService.consumeToken(
+        { plaintextToken: token, newPassword: password },
+        trx
+      );
+      await passwordResetService.invalidateAllUserSessions({ userId: updatedUser.id }, trx);
+      await auditAuthEvent(
+        {
+          user: updatedUser,
+          actionType: "auth.password_reset_completed",
+          actingRole: firstRoleAssignment(updatedUser)?.role || "Unauthenticated",
+          req
+        },
+        trx
+      );
+      return updatedUser;
+    });
+
+    return res.json({ ok: true, userId: user.id });
+  } catch (error) {
     return next(error);
   }
 });

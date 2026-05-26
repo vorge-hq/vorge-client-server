@@ -89,6 +89,13 @@ function hasAssignedRole(user, role) {
   return Boolean(user?.roleAssignments?.some((assignment) => assignment.role === role));
 }
 
+async function updatePasswordHash(userId, passwordHash, trx = db) {
+  if (!userId || !passwordHash) {
+    return 0;
+  }
+  return trx("users").where({ id: userId }).update({ password_hash: passwordHash, updated_at: trx.fn.now() });
+}
+
 function firstRoleAssignment(user) {
   return user?.roleAssignments?.[0] || null;
 }
@@ -113,5 +120,6 @@ module.exports = {
   findUserById,
   firstRoleAssignment,
   hasAssignedRole,
-  publicUser
+  publicUser,
+  updatePasswordHash
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Shield, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { isDemoEnabled } from "../../auth/demoFlag";
@@ -416,6 +416,12 @@ function ProdLoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+        <div className="mt-4 text-center">
+          <Link to="/forgot-password" className="text-sm text-zinc-500 hover:text-primary">
+            Forgot password?
+          </Link>
+        </div>
 
         <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
           <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />

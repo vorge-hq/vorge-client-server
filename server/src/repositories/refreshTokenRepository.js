@@ -93,6 +93,16 @@ async function revokeFamily(familyId, now = new Date(), trx = db) {
     .update({ revoked_at: now });
 }
 
+async function revokeAllForUser(userId, now = new Date(), trx = db) {
+  if (!userId) {
+    return 0;
+  }
+  return trx("refresh_tokens")
+    .where({ user_id: userId })
+    .whereNull("revoked_at")
+    .update({ revoked_at: now });
+}
+
 async function revokeByHash(tokenHash, now = new Date(), trx = db) {
   if (!tokenHash) {
     return 0;
@@ -127,6 +137,7 @@ module.exports = {
   isFamilyRevoked,
   markUsed,
   revokeFamily,
+  revokeAllForUser,
   revokeByHash,
   cleanupExpired
 };

@@ -73,6 +73,16 @@ async function revokeSession(sid, now = new Date(), trx = db) {
   return trx("sessions").where({ id: sid }).whereNull("revoked_at").update({ revoked_at: now });
 }
 
+async function revokeAllForUser(userId, now = new Date(), trx = db) {
+  if (!userId) {
+    return 0;
+  }
+  return trx("sessions")
+    .where({ user_id: userId })
+    .whereNull("revoked_at")
+    .update({ revoked_at: now });
+}
+
 /**
  * Delete fully-expired sessions. Rows are removed when:
  *   - they have passed their `expires_at`, AND
@@ -97,5 +107,6 @@ module.exports = {
   findSessionById,
   findActiveSessionById,
   revokeSession,
+  revokeAllForUser,
   cleanupExpiredSessions
 };

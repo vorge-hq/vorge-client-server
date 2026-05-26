@@ -4,6 +4,8 @@ import { ROLES } from "./auth/session";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { AppShell } from "./layouts/AppShell";
 import { LoginPage } from "./pages/auth/LoginPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { DashboardPage } from "./pages/dashboards/DashboardPage";
 import { AssessmentsListPage } from "./pages/assessments/AssessmentsListPage";
 import { AssessmentWorkspacePage } from "./pages/assessments/AssessmentWorkspacePage";
@@ -21,6 +23,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

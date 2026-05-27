@@ -307,6 +307,79 @@ smoke test.
 
 ---
 
+## Brand color: gold reserved for identity, not buttons
+Date: 2026-05-27
+Decided by: Solo
+Status: locked
+
+### Context
+Designer's dark-mode preview HTML included an amber-on-dark "CTA
+button" sample. Identified during dark-mode-spec review as template
+residue from a different project — gold is Vantage's identity color
+(logo, sparkle marker, selective accent pills), not an action color.
+
+### Options considered
+- A: Adopt gold as CTA button color per designer's preview HTML
+- B: Reserve gold for identity uses only; CTAs use the primary navy
+
+### Decision
+B.
+
+### Rationale
+Gold is the Vantage identity mark. Repurposing it as a primary CTA
+dilutes the visual hierarchy and makes the brand harder to read at a
+glance. Buttons stay on the primary navy ramp; gold appears in logo,
+sparkle marker, and selective accent pills only.
+
+### Revisit conditions
+- Designer formally proposes a gold action treatment with specific
+  contrast + hover/active states
+- A specific surface (e.g. paid-tier upgrade prompt) needs a visually
+  distinct action affordance and gold is the best fit
+
+### Related artifacts
+- Designer preview HTML (in HISTORICAL_CONTEXT.md drive backup)
+- Marketing pointer: docs/marketing-positioning-pointer.md
+
+---
+
+## Brand color: tertiary teal reserved for AI affordances only
+Date: 2026-05-27
+Decided by: Solo
+Status: locked
+
+### Context
+Designer's "Token usage roles" labeled tertiary teal (T-400 family)
+as both "Success/Progress" and AI accent. Identified during dark-mode
+review as a role overlap. Teal is Vantage's AI affordance color (per
+chunk-0 dark mode sweep, commit 9d8d372). Success and progress have
+semantic-green and severity-low coverage already.
+
+### Options considered
+- A: Allow teal to cover both AI affordances and success/progress
+- B: Reserve teal exclusively for AI affordances; success uses semantic
+     green (#4ADE80), progress uses sage (severity-low)
+
+### Decision
+B.
+
+### Rationale
+Teal is a strong visual signal in the Vantage palette. Reserving it
+for AI lets users build a reliable "this is AI" reading at a glance,
+unconfused by success or progress states. Semantic green and sage are
+already established for success and progress respectively.
+
+### Revisit conditions
+- AI features land that explicitly need a non-teal accent
+- A success surface specifically requires the teal hue for parity with
+  another product surface
+
+### Related artifacts
+- chunk-0 commit 9d8d372 (initial AI accent treatment)
+- Designer preview HTML (token usage section)
+
+---
+
 ## 2026-05-27: Fixed silently-dropped dark: opacity-modifier Tailwind utilities
 
 Issue: ~15 component sites using bg-primary-50 dark:bg-primary-900/N pattern

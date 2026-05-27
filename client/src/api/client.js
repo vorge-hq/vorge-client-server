@@ -119,6 +119,9 @@ export async function apiRequest(path, { token, actingRole, _isRetry, ...options
     //   - not the refresh endpoint itself (avoid infinite loop)
     //   - not demo mode
     //   - we have a stored token (no point refreshing if we never had one)
+    // MFA-related 403s (MFA_REQUIRED, MFA_REENROLLMENT_REQUIRED) are NOT
+    // refresh-retried — the access token is valid; the state is the issue.
+    // Surface the error to the caller; UI gates handle navigation.
     if (
       response.status === 401 &&
       errorCode === "INVALID_TOKEN" &&

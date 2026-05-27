@@ -5,7 +5,10 @@ jest.mock("../db/knex", () => ({
 jest.mock("../repositories/sessionRepository", () => ({
   createSession: jest.fn(),
   findActiveSessionById: jest.fn(),
-  revokeSession: jest.fn()
+  findSessionById: jest.fn(async () => null),
+  revokeSession: jest.fn(),
+  setMfaSatisfied: jest.fn(async () => 1),
+  setMustReenroll: jest.fn(async () => 1)
 }));
 
 const db = require("../db/knex");

@@ -2,6 +2,10 @@ require("dotenv").config({ path: "../../.env" });
 
 const nodeEnv = process.env.NODE_ENV || "development";
 
+// Dev placeholder: 32 zero bytes, base64-encoded. Production startup throws if
+// the placeholder is still in use; tests/dev use it freely.
+const DEV_PLACEHOLDER_MFA_KEY = Buffer.alloc(32, 0).toString("base64");
+
 const env = {
   nodeEnv,
   port: Number(process.env.SERVER_PORT || 4000),
@@ -21,11 +25,49 @@ const env = {
       : nodeEnv === "production",
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   refreshCookieName: "vantage_refresh",
-  refreshCookiePath: "/api/auth"
+  refreshCookiePath: "/api/auth",
+  mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY || DEV_PLACEHOLDER_MFA_KEY,
+  mfaEnforcementEnabled: process.env.MFA_ENFORCEMENT_ENABLED !== "false",
+  mfaTrustCookieName: "vantage_mfa_trust",
+  mfaTrustCookiePath: "/api/auth",
+  mfaTrustCookieMaxAgeMs: 30 * 24 * 60 * 60 * 1000
 };
 
-if (env.nodeEnv === "production" && env.jwtSecret === "replace_me_with_a_strong_secret") {
-  throw new Error("JWT_SECRET must be changed for production");
+// ── Boot guards ─────────────────────────────────────────────────────────────
+
+// MFA_ENCRYPTION_KEY must decode to exactly 32 bytes and round-trip cleanly.
+// This guard runs in every environment (dev, test, prod) so wrong-length /
+// invalid-base64 keys never slip through.
+(function assertMfaEncryptionKey(value) {
+  let buf;
+  try {
+    buf = Buffer.from(value, "base64");
+  } catch (_e) {
+    throw new Error("MFA_ENCRYPTION_KEY is not valid base64");
+  }
+  if (buf.length !== 32) {
+    throw new Error(
+      `MFA_ENCRYPTION_KEY must decode to exactly 32 bytes (got ${buf.length}). ` +
+        "Generate one with: openssl rand -base64 32"
+    );
+  }
+  if (buf.toString("base64") !== value) {
+    throw new Error("MFA_ENCRYPTION_KEY is not valid base64 (round-trip check failed)");
+  }
+})(env.mfaEncryptionKey);
+
+if (env.nodeEnv === "production") {
+  if (env.jwtSecret === "replace_me_with_a_strong_secret") {
+    throw new Error("JWT_SECRET must be changed for production");
+  }
+  if (env.mfaEncryptionKey === DEV_PLACEHOLDER_MFA_KEY) {
+    throw new Error(
+      "MFA_ENCRYPTION_KEY must be changed for production. Generate with: openssl rand -base64 32"
+    );
+  }
+  if (process.env.__MFA_TEST_MODE__ === "1") {
+    throw new Error("__MFA_TEST_MODE__ MUST NOT be set in production");
+  }
 }
 
 module.exports = env;

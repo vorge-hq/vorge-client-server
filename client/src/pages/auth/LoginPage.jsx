@@ -16,16 +16,15 @@ const TOKEN_STORAGE_KEY = "vantage.session.token";
 const PERSONA_HINTS = {
   [ROLES.AUTHOR]: "Drafts and edits assessments; field mode and submissions.",
   [ROLES.REVIEWER]: "Comments and locks during In Review.",
-  [ROLES.APPROVER]: "Final sign-off when Awaiting Approval (MFA required).",
-  [ROLES.HQ_EXECUTIVE]: "Portfolio view across facilities (MFA required).",
-  [ROLES.ADMIN]: "Configuration and audit access (MFA required).",
+  [ROLES.APPROVER]: "Final sign-off when Awaiting Approval.",
+  [ROLES.HQ_EXECUTIVE]: "Portfolio view across facilities.",
+  [ROLES.ADMIN]: "Configuration and audit access.",
   [ROLES.MITIGATION_OWNER]: "Tracks mitigations after approval only."
 };
 
 const STAGES = Object.freeze({
   CREDENTIALS: "credentials",
-  ROLE_PICKER: "role-picker",
-  MFA: "mfa"
+  ROLE_PICKER: "role-picker"
 });
 
 function buildSessionForRole(role, users) {
@@ -68,8 +67,6 @@ function DemoLoginPage() {
   const [stage, setStage] = useState(STAGES.CREDENTIALS);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [pendingRole, setPendingRole] = useState(null);
-  const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState(null);
 
   function handleCredentials(event) {
@@ -79,12 +76,9 @@ function DemoLoginPage() {
   }
 
   function pickRole(role) {
-    setPendingRole(role);
     setError(null);
-    if (isRoleMfaRequired(role)) {
-      setStage(STAGES.MFA);
-      return;
-    }
+    // Demo mode never invokes MFA — chunk-4 locked decision #12 strips the
+    // fake MFA stage from this demo path. Real MFA enforcement is prod-only.
     completeLogin(role);
   }
 
@@ -98,20 +92,6 @@ function DemoLoginPage() {
           ? "/admin"
           : "/dashboard";
     navigate(home);
-  }
-
-  function handleMfa(event) {
-    event.preventDefault();
-    if (mfaCode.trim().length < 6) {
-      setError("Enter the 6-digit code from your authenticator.");
-      return;
-    }
-    if (!pendingRole) {
-      setStage(STAGES.ROLE_PICKER);
-      return;
-    }
-    setError(null);
-    completeLogin(pendingRole);
   }
 
   return (
@@ -128,62 +108,12 @@ function DemoLoginPage() {
           <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
         </div>
 
-        {stage === STAGES.MFA ? (
-          <>
-            <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
-              Multi-factor authentication
-            </h1>
-            <p className="mb-8 text-sm text-zinc-500">
-              Enter the 6-digit TOTP code to continue as {pendingRole}.
-            </p>
-
-            <form className="space-y-3" onSubmit={handleMfa}>
-              <FormField label="Authentication code" htmlFor="mfa">
-                <TextInput
-                  id="mfa"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="123 456"
-                  value={mfaCode}
-                  onChange={(event) => setMfaCode(event.target.value)}
-                  maxLength={7}
-                />
-              </FormField>
-
-              {error ? (
-                <Banner tone="danger" title="Code required">
-                  {error}
-                </Banner>
-              ) : null}
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setStage(STAGES.ROLE_PICKER);
-                    setError(null);
-                  }}
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                >
-                  Verify and continue
-                </button>
-              </div>
-            </form>
-          </>
-        ) : (
-          <>
+        <>
             <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
               Sign in to continue
             </h1>
             <p className="mb-8 text-sm text-zinc-500">
-              Use your Vantage credentials. Approver, HQ Executive, and Admin roles require MFA per policy.
+              Use your Vantage credentials.
             </p>
 
             <form className="space-y-3" onSubmit={handleCredentials}>
@@ -240,10 +170,9 @@ function DemoLoginPage() {
 
             <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
               <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
-              MFA is enforced per role. All sign-in attempts are logged to the immutable audit trail.
+              All sign-in attempts are logged to the immutable audit trail.
             </div>
           </>
-        )}
       </div>
 
       {stage === STAGES.ROLE_PICKER ? (
@@ -287,11 +216,6 @@ function DemoLoginPage() {
                     <span className="text-xs text-zinc-500">
                       {persona?.name} — {PERSONA_HINTS[role]}
                     </span>
-                    {isRoleMfaRequired(role) ? (
-                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                        <Lock size={9} aria-hidden /> MFA required
-                      </span>
-                    ) : null}
                   </button>
                 );
               })}
@@ -322,6 +246,8 @@ function ProdLoginPage() {
       });
 
       const { token, user, actingRole, roles, facilities } = result;
+      const mfaSatisfied = result.mfaSatisfied !== false;
+      const mustReenroll = result.mustReenroll === true;
       const session = {
         user,
         facility: facilities?.[0] || null,
@@ -329,7 +255,8 @@ function ProdLoginPage() {
         roles: roles || [],
         actingRole,
         token,
-        mfaSatisfied: true,
+        mfaSatisfied,
+        mustReenroll,
         demo: false
       };
 
@@ -339,7 +266,11 @@ function ProdLoginPage() {
       }
 
       login(session);
-      navigate(getHomeRouteForRole(actingRole));
+      if (result.mfaRequired === true) {
+        navigate(result.enrollmentNeeded ? "/mfa/enroll" : "/mfa/verify");
+      } else {
+        navigate(getHomeRouteForRole(actingRole));
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401 && err.code === "INVALID_CREDENTIALS") {
         setError({ tone: "credentials", message: "Incorrect email or password." });

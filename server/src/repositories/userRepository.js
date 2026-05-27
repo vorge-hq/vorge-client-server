@@ -60,6 +60,10 @@ async function hydrateUser(userRow, trx = db) {
     email: userRow.email,
     name: userRow.name,
     mfaEnabled: userRow.mfa_enabled === true,
+    mfaEnrolledAt: userRow.mfa_enrolled_at || null,
+    mfaFailedAttempts: Number(userRow.mfa_failed_attempts || 0),
+    mfaLastFailureAt: userRow.mfa_last_failure_at || null,
+    mfaLockedUntil: userRow.mfa_locked_until || null,
     passwordHash: userRow.password_hash,
     roleAssignments,
     facilities,
@@ -67,9 +71,21 @@ async function hydrateUser(userRow, trx = db) {
   };
 }
 
+const USER_COLUMNS = [
+  "id",
+  "email",
+  "password_hash",
+  "name",
+  "mfa_enabled",
+  "mfa_enrolled_at",
+  "mfa_failed_attempts",
+  "mfa_last_failure_at",
+  "mfa_locked_until"
+];
+
 async function findUserByEmail(email, trx = db) {
   const userRow = await trx("users")
-    .select("id", "email", "password_hash", "name", "mfa_enabled")
+    .select(USER_COLUMNS)
     .whereRaw("lower(email) = lower(?)", [email || ""])
     .first();
 
@@ -78,7 +94,7 @@ async function findUserByEmail(email, trx = db) {
 
 async function findUserById(userId, trx = db) {
   const userRow = await trx("users")
-    .select("id", "email", "password_hash", "name", "mfa_enabled")
+    .select(USER_COLUMNS)
     .where({ id: userId })
     .first();
 
@@ -94,6 +110,64 @@ async function updatePasswordHash(userId, passwordHash, trx = db) {
     return 0;
   }
   return trx("users").where({ id: userId }).update({ password_hash: passwordHash, updated_at: trx.fn.now() });
+}
+
+/**
+ * SINGLE-WRITER RULE FOR MFA ENROLLMENT STATE.
+ *
+ * Per docs/decisions/chunk-4-mfa.md §Bake-ins: this function and
+ * `clearMfaEnrollment` are the ONLY code paths that touch
+ * `users.mfa_enrolled_at` or `users.mfa_enabled`. Both columns are written
+ * atomically in a single UPDATE to guarantee they cannot drift.
+ *
+ * Do NOT add another writer for either column. If a new caller needs to
+ * set enrollment state, route it through this function.
+ */
+async function setMfaEnrolledAt(userId, timestamp, trx = db) {
+  if (!userId || !timestamp) {
+    return 0;
+  }
+  return trx("users")
+    .where({ id: userId })
+    .update({
+      mfa_enrolled_at: timestamp,
+      mfa_enabled: true,
+      updated_at: trx.fn.now()
+    });
+}
+
+/**
+ * Counterpart to setMfaEnrolledAt. Clears enrollment atomically (both
+ * mfa_enrolled_at and mfa_enabled). Called by disable + admin reset paths.
+ * See the SINGLE-WRITER RULE comment on setMfaEnrolledAt.
+ */
+async function clearMfaEnrollment(userId, trx = db) {
+  if (!userId) {
+    return 0;
+  }
+  return trx("users")
+    .where({ id: userId })
+    .update({
+      mfa_enrolled_at: null,
+      mfa_enabled: false,
+      mfa_failed_attempts: 0,
+      mfa_last_failure_at: null,
+      mfa_locked_until: null,
+      updated_at: trx.fn.now()
+    });
+}
+
+async function updateMfaFailureState(
+  userId,
+  { failedAttempts, lastFailureAt, lockedUntil },
+  trx = db
+) {
+  if (!userId) return 0;
+  const patch = { updated_at: trx.fn.now() };
+  if (failedAttempts !== undefined) patch.mfa_failed_attempts = failedAttempts;
+  if (lastFailureAt !== undefined) patch.mfa_last_failure_at = lastFailureAt;
+  if (lockedUntil !== undefined) patch.mfa_locked_until = lockedUntil;
+  return trx("users").where({ id: userId }).update(patch);
 }
 
 function firstRoleAssignment(user) {
@@ -121,5 +195,8 @@ module.exports = {
   firstRoleAssignment,
   hasAssignedRole,
   publicUser,
-  updatePasswordHash
+  updatePasswordHash,
+  setMfaEnrolledAt,
+  clearMfaEnrollment,
+  updateMfaFailureState
 };

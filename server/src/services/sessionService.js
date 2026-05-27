@@ -19,7 +19,7 @@ function computeExpiresAt() {
   return new Date(decoded.exp * 1000);
 }
 
-async function issueSession({ user, actingRole, req }, trx = db) {
+async function issueSession({ user, actingRole, req, mfaSatisfied = false, mustReenroll = false }, trx = db) {
   const assignment = firstRoleAssignment(user);
   const sid = crypto.randomUUID();
   const expiresAt = computeExpiresAt();
@@ -32,7 +32,9 @@ async function issueSession({ user, actingRole, req }, trx = db) {
       facilityId: assignment?.facilityId || null,
       expiresAt,
       sourceIp: req?.ip || null,
-      userAgent: req?.headers?.["user-agent"] || null
+      userAgent: req?.headers?.["user-agent"] || null,
+      mfaSatisfied,
+      mustReenroll
     },
     trx
   );
@@ -55,8 +57,21 @@ async function revokeSession(sid, now = new Date(), trx = db) {
 async function rotateSession({ user, previousSid, actingRole, req, trx }) {
   const run = async (work) => (trx ? work(trx) : db.transaction(work));
   return run(async (activeTrx) => {
+    // Carry mfa_satisfied / must_reenroll forward from the previous session
+    // per locked decision #7 (whole-session lifetime; refresh + role-switch
+    // preserve the flags).
+    const prev = await sessionRepository.findSessionById(previousSid, activeTrx);
     await sessionRepository.revokeSession(previousSid, new Date(), activeTrx);
-    const { sid, expiresAt } = await issueSession({ user, actingRole, req }, activeTrx);
+    const { sid, expiresAt } = await issueSession(
+      {
+        user,
+        actingRole,
+        req,
+        mfaSatisfied: prev?.mfaSatisfied || false,
+        mustReenroll: prev?.mustReenroll || false
+      },
+      activeTrx
+    );
     return { sid, expiresAt, previousSid };
   });
 }

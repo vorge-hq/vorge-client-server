@@ -1,3 +1,9 @@
+// Enable TOTP test-mode bypass: any "000000" code is accepted by totpService.
+// Per chunk-4 lockbox §Locked decisions #13. The env boot guard refuses to
+// start the server when NODE_ENV === "production" AND __MFA_TEST_MODE__ === "1"
+// so this is safe for tests only.
+process.env.__MFA_TEST_MODE__ = "1";
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
@@ -25,8 +31,125 @@ jest.mock("../src/repositories/userRepository", () => ({
     roleAssignments: user.roleAssignments,
     roles: user.roleAssignments
   })),
-  updatePasswordHash: jest.fn(async () => 1)
+  updatePasswordHash: jest.fn(async () => 1),
+  setMfaEnrolledAt: jest.fn(async (userId, ts) => 1),
+  clearMfaEnrollment: jest.fn(async () => 1),
+  updateMfaFailureState: jest.fn(async () => 1)
 }));
+
+jest.mock("../src/repositories/mfaSecretRepository", () => {
+  const byUser = new Map();
+  return {
+    __byUser: byUser,
+    upsertPending: jest.fn(async ({ userId, secretEncrypted, secretNonce, keyVersion = 1 }) => {
+      const existing = byUser.get(userId) || {};
+      const row = {
+        userId,
+        secretEncrypted,
+        secretNonce,
+        keyVersion,
+        createdAt: existing.createdAt || new Date(),
+        verifiedAt: null
+      };
+      byUser.set(userId, row);
+      return row;
+    }),
+    findByUserId: jest.fn(async (userId) => byUser.get(userId) || null),
+    promotePending: jest.fn(async (userId, now) => {
+      const row = byUser.get(userId);
+      if (!row || row.verifiedAt) return 0;
+      row.verifiedAt = now;
+      return 1;
+    }),
+    deleteForUser: jest.fn(async (userId) => (byUser.delete(userId) ? 1 : 0)),
+    cleanupExpiredPending: jest.fn(async () => 0)
+  };
+});
+
+jest.mock("../src/repositories/mfaRecoveryCodeRepository", () => {
+  const byUser = new Map();
+  return {
+    __byUser: byUser,
+    createMany: jest.fn(async ({ userId, codeHashes }) => {
+      const list = byUser.get(userId) || [];
+      const created = codeHashes.map((h, i) => ({
+        id: `rc-${userId}-${list.length + i}`,
+        userId,
+        codeHash: h,
+        usedAt: null,
+        createdAt: new Date()
+      }));
+      byUser.set(userId, list.concat(created));
+      return created;
+    }),
+    findActiveByUserId: jest.fn(async (userId) =>
+      (byUser.get(userId) || []).filter((c) => !c.usedAt)
+    ),
+    markUsed: jest.fn(async (id, now) => {
+      for (const list of byUser.values()) {
+        const row = list.find((c) => c.id === id);
+        if (row && !row.usedAt) {
+          row.usedAt = now;
+          return 1;
+        }
+      }
+      return 0;
+    }),
+    revokeAllForUser: jest.fn(async (userId, now) => {
+      const list = byUser.get(userId) || [];
+      let count = 0;
+      list.forEach((c) => {
+        if (!c.usedAt) {
+          c.usedAt = now;
+          count += 1;
+        }
+      });
+      return count;
+    }),
+    deleteForUser: jest.fn(async (userId) => {
+      const had = byUser.has(userId);
+      byUser.delete(userId);
+      return had ? 1 : 0;
+    })
+  };
+});
+
+jest.mock("../src/repositories/mfaTrustedDeviceRepository", () => {
+  const byHash = new Map();
+  return {
+    __byHash: byHash,
+    createDevice: jest.fn(async ({ userId, cookieTokenHash, expiresAt }) => {
+      const row = {
+        id: `td-${cookieTokenHash.slice(0, 8)}`,
+        userId,
+        cookieTokenHash,
+        expiresAt,
+        createdAt: new Date(),
+        lastSeenAt: null
+      };
+      byHash.set(cookieTokenHash, row);
+      return row;
+    }),
+    findActiveByHash: jest.fn(async (h, now) => {
+      const row = byHash.get(h);
+      if (!row) return null;
+      if (new Date(row.expiresAt) <= (now || new Date())) return null;
+      return row;
+    }),
+    touchLastSeen: jest.fn(async () => 1),
+    revokeAllForUser: jest.fn(async (userId) => {
+      let count = 0;
+      for (const [k, r] of byHash.entries()) {
+        if (r.userId === userId) {
+          byHash.delete(k);
+          count += 1;
+        }
+      }
+      return count;
+    }),
+    cleanupExpired: jest.fn(async () => 0)
+  };
+});
 
 jest.mock("../src/repositories/assessmentRepository", () => ({
   createVersionSnapshot: jest.fn(),
@@ -48,9 +171,9 @@ jest.mock("../src/repositories/sessionRepository", () => {
   return {
     __active: active,
     __sessions: sessions,
-    createSession: jest.fn(async ({ id, userId, actingRole, facilityId }) => {
+    createSession: jest.fn(async ({ id, userId, actingRole, facilityId, mfaSatisfied = true, mustReenroll = false }) => {
       active.add(id);
-      const row = { id, userId, actingRole, facilityId };
+      const row = { id, userId, actingRole, facilityId, mfaSatisfied, mustReenroll };
       sessions.set(id, row);
       return row;
     }),
@@ -66,6 +189,16 @@ jest.mock("../src/repositories/sessionRepository", () => {
         }
       }
       return count;
+    }),
+    setMfaSatisfied: jest.fn(async (sid, value) => {
+      const row = sessions.get(sid);
+      if (row) row.mfaSatisfied = Boolean(value);
+      return row ? 1 : 0;
+    }),
+    setMustReenroll: jest.fn(async (sid, value) => {
+      const row = sessions.get(sid);
+      if (row) row.mustReenroll = Boolean(value);
+      return row ? 1 : 0;
     }),
     cleanupExpiredSessions: jest.fn(async () => 0)
   };
@@ -207,6 +340,23 @@ const refreshTokenService = require("../src/services/refreshTokenService");
 const passwordResetTokenRepository = require("../src/repositories/passwordResetTokenRepository");
 const passwordResetService = require("../src/services/passwordResetService");
 const emailService = require("../src/services/emailService");
+const mfaSecretRepository = require("../src/repositories/mfaSecretRepository");
+const mfaRecoveryCodeRepository = require("../src/repositories/mfaRecoveryCodeRepository");
+const mfaTrustedDeviceRepository = require("../src/repositories/mfaTrustedDeviceRepository");
+const mfaEncryption = require("../src/services/mfaEncryption");
+const totpService = require("../src/services/totpService");
+
+function seedVerifiedSecret(userId, base32 = "JBSWY3DPEHPK3PXP") {
+  const { ciphertext, nonce } = mfaEncryption.encrypt(base32);
+  mfaSecretRepository.__byUser.set(userId, {
+    userId,
+    secretEncrypted: ciphertext,
+    secretNonce: nonce,
+    keyVersion: 1,
+    createdAt: new Date(),
+    verifiedAt: new Date()
+  });
+}
 
 const user = {
   id: "user-1",
@@ -236,13 +386,18 @@ beforeEach(() => {
     id: "test-sid",
     userId: user.id,
     actingRole: ROLES.AUTHOR,
-    facilityId: "facility-1"
+    facilityId: "facility-1",
+    mfaSatisfied: true,
+    mustReenroll: false
   });
   refreshTokenRepository.__byHash.clear();
   refreshTokenRepository.__byId.clear();
   refreshTokenRepository.__revokedFamilies.clear();
   passwordResetTokenRepository.__byHash.clear();
   passwordResetTokenRepository.__byId.clear();
+  mfaSecretRepository.__byUser.clear();
+  mfaRecoveryCodeRepository.__byUser.clear();
+  mfaTrustedDeviceRepository.__byHash.clear();
   userRepository.findUserByEmail.mockResolvedValue(user);
   userRepository.findUserById.mockResolvedValue(user);
 });
@@ -882,5 +1037,389 @@ describe("auth password reset lifecycle", () => {
 
     // B's refresh cookie still rotates cleanly.
     await request(app).post("/api/auth/refresh").set("Cookie", cookieB).expect(200);
+  });
+});
+
+describe("auth mfa lifecycle", () => {
+  const adminPasswordHash = bcrypt.hashSync("VantageDemo123!", 4);
+  const adminUser = {
+    id: "user-admin",
+    email: "admin@operator-a.example",
+    name: "Demo Admin",
+    mfaEnabled: false,
+    mfaEnrolledAt: null,
+    mfaFailedAttempts: 0,
+    mfaLastFailureAt: null,
+    mfaLockedUntil: null,
+    passwordHash: adminPasswordHash,
+    roleAssignments: [{ role: ROLES.ADMIN, facilityId: "facility-1", operatorId: "operator-1" }],
+    roles: [ROLES.ADMIN],
+    facilities: [{ id: "facility-1", name: "Demo Facility", operatorId: "operator-1" }]
+  };
+
+  beforeEach(() => {
+    totpService._resetReplayCache();
+    // Override default user mocks to recognise the admin fixture.
+    userRepository.findUserByEmail.mockImplementation(async (email) => {
+      if (email === user.email) return user;
+      if (email === adminUser.email) return adminUser;
+      return null;
+    });
+    userRepository.findUserById.mockImplementation(async (id) => {
+      if (id === user.id) return user;
+      if (id === adminUser.id) return adminUser;
+      return null;
+    });
+    // setMfaEnrolledAt should also mutate the fixture so subsequent
+    // findUserById sees the user as enrolled.
+    userRepository.setMfaEnrolledAt.mockImplementation(async (uid, ts) => {
+      if (uid === adminUser.id) adminUser.mfaEnrolledAt = ts;
+      return 1;
+    });
+    userRepository.clearMfaEnrollment.mockImplementation(async (uid) => {
+      if (uid === adminUser.id) {
+        adminUser.mfaEnrolledAt = null;
+        adminUser.mfaFailedAttempts = 0;
+        adminUser.mfaLockedUntil = null;
+      }
+      return 1;
+    });
+  });
+
+  afterEach(() => {
+    // Reset the admin fixture so tests don't bleed state.
+    adminUser.mfaEnrolledAt = null;
+    adminUser.mfaFailedAttempts = 0;
+    adminUser.mfaLockedUntil = null;
+  });
+
+  test("login as MFA-required user (not enrolled) returns mfaRequired+enrollmentNeeded; /me is gated 403", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    expect(response.body.mfaRequired).toBe(true);
+    expect(response.body.enrollmentNeeded).toBe(true);
+    expect(response.body.mfaSatisfied).toBe(false);
+
+    // /me should be blocked by the MFA gate
+    const meResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${response.body.token}`)
+      .expect(403);
+    expect(meResponse.body.error.code).toBe("MFA_REQUIRED");
+  });
+
+  test("full enrollment flow: enroll-start → enroll-verify with bypass code → recovery codes returned, /me unlocks", async () => {
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+    const token = login.body.token;
+
+    const enrollStart = await request(app)
+      .post("/api/auth/mfa/enroll-start")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(enrollStart.body.otpauthUrl).toMatch(/^otpauth:\/\/totp\//);
+    expect(enrollStart.body.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+    expect(enrollStart.body.manualKey).toMatch(/^[A-Z2-7]+=*$/);
+
+    const enrollVerify = await request(app)
+      .post("/api/auth/mfa/enroll-verify")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ code: "000000" })
+      .expect(200);
+    expect(enrollVerify.body.recoveryCodes).toHaveLength(10);
+    enrollVerify.body.recoveryCodes.forEach((c) =>
+      expect(c).toMatch(/^[A-HJ-NP-Z2-9]{5}-[A-HJ-NP-Z2-9]{5}$/)
+    );
+
+    // After enrollment, /me works (session promoted to mfa_satisfied=true).
+    const me = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    expect(me.body.mfaSatisfied).toBe(true);
+  });
+
+  test("verify endpoint promotes session for an already-enrolled user", async () => {
+    // Seed an enrolled admin: pretend a previous enrollment completed.
+    adminUser.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    // Seed a verified secret directly into the mock (so enroll-start isn't needed).
+    seedVerifiedSecret(adminUser.id);
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+    expect(login.body.mfaSatisfied).toBe(false);
+    expect(login.body.enrollmentNeeded).toBe(false);
+
+    const verify = await request(app)
+      .post("/api/auth/mfa/verify")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .send({ code: "000000" })
+      .expect(200);
+    expect(verify.body.mfaSatisfied).toBe(true);
+
+    // /me now works.
+    await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .expect(200);
+  });
+
+  test("verify-recovery sets mfa_satisfied AND must_reenroll; non-enroll endpoints then 403", async () => {
+    adminUser.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(adminUser.id);
+    // Seed one bcrypt-hashed recovery code we know the plaintext for.
+    const knownPlain = "ABCDE-FGHJK";
+    const hash = bcrypt.hashSync(knownPlain, 4);
+    mfaRecoveryCodeRepository.__byUser.set(adminUser.id, [
+      { id: "rc-1", userId: adminUser.id, codeHash: hash, usedAt: null, createdAt: new Date() }
+    ]);
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    const recovery = await request(app)
+      .post("/api/auth/mfa/verify-recovery")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .send({ code: knownPlain })
+      .expect(200);
+    expect(recovery.body.mfaSatisfied).toBe(true);
+    expect(recovery.body.mustReenroll).toBe(true);
+
+    // /me is blocked: must_reenroll
+    const me = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .expect(403);
+    expect(me.body.error.code).toBe("MFA_REENROLLMENT_REQUIRED");
+  });
+
+  test("disable: MFA-required user (Admin) → 403; non-required user (Author) → 200 after wipe", async () => {
+    // Setup: pretend the Author user has enrolled (chunk-4 currently doesn't
+    // require it, but the disable flow should still succeed).
+    user.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(user.id);
+
+    const authorLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    await request(app)
+      .post("/api/auth/mfa/disable")
+      .set("Authorization", `Bearer ${authorLogin.body.token}`)
+      .send({ password: "VantageDemo123!", code: "000000" })
+      .expect(200);
+
+    // Now Admin (MFA-required) attempts disable → 403
+    adminUser.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(adminUser.id);
+    const adminLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+    // First satisfy MFA so we can reach the disable handler with mfaSatisfied=true
+    await request(app)
+      .post("/api/auth/mfa/verify")
+      .set("Authorization", `Bearer ${adminLogin.body.token}`)
+      .send({ code: "000000" })
+      .expect(200);
+
+    const disableResp = await request(app)
+      .post("/api/auth/mfa/disable")
+      .set("Authorization", `Bearer ${adminLogin.body.token}`)
+      .send({ password: "VantageDemo123!", code: "000000" })
+      .expect(403);
+    expect(disableResp.body.error.code).toBe("MFA_REQUIRED_FOR_ROLE");
+
+    // Reset user fixture
+    user.mfaEnrolledAt = undefined;
+  });
+
+  test("admin-reset: shared-facility Admin succeeds; cross-tenant Admin → 403", async () => {
+    // Set up a target user that shares facility-1 with adminUser.
+    const targetUser = {
+      id: "user-target",
+      email: "target@operator-a.example",
+      name: "Target User",
+      passwordHash: bcrypt.hashSync("xxxxxxxxxxxx", 4),
+      mfaEnabled: true,
+      mfaEnrolledAt: new Date(),
+      roleAssignments: [{ role: ROLES.AUTHOR, facilityId: "facility-1", operatorId: "operator-1" }],
+      roles: [ROLES.AUTHOR],
+      facilities: [{ id: "facility-1", name: "Demo Facility", operatorId: "operator-1" }]
+    };
+    // Outsider admin in a different facility.
+    const outsiderAdmin = {
+      id: "user-outsider",
+      email: "outsider@operator-b.example",
+      name: "Outsider Admin",
+      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      mfaEnabled: true,
+      mfaEnrolledAt: new Date(),
+      mfaFailedAttempts: 0,
+      roleAssignments: [{ role: ROLES.ADMIN, facilityId: "facility-2", operatorId: "operator-2" }],
+      roles: [ROLES.ADMIN],
+      facilities: [{ id: "facility-2", name: "Other Facility", operatorId: "operator-2" }]
+    };
+    userRepository.findUserByEmail.mockImplementation(async (email) => {
+      if (email === adminUser.email) return adminUser;
+      if (email === outsiderAdmin.email) return outsiderAdmin;
+      if (email === targetUser.email) return targetUser;
+      return null;
+    });
+    userRepository.findUserById.mockImplementation(async (id) => {
+      if (id === adminUser.id) return adminUser;
+      if (id === outsiderAdmin.id) return outsiderAdmin;
+      if (id === targetUser.id) return targetUser;
+      return null;
+    });
+    // adminUser pre-enrolled
+    adminUser.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(adminUser.id);
+    seedVerifiedSecret(outsiderAdmin.id);
+    // Login the in-facility admin and satisfy MFA
+    const adminLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .expect(200);
+    await request(app)
+      .post("/api/auth/mfa/verify")
+      .set("Authorization", `Bearer ${adminLogin.body.token}`)
+      .send({ code: "000000" })
+      .expect(200);
+
+    // Same-facility admin → 200
+    await request(app)
+      .post("/api/auth/mfa/admin-reset")
+      .set("Authorization", `Bearer ${adminLogin.body.token}`)
+      .send({ targetUserId: targetUser.id })
+      .expect(200);
+
+    // Now login outsider admin
+    const outsiderLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: outsiderAdmin.email, password: "VantageDemo123!" })
+      .expect(200);
+    await request(app)
+      .post("/api/auth/mfa/verify")
+      .set("Authorization", `Bearer ${outsiderLogin.body.token}`)
+      .send({ code: "000000" })
+      .expect(200);
+
+    // Outsider admin (different facility) → 403 ADMIN_RESET_NOT_AUTHORIZED
+    const denied = await request(app)
+      .post("/api/auth/mfa/admin-reset")
+      .set("Authorization", `Bearer ${outsiderLogin.body.token}`)
+      .send({ targetUserId: targetUser.id })
+      .expect(403);
+    expect(denied.body.error.code).toBe("ADMIN_RESET_NOT_AUTHORIZED");
+  });
+
+  test("switch-role: switching INTO an MFA-required role without enrollment → 403 MFA_ENROLLMENT_REQUIRED", async () => {
+    // User fixture is Author/Reviewer/MitigationOwner — none MFA-required.
+    // We need a user who has a non-MFA role AND an MFA-required role but isn't enrolled.
+    const dualRoleUser = {
+      ...user,
+      id: "user-dual",
+      email: "dual@operator-a.example",
+      mfaEnrolledAt: null,
+      roleAssignments: [
+        { role: ROLES.AUTHOR, facilityId: "facility-1", operatorId: "operator-1" },
+        { role: ROLES.APPROVER, facilityId: "facility-1", operatorId: "operator-1" }
+      ],
+      roles: [ROLES.AUTHOR, ROLES.APPROVER]
+    };
+    // Note: this user IS subject to requiresMfa(user) because Approver is in
+    // the set. So login itself returns mfaRequired+enrollmentNeeded. The test
+    // is therefore: when login returns enrollmentNeeded=true, /switch-role to
+    // Approver is blocked.
+    userRepository.findUserByEmail.mockImplementation(async (email) =>
+      email === dualRoleUser.email ? dualRoleUser : null
+    );
+    userRepository.findUserById.mockImplementation(async (id) =>
+      id === dualRoleUser.id ? dualRoleUser : null
+    );
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: dualRoleUser.email, password: "VantageDemo123!" })
+      .expect(200);
+    expect(login.body.enrollmentNeeded).toBe(true);
+
+    // Switch-role to Approver while not enrolled → 403 MFA_ENROLLMENT_REQUIRED
+    // But: switch-role is gated by the authenticate middleware which 403s on
+    // mfa_satisfied=false. So we can't even reach the switch-role handler.
+    const switchAttempt = await request(app)
+      .post("/api/auth/switch-role")
+      .set("Authorization", `Bearer ${login.body.token}`)
+      .send({ role: ROLES.APPROVER })
+      .expect(403);
+    // Either MFA_REQUIRED (middleware) or MFA_ENROLLMENT_REQUIRED (route check)
+    expect(["MFA_REQUIRED", "MFA_ENROLLMENT_REQUIRED"]).toContain(switchAttempt.body.error.code);
+  });
+
+  test("cross-tenant adversarial: another user's recovery code is rejected", async () => {
+    // adminUser is enrolled, has a recovery code
+    adminUser.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(adminUser.id);
+    const adminPlain = "ZZZZZ-YYYYY";
+    mfaRecoveryCodeRepository.__byUser.set(adminUser.id, [
+      {
+        id: "rc-admin",
+        userId: adminUser.id,
+        codeHash: bcrypt.hashSync(adminPlain, 4),
+        usedAt: null,
+        createdAt: new Date()
+      }
+    ]);
+
+    // user (Author) is enrolled with a *different* recovery code.
+    user.mfaEnrolledAt = new Date(Date.now() - 60_000);
+    seedVerifiedSecret(user.id);
+    const userPlain = "XXXXX-WWWWW";
+    mfaRecoveryCodeRepository.__byUser.set(user.id, [
+      {
+        id: "rc-user",
+        userId: user.id,
+        codeHash: bcrypt.hashSync(userPlain, 4),
+        usedAt: null,
+        createdAt: new Date()
+      }
+    ]);
+
+    // user (Author) logs in. Author is not MFA-required, so they're already
+    // mfa_satisfied. But verify-recovery still requires a code that BELONGS to
+    // the requesting user. Passing adminUser's code → 401.
+    const authorLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "VantageDemo123!" })
+      .expect(200);
+
+    // user attempts to use admin's recovery code → 401 INVALID_RECOVERY_CODE
+    const wrong = await request(app)
+      .post("/api/auth/mfa/verify-recovery")
+      .set("Authorization", `Bearer ${authorLogin.body.token}`)
+      .send({ code: adminPlain })
+      .expect(401);
+    expect(wrong.body.error.code).toBe("INVALID_RECOVERY_CODE");
+
+    // user's own code still works.
+    await request(app)
+      .post("/api/auth/mfa/verify-recovery")
+      .set("Authorization", `Bearer ${authorLogin.body.token}`)
+      .send({ code: userPlain })
+      .expect(200);
+
+    // Reset user fixture
+    user.mfaEnrolledAt = undefined;
   });
 });

@@ -14,12 +14,24 @@ function mapSession(row) {
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     sourceIp: row.source_ip,
-    userAgent: row.user_agent
+    userAgent: row.user_agent,
+    mfaSatisfied: row.mfa_satisfied === true,
+    mustReenroll: row.must_reenroll === true
   };
 }
 
 async function createSession(
-  { id, userId, actingRole, facilityId = null, expiresAt, sourceIp = null, userAgent = null },
+  {
+    id,
+    userId,
+    actingRole,
+    facilityId = null,
+    expiresAt,
+    sourceIp = null,
+    userAgent = null,
+    mfaSatisfied = false,
+    mustReenroll = false
+  },
   trx = db
 ) {
   const [row] = await trx("sessions")
@@ -30,11 +42,23 @@ async function createSession(
       facility_id: facilityId,
       expires_at: expiresAt,
       source_ip: sourceIp,
-      user_agent: userAgent
+      user_agent: userAgent,
+      mfa_satisfied: mfaSatisfied,
+      must_reenroll: mustReenroll
     })
     .returning("*");
 
   return mapSession(row);
+}
+
+async function setMfaSatisfied(sid, value, trx = db) {
+  if (!sid) return 0;
+  return trx("sessions").where({ id: sid }).update({ mfa_satisfied: Boolean(value) });
+}
+
+async function setMustReenroll(sid, value, trx = db) {
+  if (!sid) return 0;
+  return trx("sessions").where({ id: sid }).update({ must_reenroll: Boolean(value) });
 }
 
 async function findSessionById(sid, trx = db) {
@@ -108,5 +132,7 @@ module.exports = {
   findActiveSessionById,
   revokeSession,
   revokeAllForUser,
+  setMfaSatisfied,
+  setMustReenroll,
   cleanupExpiredSessions
 };

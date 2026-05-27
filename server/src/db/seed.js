@@ -80,12 +80,12 @@ async function seed() {
     ]);
 
     await upsert(trx, "users", [
-      { id: IDS.omar, email: "adaeze.okeke@operator-a.example", password_hash: passwordHash, name: "Adaeze Okeke", mfa_enabled: true },
-      { id: IDS.sarah, email: "meilin.tanaka@operator-a.example", password_hash: passwordHash, name: "Mei-Lin Tanaka", mfa_enabled: true },
-      { id: IDS.marcus, email: "rafael.castellanos@operator-a.example", password_hash: passwordHash, name: "Rafael Castellanos", mfa_enabled: true },
-      { id: IDS.elena, email: "sarah.chen@operator-a.example", password_hash: passwordHash, name: "Sarah Chen", mfa_enabled: true },
-      { id: IDS.priya, email: "olivia.bennett@operator-a.example", password_hash: passwordHash, name: "Olivia Bennett", mfa_enabled: true },
-      { id: IDS.james, email: "marcus.johnson@operator-a.example", password_hash: passwordHash, name: "Marcus Johnson", mfa_enabled: false }
+      { id: IDS.omar, email: "adaeze.okeke@operator-a.example", password_hash: passwordHash, name: "Adaeze Okeke", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
+      { id: IDS.sarah, email: "meilin.tanaka@operator-a.example", password_hash: passwordHash, name: "Mei-Lin Tanaka", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
+      { id: IDS.marcus, email: "rafael.castellanos@operator-a.example", password_hash: passwordHash, name: "Rafael Castellanos", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
+      { id: IDS.elena, email: "sarah.chen@operator-a.example", password_hash: passwordHash, name: "Sarah Chen", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
+      { id: IDS.priya, email: "olivia.bennett@operator-a.example", password_hash: passwordHash, name: "Olivia Bennett", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
+      { id: IDS.james, email: "marcus.johnson@operator-a.example", password_hash: passwordHash, name: "Marcus Johnson", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null }
     ]);
 
     await upsert(trx, "role_assignments", [

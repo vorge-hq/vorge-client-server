@@ -39,14 +39,14 @@ function SectionRail({
               to={`/assessments/${assessmentId}/sections/${section.id}`}
               className={`group flex items-center gap-3 rounded-lg border py-2 pl-3 ${linkRightPadding} text-[13px] transition ${
                 isActive
-                  ? "border-primary-100 bg-primary-50 text-primary shadow-sm dark:border-primary-700 dark:bg-primary-900/40"
+                  ? "border-primary-100 bg-primary-50 text-primary shadow-sm dark:border-primary-700 dark:bg-primary-900/40 dark:text-primary-50"
                   : "border-transparent text-text-secondary hover:border-border-default hover:bg-surface-muted"
               }`}
             >
               <span
                 className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${
                   isActive
-                    ? "bg-surface-raised text-primary ring-1 ring-primary-100"
+                    ? "bg-surface-raised text-primary ring-1 ring-primary-100 dark:text-primary-50"
                     : isComplete
                       ? "bg-emerald-50 text-emerald-700"
                       : "bg-zinc-100 text-zinc-700"
@@ -85,7 +85,7 @@ function SectionRail({
                       event.stopPropagation();
                       onOpenAuditFor?.(section.id);
                     }}
-                    className="pointer-events-auto inline-flex items-center gap-0.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 transition hover:bg-zinc-300 hover:text-zinc-900"
+                    className="pointer-events-auto inline-flex items-center gap-0.5 rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 transition hover:bg-zinc-300 hover:text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600 dark:hover:text-white"
                     title={`${commentCount} comment${commentCount === 1 ? "" : "s"} — open in audit log`}
                     aria-label={`Open ${commentCount} comment${commentCount === 1 ? "" : "s"} for ${section.label} in audit log`}
                   >

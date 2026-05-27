@@ -1,3 +1,16 @@
+2026-05-27 — Merged chunks 0-4 + cleanup + docs into main
+  Merge commits: 096c014 (chunks 0-4 + cleanup), 43332e6 (docs)
+  origin/main now current with all auth work and decision records
+  Branches preserved on origin as historical reference (not deleted)
+  All 7 forensic tags on origin: pre-env-gating, pre-auth-logout,
+    pre-refresh-tokens, pre-password-reset, pre-cleanup-user-agent,
+    pre-mfa-enforcement, pre-production-push
+  Vercel: deployment will auto-update if connected (demo mode
+    preserved via VITE_ENABLE_DEMO=true env var)
+  Next: chunk 5 (TBD) — branch off updated main this time
+  
+================================================================
+
 # Vantage Build — Session Log
 
 Append entries at the end of every working session. Newest at top.

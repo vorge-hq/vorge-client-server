@@ -1,3 +1,37 @@
+2026-05-27 — Dark mode severity ramp locked + tension resolutions
+  Branch on origin: feat/dark-mode-spec-refresh
+  Commit: <sha after push>
+  Tests: 192 server, 102 client, all passing (no behavioral change)
+  Lockbox: n/a (CSS tokens + product-decision-log entries)
+  Severity ramp:
+    - 4 of 5 severity values landed from designer's signed-off spec
+      (Low/Med/High/Very High)
+    - Critical text overridden from designer's #E23339 to #FF5C61:
+      original calculated 4.18:1 on #2B0809 (fails WCAG AA),
+      override calculates ~5.5:1 (passes)
+    - Designer notified; awaiting confirmation or replacement shade
+    - TEMP marker removed; severity tokens now production
+  Also in this commit:
+    - Secondary mid-tones S-200/300/400 aligned to spec
+    - Added --border-primary token (light: primary-200, dark:
+      primary-600); refactored 0 consumers (no components use
+      --surface-primary today; token is future-facing)
+  Tension resolutions (designer notified as FYI, not asking for input):
+    - Gold reserved for identity only — logo, sparkle marker,
+      selective accent pills. NOT a button color. The amber "CTA
+      button" in her preview was template residue from a different
+      project.
+    - Tertiary teal (T-400 family) reserved exclusively for AI
+      affordances. Removed "Success/Progress" label from T-400 usage
+      docs. Success uses semantic green (#4ADE80), progress uses sage
+      (severity-low). No role overlap.
+  Decisions logged: docs/decisions/product-decision-log.md (2 new
+    entries for the tension resolutions)
+  Smoke: dark-mode pages will be eyeballed before merge
+  Next: visual QA in browser, then merge to main
+
+================================================================
+
 2026-05-27 — Merged chunks 0-4 + cleanup + docs into main
   Merge commits: 096c014 (chunks 0-4 + cleanup), 43332e6 (docs)
   origin/main now current with all auth work and decision records

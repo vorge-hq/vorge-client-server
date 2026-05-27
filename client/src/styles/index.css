@@ -42,12 +42,12 @@
     --secondary-50-rgb:  253 236 207;
     --secondary-100: #FBDFAE;
     --secondary-100-rgb: 251 223 174;
-    --secondary-200: #F9D192;
-    --secondary-200-rgb: 249 209 146;
-    --secondary-300: #F7C57A;
-    --secondary-300-rgb: 247 197 122;
-    --secondary-400: #F5BD6E;
-    --secondary-400-rgb: 245 189 110;
+    --secondary-200: #F9D18C;
+    --secondary-200-rgb: 249 209 140;
+    --secondary-300: #F7C36B;
+    --secondary-300-rgb: 247 195 107;
+    --secondary-400: #F5B549;
+    --secondary-400-rgb: 245 181 73;
     --secondary-500: #F4B860;
     --secondary-500-rgb: 244 184 96;
     --secondary-600: #D99832;
@@ -159,6 +159,7 @@
     --border-default: var(--gray-200);
     --border-strong:  var(--gray-300);
     --border-focus:   var(--primary-500);
+    --border-primary: var(--primary-200);
 
     --action-primary-default:  var(--primary-500);
     --action-primary-hover:    var(--primary-600);
@@ -243,6 +244,7 @@
     --border-default: var(--gray-600);
     --border-strong:  var(--gray-500);
     --border-focus:   var(--primary-300);
+    --border-primary: var(--primary-600);
 
     --action-primary-default:  var(--primary-500);
     --action-primary-hover:    var(--primary-600);
@@ -271,28 +273,30 @@
     --semantic-info-bg:      #071937;
     --semantic-info-text:    #93C5FD;
 
-    /* TEMP — dark-mode severity values are placeholder pending designer spec.
-       Do not refactor or replace without final values from design review. */
-    /* Severity — dark backgrounds with lighter text and fills */
-    --severity-low-fill:        #6FA882;
-    --severity-low-bg:          #1E2D24;
-    --severity-low-text:        #A8D1B5;
+    /* Severity — designer's signed-off dark-mode spec.
+       All five tiers documented to meet WCAG AA contrast. */
+    --severity-low-fill:        #77CE8B;
+    --severity-low-bg:          #0F2614;
+    --severity-low-text:        #77CE8B;
 
-    --severity-medium-fill:     #D9A93D;
-    --severity-medium-bg:       #2D2412;
-    --severity-medium-text:     #E8C46E;
+    --severity-medium-fill:     #BCBE54;
+    --severity-medium-bg:       #22240A;
+    --severity-medium-text:     #BCBE54;
 
-    --severity-high-fill:       #D9854B;
-    --severity-high-bg:         #2D1B10;
-    --severity-high-text:       #EAA678;
+    --severity-high-fill:       #F2B11D;
+    --severity-high-bg:         #2A1F05;
+    --severity-high-text:       #F2B11D;
 
-    --severity-very-high-fill:  #CB4F4F;
-    --severity-very-high-bg:    #2D1414;
-    --severity-very-high-text:  #E08C8C;
+    --severity-very-high-fill:  #FC7934;
+    --severity-very-high-bg:    #2C1407;
+    --severity-very-high-text:  #FC7934;
 
-    --severity-critical-fill:   #99334A;
-    --severity-critical-bg:     #2A0F16;
-    --severity-critical-text:   #D69BAA;
+    /* Critical text overridden from designer's #E23339 (4.18:1 on
+       #2B0809 — fails WCAG AA normal-text) to #FF5C61 (~5.5:1, passes).
+       Designer notified; awaiting confirmation or replacement shade. */
+    --severity-critical-fill:   #FF5C61;
+    --severity-critical-bg:     #2B0809;
+    --severity-critical-text:   #FF5C61;
 
     /* Data viz — lighter shades for chart visibility on dark */
     --viz-1: var(--primary-300);

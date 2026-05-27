@@ -86,7 +86,6 @@ async function auditAuthEvent({ user, actionType, actingRole, req, metadata = {}
       entityId: user.id,
       metadata: {
         sourceIp: req.ip,
-        userAgent: req.headers["user-agent"] || null,
         ...metadata
       },
       traceId: req.traceId

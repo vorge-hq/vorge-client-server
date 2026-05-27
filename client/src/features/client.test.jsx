@@ -1,7 +1,10 @@
-import { describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { LoginPage } from "../pages/auth/LoginPage";
+import { WorkspaceProvider } from "./assessmentWorkspace/WorkspaceContext";
 import {
   DEMO_PERSONAS,
   ROLES,
@@ -69,6 +72,14 @@ import {
   commentCountsBySection,
   validateAssessment
 } from "./assessmentWorkspace/sectionValidation";
+
+beforeAll(() => {
+  vi.stubEnv("VITE_ENABLE_DEMO", "true");
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("session helpers", () => {
   test("detects authentication", () => {
@@ -1575,5 +1586,97 @@ describe("ProtectedRoute", () => {
     );
 
     expect(screen.getByText("Author dashboard").textContent).toBe("Author dashboard");
+  });
+});
+
+describe("LoginPage env-gated modes", () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    window.localStorage.clear();
+    vi.stubEnv("VITE_ENABLE_DEMO", "true");
+  });
+
+  test("demo mode renders the role picker entry point", () => {
+    vi.stubEnv("VITE_ENABLE_DEMO", "true");
+
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <WorkspaceProvider>
+          <AuthProvider initialSession={null}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/dashboard" element={<p>Dashboard</p>} />
+            </Routes>
+          </AuthProvider>
+        </WorkspaceProvider>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Demo bypass/i)).toBeTruthy();
+  });
+
+  test("prod mode posts credentials to /api/auth/login, stores token, and navigates", async () => {
+    vi.stubEnv("VITE_ENABLE_DEMO", "false");
+    const user = userEvent.setup();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        token: "test-token",
+        user: {
+          id: "u1",
+          name: "Test User",
+          initials: "TU",
+          email: "test@example.com",
+          title: "Author",
+          mfaEnabled: false
+        },
+        actingRole: ROLES.AUTHOR,
+        roles: [ROLES.AUTHOR],
+        facilities: [{ id: "fac-1", name: "Site 1" }]
+      })
+    });
+    globalThis.fetch = fetchMock;
+
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <AuthProvider initialSession={null}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/dashboard" element={<p>Dashboard ready</p>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText(/Demo bypass/i)).toBeNull();
+    expect(screen.queryByText(/choose a role/i)).toBeNull();
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com");
+    await user.type(screen.getByLabelText("Password"), "secret");
+    await user.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [calledUrl, calledOpts] = fetchMock.mock.calls[0];
+    expect(String(calledUrl)).toMatch(/\/api\/auth\/login$/);
+    expect(calledOpts.method).toBe("POST");
+    expect(JSON.parse(calledOpts.body)).toEqual({
+      email: "test@example.com",
+      password: "secret"
+    });
+
+    expect(await screen.findByText("Dashboard ready")).toBeTruthy();
+    expect(window.localStorage.getItem("vantage.session.token")).toBe("test-token");
+    const stored = JSON.parse(window.localStorage.getItem("vantage.session"));
+    expect(stored.token).toBe("test-token");
+    expect(stored.demo).toBe(false);
   });
 });

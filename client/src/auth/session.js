@@ -1,3 +1,11 @@
+import { isDemoEnabled } from "./demoFlag";
+
+function assertDemoEnabled() {
+  if (!isDemoEnabled()) {
+    throw new Error("Demo persona accessed in non-demo build");
+  }
+}
+
 export const ROLES = Object.freeze({
   AUTHOR: "Author",
   REVIEWER: "Reviewer",
@@ -74,6 +82,7 @@ export function canSwitchToRole(session, role) {
 }
 
 export function canDemoSwitchToRole(session, role) {
+  assertDemoEnabled();
   if (!session) return false;
   if (session.demo) return Object.values(ROLES).includes(role);
   return canSwitchToRole(session, role);
@@ -137,6 +146,7 @@ export const DEMO_PERSONAS = Object.freeze({
 });
 
 export function getDemoPersona(role) {
+  assertDemoEnabled();
   return DEMO_PERSONAS[role] || null;
 }
 

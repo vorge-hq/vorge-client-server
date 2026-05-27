@@ -4,6 +4,12 @@ import { ROLES } from "./auth/session";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { AppShell } from "./layouts/AppShell";
 import { LoginPage } from "./pages/auth/LoginPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
+import { MfaVerifyPage } from "./pages/auth/MfaVerifyPage";
+import { MfaEnrollPage } from "./pages/auth/MfaEnrollPage";
+import { MfaLockoutPage } from "./pages/auth/MfaLockoutPage";
+import { MfaSettingsPage } from "./pages/auth/MfaSettingsPage";
 import { DashboardPage } from "./pages/dashboards/DashboardPage";
 import { AssessmentsListPage } from "./pages/assessments/AssessmentsListPage";
 import { AssessmentWorkspacePage } from "./pages/assessments/AssessmentWorkspacePage";
@@ -15,11 +21,20 @@ import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { WorkspaceProvider } from "./features/assessmentWorkspace/WorkspaceContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toast } from "./components/Toast";
+import { useTheme } from "./hooks/useTheme";
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* MFA pages: outside AppShell so they render full-screen. They self-check
+          that a session token is present and redirect to /login if not. */}
+      <Route path="/mfa/verify" element={<MfaVerifyPage />} />
+      <Route path="/mfa/enroll" element={<MfaEnrollPage />} />
+      <Route path="/mfa/lockout" element={<MfaLockoutPage />} />
+      <Route path="/settings/mfa" element={<MfaSettingsPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
@@ -46,6 +61,7 @@ export function AppRoutes() {
 }
 
 export default function App() {
+  useTheme();
   return (
     <ErrorBoundary>
       <AuthProvider>

@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const env = require("./config/env");
 const authRoutes = require("./modules/auth/routes");
 const assessmentRoutes = require("./modules/assessments/routes");
@@ -10,8 +11,9 @@ const { DomainError } = require("./services/domainError");
 
 const app = express();
 
-app.use(cors({ origin: env.corsOrigin }));
+app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 app.use((req, _res, next) => {
   req.traceId = req.headers["x-trace-id"] || crypto.randomUUID();
   next();

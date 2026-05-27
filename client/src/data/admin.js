@@ -50,7 +50,7 @@ export const EXPORT_SECTIONS = Object.freeze([
 
 export const MFA_POLICY = Object.freeze([
   { role: "Author", required: false },
-  { role: "Reviewer", required: true },
+  { role: "Reviewer", required: false },
   { role: "Approver", required: true },
   { role: "HQ Executive", required: true },
   { role: "Admin", required: true },

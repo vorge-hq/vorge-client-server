@@ -304,3 +304,38 @@ smoke test.
 - Lockbox: docs/decisions/chunk-4-ui-checklist.md (deviation noted in
   commit message of f1c477c)
 - Commit: f1c477c
+
+---
+
+## 2026-05-27: Fixed silently-dropped dark: opacity-modifier Tailwind utilities
+
+Issue: ~15 component sites using bg-primary-50 dark:bg-primary-900/N pattern
+appeared broken in dark mode. Root cause: Tailwind 3.x cannot decompose
+hex-format CSS variables for the opacity-modifier syntax (color/N), so it
+silently drops the utilities at build time. The dark: variants never
+existed in the bundle. Light-mode utilities worked because they don't need
+decomposition.
+
+Diagnosis: confirmed via build-CSS grep showing zero dark:bg-*/N utilities,
+plus DOM inspect showing rgb(220, 230, 240) (light) on a row that had
+class="bg-primary-50 dark:bg-primary-900/80" in dark mode.
+
+Fix: Strategy 1 (hybrid). Added 44 parallel *-rgb channel-triple variables
+alongside existing hex ramps. Pointed Tailwind at the -rgb variants via
+rgb(var(...) / <alpha-value>) syntax. Existing hex variables and all role
+tokens left intact — zero component changes required. Added drift assertion
+test to catch hex↔rgb mismatch.
+
+Blast: zero outside Tailwind layer. Audit confirmed 100% of ramp consumers
+go through Tailwind utilities; only one direct property usage exists in
+index.css and consumes a hex-format variable that stays valid.
+
+Effect: every dark:bg-*-N/N (and equivalent) consumer now works correctly.
+Resolves the selected-evaluation-row contrast issue and other latent
+sites surfaced during audit.
+
+### Coordination note
+The `feat/dark-mode-spec-refresh` branch (severity ramp + Secondary
+mid-tone alignment + `--border-primary`) is pending merge. Its Secondary
+mid-tone updates (S-200/300/400) will need matching `-rgb` channel updates
+when it lands, or the drift test will fail. Resolve at merge time.

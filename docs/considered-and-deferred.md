@@ -275,3 +275,34 @@ use.
 - Adding a second engineer or external reviewer to the project
 - Pen-test firm or end-client review wants the formal diff surface
 - Operational policy decision to formalize merge workflow
+
+---
+
+## Section completion state — when does a section get a green check?
+Considered: 2026-05-28 (during dark-mode contrast fix visual QA)
+Status: deferred — product question, out of scope for contrast fix
+
+### What we considered
+During visual QA of the active rail item, noticed that only Section 6
+has dynamic completion logic (`isSection6Complete` in
+`assessmentModel`, derived from `matrix` + `evaluations`). Sections
+1–5 and 7–9 fall back to the static `completedSectionIds` array on
+the assessment seed, so their green-check indicators reflect seed
+data rather than actual document progress. Open question is whether
+each section should grow its own derivation predicate (analogous to
+`isSection6Complete`), or whether a single shared "section
+completeness" check over each section's required fields would be
+more maintainable.
+
+### Why we deferred
+Out of scope for the dark-mode contrast fix. The rendering itself is
+correct — the question is about what should drive the boolean, which
+is a product/UX decision touching every section. Warrants its own
+deliberate scoping round.
+
+### Revisit conditions
+- When the section-completion model is reviewed alongside validation
+  rules or workflow gating
+- When a section's "complete" indicator is materially wrong in a way
+  that blocks reviewer/approver workflow
+- When chunk 5+ work touches assessment workflow state

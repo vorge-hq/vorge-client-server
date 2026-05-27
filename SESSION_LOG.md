@@ -1,3 +1,24 @@
+2026-05-28 — Dark mode contrast fix for AssessmentShell active rail item
+  Branch merged to main: fix/dark-mode-assessment-rail-contrast
+  Fix commit: 911370d
+  Merge commit: 8063b2b
+  Scope: 3 className edits in AssessmentShell.jsx + 1 deferral entry
+    in considered-and-deferred.md
+  Trigger: Tailwind opacity-modifier fix (e901317) restored
+    dark:bg-primary-900/40 which exposed text-primary resolves to
+    same mid-navy in both light/dark modes
+  Tests: 106 passing (unchanged). Build clean. CSS bundle +570 bytes.
+  Visual QA: confirmed in dark mode at Section 8 view; active rail
+    item text readable, number circle digit readable, comment badges
+    sitting cleanly
+  Captured during QA: section completion state question (when does
+    section get green check?) → docs/considered-and-deferred.md
+  Followup deferred: red error-count badge (line 74) has same
+    structural issue — out of scope this round
+  Next: Phase 2 tisolation (new session)
+
+================================================================
+
 2026-05-27 — Dark mode severity ramp locked + tension resolutions
   Branch on origin: feat/dark-mode-spec-refresh
   Commit: <sha after push>

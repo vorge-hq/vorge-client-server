@@ -28,6 +28,15 @@
       threads richer error objects through ValidationSummary.jsx.
       Natural next step.
   Next: vercel --prod when user authorizes; re-verify on-device.
+  Auth note (observed, not blocking): Received Vercel email at 02:25
+    BST flagging a failed CLI deployment from GitHub identity
+    279891108+Alora-ops@users.noreply.github.com to alora-ops projects
+    ("not a member of the team"). Did not block the actual deploys,
+    which succeeded under the alora-ops CLI session. Cause unclear —
+    possibly a separate auth context (Claude Code's environment, stale
+    GitHub Actions token, or a transient identity mismatch). Recorded
+    for pattern-spotting; if recurs on future deploys, investigate
+    auth setup.
 
 ================================================================
 

@@ -13,6 +13,7 @@ import {
   Wand2
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { isDemoEnabled } from "../../auth/demoFlag";
 import { ROLES } from "../../auth/session";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
@@ -227,8 +228,25 @@ export function AuthorDashboard() {
                 actingRole: ROLES.AUTHOR,
                 state: assessment.state
               });
+              const landingSection = isDemoEnabled() ? 1 : 2;
+              const openAssessment = () =>
+                navigate(`/assessments/${assessment.id}/sections/${landingSection}`);
+              const handleRowKeyDown = (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openAssessment();
+                }
+              };
               return (
-                <tr key={assessment.id} className="group border-t border-border-subtle hover:bg-surface-muted/60">
+                <tr
+                  key={assessment.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${assessment.name}`}
+                  onClick={openAssessment}
+                  onKeyDown={handleRowKeyDown}
+                  className="group cursor-pointer border-t border-border-subtle hover:bg-surface-muted/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-focus"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <FileText size={14} className="text-text-disabled" />
@@ -261,7 +279,10 @@ export function AuthorDashboard() {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      onClick={() => navigate(`/assessments/${assessment.id}/sections/2`)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openAssessment();
+                      }}
                       className={`text-[13px] font-medium hover:underline ${
                         action.tone === "primary" ? "text-text-primary" : "text-text-muted"
                       }`}

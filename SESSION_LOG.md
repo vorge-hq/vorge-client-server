@@ -1,3 +1,43 @@
+2026-05-28 — Author dashboard: whole-row tap target + per-mode landing
+  Phone QA on live demo surfaced: Lagos Refinery row opens fine via
+    desktop mouse click but ignores phone taps. Inspection: the <tr>
+    had no onClick; the only interactive element was a tiny text-link
+    button (text-[13px], no padding, hit-box ~15px tall) well below
+    iOS's 44px touch-target minimum. Mouse precision-hit; finger taps
+    missed.
+  Fix shape: make the whole <tr> clickable (role="button", tabIndex=0,
+    aria-label per assessment, Enter/Space keyboard handlers,
+    cursor-pointer, focus-ring). Inner "Open →" button kept as visible
+    affordance, with event.stopPropagation() so a button click doesn't
+    double-navigate via the row.
+  Product decision baked in: landing section now branches by demo flag.
+    Production navigates to /sections/2 (Facility Info — current
+    behaviour preserved exactly). Demo navigates to /sections/1
+    (Executive Summary — natural reading order for cold prospects).
+    Single openAssessment helper inside the row map keeps both
+    handlers anchored to one source of truth.
+  Files modified: client/src/pages/dashboards/AuthorDashboard.jsx
+    (1 import, ~20 lines around the row block).
+  Files added: client/src/pages/dashboards/AuthorDashboard.test.jsx
+    (6 cases: demo-on click, demo-off click, button stopPropagation,
+    Enter, Space-preventDefault, a11y attrs).
+  Tests: 128 client passing (was 122 — +6 new). Server suite unchanged.
+  Decision records updated:
+    - docs/decisions/product-decision-log.md → formal structured entry
+      "Author dashboard — whole-row tap target + per-mode landing
+      section". Captures touch-target rationale, demo vs prod audience
+      reasoning, open question about last-viewed-section resume, and
+      the deferred follow-up for Reviewer / Approver / HQ Executive /
+      Mitigation Owner dashboards.
+  Followup deferred:
+    - Same small-target pattern likely lives on the other three
+      dashboards. Flagged in product-decision-log; not in this chunk.
+    - Should production Authors resume at last-viewed section instead
+      of hardcoded section 2? Open question, deferred.
+  Next: vercel --prod, real-device tap smoke at <1024px.
+
+================================================================
+
 2026-05-28 — Demo mobile-warning gate (Phase 1 POC)
   New component: DemoMobileGate wraps the app above the router.
     Fires only when isDemoEnabled() AND innerWidth < 1024 AND

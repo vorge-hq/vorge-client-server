@@ -488,3 +488,48 @@ token-aware version from day one rather than copying the legacy class.
   wired in `client/src/App.jsx`.
 - Considered-and-deferred entry: "Full mobile responsive build for demo"
   in `docs/considered-and-deferred.md`.
+
+## Author dashboard — whole-row tap target + per-mode landing section
+Date: 2026-05-28
+Decided by: Solo
+Status: locked
+
+### Context
+Phone-based QA of the live demo (deploy `dpl_HCDHMK9HaxgJAxMqbnajukSC5AXd`) surfaced that the "Lagos Refinery — 2026 SRA" row on the Author dashboard responded fine to mouse clicks on desktop but ignored finger taps on phone. Other touch interactions on the phone worked (demo bypass, sign-in, "New Assessment" button) — so the issue was row-specific, not a global touch failure.
+
+Inspection of `AuthorDashboard.jsx:230-272` revealed: the `<tr>` itself had no `onClick` at all. The only interactive element was a small text-link button in the rightmost column (`text-[13px] font-medium hover:underline`, no padding, no min-height) with effective hit-box ≈ 13-18px × 60-80px. iOS minimum recommended touch target is 44×44px. Mouse precision-clicks landed reliably; finger taps missed. The user's intuition ("the row is clickable on desktop") was sound UX even though it didn't match implementation.
+
+Separately, with row interactivity becoming a primary affordance, the landing-section question gets surfaced: where should the assessment shell open when an Author taps a row? Today the code navigates to section 2 (Facility Info) regardless of audience.
+
+### Options considered
+1. Just enlarge the existing button (padding/min-height) to a real 44px touch target. Row stays non-interactive.
+2. Make the whole `<tr>` clickable with `role="button"`, `tabIndex={0}`, Enter/Space keyboard handlers, `aria-label` per assessment. Keep the existing inner button as an explicit visual affordance, with `stopPropagation` to avoid double-fire.
+3. Land both demo and production on section 1 (Executive Summary) for everyone — more "natural reading order."
+4. Land both demo and production on section 2 (Facility Info) — preserve current production behaviour everywhere.
+5. Branch the landing section by demo flag: section 1 in demo, section 2 in production.
+
+### Decision
+- Touch target: option 2. Whole-row clickable.
+- Landing section: option 5. Demo → section 1, production → section 2. Branch via `isDemoEnabled()` in a per-row `landingSection` constant inside the row map.
+
+### Rationale
+- Whole-row is the user's natural mental model and the larger touch target by default. Removes the need to per-button-size every dashboard. Keeps the inner button as a visible affordance for users who scan for the action label and arrow.
+- Demo and production have different audiences. Production Authors resume where their work data lives — Facility Info is where most edits happen. Prospects entering cold during a demo benefit from natural reading order — Executive Summary frames everything that follows.
+- Branching is purely additive: production behaviour is preserved exactly (still section 2). The only change is what demo viewers land on.
+- A11y: `role="button"` on `<tr>` is non-standard but with explicit `aria-label`, `tabIndex={0}`, and keyboard handlers, screen readers announce the row as an action correctly. The inner button stops propagation so a button click doesn't fire twice.
+
+### Revisit conditions
+- A new dashboard pattern (e.g. multi-select via row checkbox) needs row clicks for something other than navigate.
+- Authors report wanting to land on whichever section they last viewed (rather than hardcoded section 2). See open question below.
+- Real-auth API ships and dashboard data changes shape in a way that affects routing decisions.
+
+### Open question (not for this chunk)
+Should production Authors resume at last-viewed section instead of hardcoded section 2? Today every assessment opens at section 2 regardless of progress. Worth revisiting once we have clearer signal on how Authors actually move between sections — likely needs a `lastViewedSectionId` field on the assessment record plus a small change in the navigate helper.
+
+### Follow-up (deferred)
+Reviewer, Approver, HQ Executive, and Mitigation Owner dashboards may have the same small-target pattern. Out of scope per the chunk constraint; flag for the next chunk so we don't ship a phone-friendly Author dashboard while everyone else stays broken.
+
+### Related artifacts
+- Implementation: `client/src/pages/dashboards/AuthorDashboard.jsx` (row + button + helper).
+- Tests: `client/src/pages/dashboards/AuthorDashboard.test.jsx` (6 new cases covering both demo modes + keyboard + a11y).
+- SESSION_LOG entry: 2026-05-28.

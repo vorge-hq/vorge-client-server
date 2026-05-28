@@ -20,6 +20,7 @@ import { FieldModePage } from "./pages/fieldMode/FieldModePage";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { WorkspaceProvider } from "./features/assessmentWorkspace/WorkspaceContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { DemoMobileGate } from "./components/demo/DemoMobileGate";
 import { Toast } from "./components/Toast";
 import { useTheme } from "./hooks/useTheme";
 
@@ -64,12 +65,14 @@ export default function App() {
   useTheme();
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <WorkspaceProvider>
-          <AppRoutes />
-          <Toast />
-        </WorkspaceProvider>
-      </AuthProvider>
+      <DemoMobileGate>
+        <AuthProvider>
+          <WorkspaceProvider>
+            <AppRoutes />
+            <Toast />
+          </WorkspaceProvider>
+        </AuthProvider>
+      </DemoMobileGate>
     </ErrorBoundary>
   );
 }

@@ -412,3 +412,79 @@ The `feat/dark-mode-spec-refresh` branch (severity ramp + Secondary
 mid-tone alignment + `--border-primary`) is pending merge. Its Secondary
 mid-tone updates (S-200/300/400) will need matching `-rgb` channel updates
 when it lands, or the drift test will fail. Resolve at merge time.
+
+## Demo-mode mobile viewport gate
+Date: 2026-05-28
+Decided by: Solo
+Status: locked
+
+### Context
+The Phase 1 demo is now deployed to `vantage-demo-roles.vercel.app` (env
+flag `VITE_ENABLE_DEMO=true`). Prospects routinely open demo links on
+phones. The Vantage platform is desk-only by design — topbar, role
+switcher, dashboard tables, and assessment shell all assume tablet/desktop
+viewports. We need to set expectations without blocking; first-impression
+quality at a small viewport is worse than a one-tap pre-roll explaining
+this.
+
+### Options considered
+- A: Do nothing. Let prospects see the broken layout and self-select away.
+- B: Hard-block mobile (no Continue). Treat phones as unsupported.
+- C: Soft warning gate with a "Continue anyway" CTA. Demo-mode only.
+- D: Full responsive build for the demo. Make every screen mobile-ready.
+
+Sub-decisions inside Option C:
+- Viewport threshold: 1024 (Tailwind `lg:`) vs 768 (Tailwind `md:`) vs
+  custom narrow band.
+- Persistence: `sessionStorage` (re-fires on new browser session) vs
+  `localStorage` (one-time forever).
+- Check timing: on-mount only vs reactive `resize` listener.
+
+### Decision
+Option C: soft warning gate, demo-mode only, gated by:
+`isDemoEnabled() === true` AND `window.innerWidth < 1024` AND
+sessionStorage key absent.
+
+Threshold = 1024 (Tailwind `lg:`).
+Persistence = `sessionStorage`, key `vantage:demo:mobile-gate-dismissed`.
+Check on mount only — no resize listener.
+
+Option D is recorded in `docs/considered-and-deferred.md` and is not in
+scope for Phase 1.
+
+### Rationale
+- 1024 matches the same breakpoint the layout already uses (`lg:`); the
+  layout is genuinely fine at iPad Pro portrait (1024 wide) and breaks
+  predictably below it.
+- `sessionStorage`, not `localStorage`: a prospect who opens the demo a
+  week later in a new session benefits from the reminder again. They may
+  not remember they accepted the warning. Cost of re-showing is one tap.
+- Check on mount only: if a user resizes mid-session, neither re-firing
+  nor re-hiding is what they want. Resize events on touch devices are
+  also noisy (rotation, browser chrome animation) — a stable
+  one-shot-on-load is the simpler contract.
+- Soft, not hard: the goal is expectation-setting, not gating. A prospect
+  showing the platform to a colleague on a phone should be able to.
+
+Sub-rationale (token usage): the brand lockup mirrors `LoginPage.jsx` for
+visual parity, but the "SRA Platform" subhead routes through the
+`text-text-muted` design-system token instead of `LoginPage`'s legacy
+hardcoded `text-zinc-500`. `LoginPage`'s zinc-500 is a small dark-mode
+gap that should be revisited separately; the new gate uses the
+token-aware version from day one rather than copying the legacy class.
+
+### Revisit conditions
+- Field mode (M4–M5) ships responsive mobile views — at that point we
+  may have real mobile screens worth not blocking.
+- Explicit prospect request for mobile-usable demo.
+- Observed funnel drop-off attributable to the warning (rather than to
+  general mobile unsuitability).
+- Tailwind breakpoint changes downstream.
+
+### Related artifacts
+- Implementation: `client/src/components/demo/DemoMobileGate.jsx`,
+  `client/src/components/demo/computeInitialDismissed.js`,
+  `client/src/components/demo/DemoMobileGate.test.jsx`,
+  wired in `client/src/App.jsx`.
+- Considered-and-deferred entry: "Full mobile responsive build for demo"
+  in `docs/considered-and-deferred.md`.

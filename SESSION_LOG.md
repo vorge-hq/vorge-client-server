@@ -1,3 +1,42 @@
+2026-05-28 — Demo mobile-warning gate (Phase 1 POC)
+  New component: DemoMobileGate wraps the app above the router.
+    Fires only when isDemoEnabled() AND innerWidth < 1024 AND
+    sessionStorage key absent. Soft warning, "Continue anyway" CTA,
+    Esc-dismissible, role="alertdialog", aria-labelledby on heading,
+    autofocus on button.
+  Files added: client/src/components/demo/{DemoMobileGate.jsx,
+    computeInitialDismissed.js, DemoMobileGate.test.jsx}
+  Files modified: client/src/App.jsx (wrap AuthProvider subtree)
+  Brief deviations surfaced:
+    - Used isDemoEnabled() helper instead of inlining import.meta.env
+      check (matches 9+ existing call sites).
+    - Brand subhead "SRA Platform" uses text-text-muted token, not
+      LoginPage's legacy hardcoded text-zinc-500. Reconciles "match
+      sign-in" with "no zinc hardcodes" — copy lockup structure, route
+      token-able text through design system.
+    - Extracted computeInitialDismissed as a pure helper for clean
+      SSR-branch unit testing (dependency-injected via property-existence
+      checks, not destructuring defaults — explicit-undefined matters).
+    - aria-labelledby on visible heading id instead of aria-label.
+  Tests: 122 client passing (was 106 — +16 new gate tests, plus
+    pre-existing suite). Server suite unchanged.
+  Decision records updated:
+    - docs/decisions/product-decision-log.md → formal structured entry
+      "Demo-mode mobile viewport gate" (threshold 1024, sessionStorage,
+      check-on-mount).
+    - docs/considered-and-deferred.md → "Full mobile responsive build
+      for demo" with revisit conditions tied to Field mode M4-M5,
+      prospect ask, or observed funnel drop-off.
+  Followup deferred:
+    - LoginPage.jsx "SRA Platform" subhead still hardcodes text-zinc-500
+      (dark-mode gap, separate fix).
+    - Update Vantage_Vercel_Deployment_Guide.docx "Before the meeting"
+      checklist to mention phone-check + gate (separate Drive doc chunk).
+  Next: visual QA at 320/375/414/768/1023/1024 in DevTools + real-device
+    smoke after vercel --prod.
+
+================================================================
+
 2026-05-28 — Manual Vercel deploy setup for vantage-demo-roles
   Vercel CLI installed and authenticated (alora-ops account)
   Project linked: alora-ops-projects/vantage-demo-roles

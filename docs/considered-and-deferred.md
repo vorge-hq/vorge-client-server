@@ -306,3 +306,39 @@ deliberate scoping round.
 - When a section's "complete" indicator is materially wrong in a way
   that blocks reviewer/approver workflow
 - When chunk 5+ work touches assessment workflow state
+
+## Full mobile responsive build for demo
+Considered: 2026-05-28 (during Phase 1 demo deploy)
+Status: deferred
+
+### What we considered
+Making every demo screen — sign-in, dashboard, assessments list,
+assessment workspace, role switcher, topbar — responsive down to phone
+viewports. Either via Tailwind responsive utilities across every screen,
+or a separate mobile-first variant routed by viewport.
+
+### Why we deferred
+- Vantage's product brief is desk-only: analysts working at their desk.
+  Mobile is not a real use case for the platform — it's only a real use
+  case for *opening a demo link*. Solving the demo problem (set
+  expectations on small screens) is much cheaper than building screens
+  the platform doesn't need.
+- Cost is non-trivial: assessment workspace, dashboard tables, role
+  switcher, topbar all have desk-density information designs that don't
+  graceful-degrade. A real responsive build is weeks, not days.
+- A soft warning gate addresses the actual harm (bad first impression)
+  with one component.
+
+### Revisit conditions
+- Field mode M4–M5 ships — Field mode is the one workflow with a real
+  on-device-at-a-site use case. When it lands, that subset becomes
+  responsive, but the rest of the platform stays desk-only.
+- Explicit prospect request for mobile-usable demo, especially from a
+  customer profile we want to win.
+- Observed funnel drop-off attributable to mobile sessions hitting the
+  gate and not converting — vs. desktop sessions that do convert. That
+  would tell us the gate is a real barrier, not just a label.
+
+### Related artifacts
+- Mobile-warning gate shipped in product-decision-log.md entry
+  "Demo-mode mobile viewport gate" (2026-05-28).

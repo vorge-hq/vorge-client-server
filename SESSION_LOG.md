@@ -1,3 +1,36 @@
+2026-05-28 — Section 6 validation: human labels instead of raw eval IDs
+  Phone QA surfaced: Section 6 validation banner read
+    "Evaluation e-at-t5-1779934620202 is missing the risk scenario."
+    — leaking the raw DB id to the user with no way to map it to a
+    matrix cell. Section 6 was the only section with this gap;
+    Section 3 (assets), Section 4 (threats), and Section 7 (mitigations)
+    all already used human-readable labels.
+  Fix: added evaluationLabel() in sectionValidation.js, mirroring the
+    existing mitigationLabel() pattern in the same file. Resolves
+    (assetId, threatId) to "the Asset N × <Threat> evaluation" via
+    asset.name + threat.short/classification/name lookups with
+    graceful fallbacks. Eval id is never used in user-visible text.
+  New messages:
+    - "The Asset 1 × Terrorism evaluation is missing the risk scenario."
+    - "The Asset 1 × Terrorism evaluation has no R1 score."
+  Codes unchanged (eval-scenario, eval-r1) so existing code-based
+    consumers and tests still work.
+  Files modified: client/src/features/assessmentWorkspace/sectionValidation.js
+    (~15 lines added/changed), client/src/features/client.test.jsx
+    (2 new test cases).
+  Tests: 130 client passing (was 128 — +2 new). Server suite unchanged.
+  Decision records updated:
+    - docs/decisions/product-decision-log.md → narrative entry
+      "Section 6 validation messages use human labels". Captures
+      symptom, root cause, fix, and the deferred follow-up.
+  Followup deferred:
+    - Deep-link errors to the offending matrix cell. Bigger refactor;
+      threads richer error objects through ValidationSummary.jsx.
+      Natural next step.
+  Next: vercel --prod when user authorizes; re-verify on-device.
+
+================================================================
+
 2026-05-28 — Author dashboard: whole-row tap target + per-mode landing
   Phone QA on live demo surfaced: Lagos Refinery row opens fine via
     desktop mouse click but ignores phone taps. Inspection: the <tr>

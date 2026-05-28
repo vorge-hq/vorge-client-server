@@ -1500,6 +1500,45 @@ describe("section validation", () => {
     expect(result[6].some((e) => e.code === "eval-r1")).toBe(true);
   });
 
+  test("eval validation messages name the asset × threat, never the raw evaluation id", () => {
+    const result = validateAssessment({
+      assessment: baseAssessment,
+      assets: [{ id: "a1", name: "Asset 1", description: "ok", criticality: "Low" }],
+      threats: [{ id: "t5", classification: "Terrorism", rating: "Medium" }],
+      evaluations: [
+        {
+          id: "e-at-t5-1779934620202",
+          assetId: "a1",
+          threatId: "t5",
+          scenario: "",
+          consequenceR1: 0,
+          likelihoodR1: 0
+        }
+      ]
+    });
+    const messages = result[6].map((e) => e.message);
+    expect(messages).toHaveLength(2);
+    messages.forEach((message) => {
+      expect(message).toMatch(/Asset 1/);
+      expect(message).toMatch(/Terrorism/);
+      expect(message).not.toMatch(/e-at-t5-1779934620202/);
+    });
+  });
+
+  test("eval label falls back gracefully when asset/threat lookups fail", () => {
+    const result = validateAssessment({
+      assessment: baseAssessment,
+      assets: [],
+      threats: [],
+      evaluations: [
+        { id: "e-at-orphan", assetId: "missing", threatId: "missing", scenario: "" }
+      ]
+    });
+    const message = result[6].find((e) => e.code === "eval-scenario")?.message;
+    expect(message).toBeTruthy();
+    expect(message).not.toMatch(/e-at-orphan/);
+  });
+
   test("flags mitigations without owner, target, or pending agreement", () => {
     const result = validateAssessment({
       assessment: baseAssessment,

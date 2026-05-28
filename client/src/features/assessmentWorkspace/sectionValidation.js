@@ -18,6 +18,22 @@ function isBlank(value) {
   return !value || !String(value).trim();
 }
 
+/* Build a human-readable label for an evaluation, anchored on the
+   asset x threat scenario. Falls back through asset/threat name,
+   short, or classification. The internal evaluation id is intentionally
+   never used in user-visible strings. */
+function evaluationLabel(evaluation, assets, threats) {
+  const asset = assets.find((a) => a.id === evaluation.assetId);
+  const threat = threats.find((t) => t.id === evaluation.threatId);
+  const assetLabel = asset?.name || evaluation.assetId;
+  const threatLabel =
+    threat?.short || threat?.classification || threat?.name || evaluation.threatId;
+  if (assetLabel && threatLabel) {
+    return `the ${assetLabel} × ${threatLabel} evaluation`;
+  }
+  return "an evaluation";
+}
+
 /* Build a human-readable label for a mitigation, anchored on the
    asset x threat scenario it addresses. Falls back to the proposed
    mitigation text or — in the worst case — to a generic phrase. The
@@ -97,16 +113,18 @@ export function validateAssessment(input = {}) {
   });
 
   evaluations.forEach((evaluation) => {
+    const label = evaluationLabel(evaluation, assets, threats);
+    const sentenceLabel = label.charAt(0).toUpperCase() + label.slice(1);
     if (isBlank(evaluation.scenario)) {
       out[6].push({
         code: "eval-scenario",
-        message: `Evaluation ${evaluation.id} is missing the risk scenario.`
+        message: `${sentenceLabel} is missing the risk scenario.`
       });
     }
     if (!evaluation.consequenceR1 || !evaluation.likelihoodR1) {
       out[6].push({
         code: "eval-r1",
-        message: `Evaluation ${evaluation.id} has no R1 score.`
+        message: `${sentenceLabel} has no R1 score.`
       });
     }
   });

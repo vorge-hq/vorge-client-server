@@ -533,3 +533,45 @@ Reviewer, Approver, HQ Executive, and Mitigation Owner dashboards may have the s
 - Implementation: `client/src/pages/dashboards/AuthorDashboard.jsx` (row + button + helper).
 - Tests: `client/src/pages/dashboards/AuthorDashboard.test.jsx` (6 new cases covering both demo modes + keyboard + a11y).
 - SESSION_LOG entry: 2026-05-28.
+
+## 2026-05-28: Section 6 validation messages use human labels
+Phone-based QA of the live demo surfaced that Section 6 (Vulnerability
+Assessment & Risk Treatment) was leaking raw evaluation database IDs in
+the validation banner. Example seen on-device:
+
+> Evaluation `e-at-t5-1779934620202` is missing the risk scenario.
+> Evaluation `e-at-t5-1779934620202` has no R1 score.
+
+The reader had no way to map `e-at-t5-1779934620202` back to a matrix
+cell without decoding the ID structure. Section 6 was the only section
+with this bug — Section 3 (assets), Section 4 (threats), and Section 7
+(mitigations) all already used human-readable labels in their messages.
+In particular, `sectionValidation.js` already had a `mitigationLabel()`
+helper that resolves an evaluation's `(assetId, threatId)` to
+`the {Asset name} × {Threat name} mitigation`. Section 7's messages had
+been routing through it; Section 6's eval messages had not.
+
+Fix: added an `evaluationLabel()` helper next to `mitigationLabel()`,
+mirroring the same fallback chain (asset `name` → asset id; threat
+`short` → `classification` → `name` → threat id; final fallback "an
+evaluation" rather than leak the eval id). Rewrote the two eval messages
+to use the sentence-cased label. Codes (`eval-scenario`, `eval-r1`) are
+unchanged so programmatic consumers (and existing code-based test
+assertions) still work.
+
+New user-visible messages:
+> The Asset 1 × Terrorism evaluation is missing the risk scenario.
+> The Asset 1 × Terrorism evaluation has no R1 score.
+
+Tests: added two new assertions in `client.test.jsx`. One locks the
+asset/threat name presence and absence of the raw eval id (regression
+lock). One verifies graceful fallback when asset/threat lookups fail.
+130 client tests passing (was 128).
+
+### Open question / deferred
+Deep-linking the error to the offending matrix cell — click the
+banner row → scroll to and focus the Asset N × Threat cell. Today
+`ValidationSummary.jsx` only receives message strings; supporting click
+navigation would mean threading richer error objects (with `assetId`,
+`threatId`) through the validator AND refactoring the banner to render
+JSX rows instead of strings. Worth doing next; not in this chunk.

@@ -34,6 +34,15 @@
       checklist to mention phone-check + gate (separate Drive doc chunk).
   Next: visual QA at 320/375/414/768/1023/1024 in DevTools + real-device
     smoke after vercel --prod.
+  Deploy recovery: bb65bb2 needed a manual vercel --prod and didn't
+    auto-promote on the first try. CLI 53.1.0 produced an orphaned
+    UNKNOWN-status deploy dpl_3KUqcMCrAF47k6dYfiNRwoTmFSHG (no build
+    logs, never aliased — left in place). Upgraded CLI to 54.5.1 (sudo
+    npm i -g vercel@latest), re-ran vercel --prod, succeeded. New live
+    deploy: dpl_HCDHMK9HaxgJAxMqbnajukSC5AXd. Alias verified pointing
+    to new ID; bundle grep on /assets/index-CySC5ygM.js confirms 5/5
+    gate string literals present. Parked observation about system-wide
+    Node + sudo recorded in docs/considered-and-deferred.md.
 
 ================================================================
 

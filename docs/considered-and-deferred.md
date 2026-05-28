@@ -342,3 +342,29 @@ or a separate mobile-first variant routed by viewport.
 ### Related artifacts
 - Mobile-warning gate shipped in product-decision-log.md entry
   "Demo-mode mobile viewport gate" (2026-05-28).
+
+## Node installed system-wide; global npm installs need sudo
+Considered: 2026-05-28 (during demo deploy recovery)
+Status: deferred
+
+### What we considered
+Switching from system-wide Node (currently at `/usr/local/`) to a
+user-scoped Node version manager — nvm or fnm — so global tool installs
+(`npm i -g ...`) don't require sudo.
+
+### Why we deferred
+- Hit once during the gate-deploy recovery: `npm i -g vercel@latest`
+  failed with EACCES because `/usr/local/lib/node_modules/` is
+  root-owned. Worked around by running with sudo in a separate terminal.
+- One-off friction, not a blocker. The dev workflow doesn't typically
+  involve frequent global installs.
+- Switching shells over to a version manager is a non-trivial migration
+  touching shell rc files, existing Node installs, and any local global
+  tooling already present.
+
+### Revisit conditions
+- Global tool installs become frequent in the workflow (e.g. multiple
+  CLIs needing periodic upgrades).
+- Another EACCES error blocks something time-sensitive — e.g. a deploy
+  needs a CLI upgrade and sudo isn't immediately available.
+- A new project requires multiple Node versions concurrently.

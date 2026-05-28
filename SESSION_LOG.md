@@ -1,3 +1,16 @@
+2026-05-28 — Manual Vercel deploy setup for vantage-demo-roles
+  Vercel CLI installed and authenticated (alora-ops account)
+  Project linked: alora-ops-projects/vantage-demo-roles
+  .vercel/ folder in repo root (gitignored, per-machine config)
+  Env var set: VITE_ENABLE_DEMO=true on production scope
+  Build settings fixed: Root Directory = client, Framework = Vite
+  First successful deploy: db1ac21 main HEAD → vantage-demo-roles.vercel.app
+  Deploy ID: dpl_5abKiN4Nn9BGgYDubxvxhkngfgMi
+  Pattern established: vercel --prod from repo root deploys current main HEAD to demo URL. No git auto-deploy (intentional — git integration in dashboard remains disconnected).
+  Next: mobile-readable warning for demo (Level 1 only)
+
+================================================================
+
 2026-05-28 — Dark mode contrast fix for AssessmentShell active rail item
   Branch merged to main: fix/dark-mode-assessment-rail-contrast
   Fix commit: 911370d

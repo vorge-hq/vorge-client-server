@@ -651,3 +651,78 @@ designer-reviewed CTA-token chunk so we don't leak gold piecemeal.
 - `client/src/pages/auth/LoginPage.jsx` (both variants).
 - `client/src/assets/vantage-logo-on-{light,dark}.svg` (existing, now wired).
 - SESSION_LOG 2026-05-29.
+
+## AD-1: Anomaly acknowledgement on Section 3 assets
+Date: 2026-05-29
+Decided by: Solo
+Status: locked
+
+### Context
+`docs/businesslogic.md` §9.2 specs real-time anomaly detection as a paid
+recurring add-on ($500–1,500/mo/facility) — flag → acknowledge (reason
+picker) → audit, advisory-only, never blocking. The demo shipped only the
+single client rule (`detectAssetAnomaly`, criticality vs consequences) as a
+passive inline amber note: no acknowledge button, no reason picker, no
+audit, no per-user scoping. AD-1 closes that gap for the Section-3 asset
+rule — the visible Author-facing mechanic that demonstrates the add-on.
+
+### Options considered
+- A: Leave as the passive note. No demo value; doesn't show the product.
+- B: Build the full spec now (server rule engine, 800ms debounce, LLM
+  checks, Sections 3/5/6, admin per-facility toggle). Weeks of invisible
+  plumbing for no added demo-narrative value.
+- C (chosen): Client-only v1 — the asset rule + the acknowledge loop +
+  audit, in `WorkspaceContext`. Reusable primitives for later rules.
+
+### Decision
+Implement AD-1 as a client-only advisory slice:
+- `useAnomalyAcknowledgement` hook (rule id `asset-criticality-consequences`).
+- `AnomalyWarningChip` (tokens only) + `AnomalyAcknowledgeModal` (reuses
+  shared Modal; reasons Not applicable / False positive / Will address /
+  Other, note required iff Other).
+- `WorkspaceContext.acknowledgeAnomaly` persists the ack onto the asset and
+  appends an `anomaly-ack` audit entry atomically.
+- Acknowledgement keyed by rule id + `session.user.id`; a criticality/
+  consequences snapshot on the ack auto-invalidates it when either field is
+  edited (no explicit clear). Acknowledge UI shown for Author + Draft +
+  editable asset only. Advisory — never gates submit/review/approve.
+
+### Rationale
+Per §9.2 (L985, L998-1000, L1003-1005, L1009) the add-on's value is the
+recurring flag → acknowledge → "logged for tuning" loop, which is pure
+client UX. The backend hybrid engine is invisible plumbing and adds no
+demo-narrative value, so it is correctly deferred to AD-2+. Front-loading
+the client loop maximizes demo / recurring-revenue storytelling at minimal
+cost and zero workflow risk (advisory per L1003).
+
+Sub-decisions (Q1–Q3 defaults): per-Author key stored on the asset — demo
+assets are workspace-global, so spec's "per-assessment" scoping is
+approximated and noted as a v1 limitation (exact once assets become
+assessment-scoped server-side); acknowledged chip softens to a muted state
+(not hidden) for transparency; audit action `anomaly-ack` matches the
+existing lowercase-hyphen vocab rather than introducing `AI_ANOMALY_*`.
+
+### Revisit conditions
+- AD-2 lands the server rule engine (deterministic + LLM), 800ms debounce,
+  and Sections 5/6 rules — at which point flag events (not just dismissals)
+  get logged and acks may move server-side.
+- Assets become assessment-scoped (server era) → tighten ack key to true
+  per-Author-per-assessment.
+- An admin per-facility enable toggle is built (none exists today; AD-1 is
+  always-on for the demo).
+
+### Related artifacts
+- Implementation: `client/src/components/AnomalyWarningChip.jsx`,
+  `client/src/features/assessmentWorkspace/useAnomalyAcknowledgement.js`,
+  `.../AnomalyAcknowledgeModal.jsx`, edits to `.../AssetDisaggregationSection.jsx`
+  and `.../WorkspaceContext.jsx`.
+- Tests: `client/src/data/assets.test.js`, `.../AssetDisaggregationSection.test.jsx`.
+- SESSION_LOG 2026-05-29.
+- Anomaly arc (handoff):
+
+  | ID | Scope |
+  |----|--------|
+  | AD-1 | Section 3 asset criticality-vs-consequences + acknowledgement (this) |
+  | AD-2 | Anomaly rules for Sections 5 & 6; server engine + 800ms debounce |
+  | AD-3 | Admin dismissal-rate / tuning surface (AI Operations Playbook) |
+  | AD-4 | Cross-facility consistency flagging (businesslogic Feature 3) |

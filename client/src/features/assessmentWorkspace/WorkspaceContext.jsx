@@ -226,6 +226,55 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
+  /* Advisory anomaly acknowledgement (AD-1). Writes the ack onto the
+     asset keyed by ruleId, and appends an audit entry — atomically, like
+     addComment. The criticality/consequences snapshot stored on the ack
+     means it auto-invalidates when either field is later edited (no
+     explicit clear needed); see useAnomalyAcknowledgement. Advisory only —
+     never gates any workflow action. */
+  const acknowledgeAnomaly = useCallback(async ({ assetId, ruleId, reason, note, actor }) => {
+    return new Promise((resolve) => {
+      setState((current) => {
+        const asset = current.assets.find((a) => a.id === assetId);
+        if (!asset || !ruleId || !reason) {
+          queueMicrotask(() => resolve({ error: "Invalid acknowledgement." }));
+          return current;
+        }
+        const assessment = current.assessmentsById[current.activeAssessmentId];
+        const ts = new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
+        const ack = {
+          userId: actor?.userId || null,
+          reason,
+          note: note || "",
+          criticalityAt: asset.criticality,
+          consequencesAt: asset.consequences,
+          at: ts
+        };
+        const nextAssets = current.assets.map((a) =>
+          a.id === assetId
+            ? { ...a, anomalyAcks: { ...(a.anomalyAcks || {}), [ruleId]: ack } }
+            : a
+        );
+        const detailReason = note ? `${reason}: ${note}` : reason;
+        const entry = {
+          id: `au-anomaly-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: ts,
+          user: actor?.name || "Author",
+          role: actor?.role || "Author",
+          facility: assessment?.facilityName || "—",
+          assessment: assessment?.name || "—",
+          action: "anomaly-ack",
+          detail: `${asset.name} — anomaly acknowledged (${detailReason})`,
+          section: "Section 3 — Asset Disaggregation",
+          sectionId: 3,
+          ip: "102.89.34.45"
+        };
+        queueMicrotask(() => resolve({ ok: true, entry }));
+        return { ...current, assets: nextAssets, audit: [entry, ...current.audit] };
+      });
+    });
+  }, []);
+
   const removeAsset = useCallback(async (assetId) => {
     return new Promise((resolve) => {
       setState((current) => {
@@ -430,6 +479,7 @@ export function WorkspaceProvider({ children }) {
       updateAsset,
       addAsset,
       removeAsset,
+      acknowledgeAnomaly,
       updateThreat,
       addThreat,
       removeThreat,
@@ -451,6 +501,7 @@ export function WorkspaceProvider({ children }) {
       updateAsset,
       addAsset,
       removeAsset,
+      acknowledgeAnomaly,
       updateThreat,
       addThreat,
       removeThreat,

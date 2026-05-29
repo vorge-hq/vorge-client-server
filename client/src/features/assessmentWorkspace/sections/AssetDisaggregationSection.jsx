@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { Banner } from "../../../components/Banner";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { detectAssetAnomaly } from "../../../data/assets";
+import { AnomalyWarningChip } from "../../../components/AnomalyWarningChip";
 import { useWorkspace } from "../WorkspaceContext";
 import { getCommentPermission } from "../assessmentModel";
+import { useAnomalyAcknowledgement } from "../useAnomalyAcknowledgement";
+import { AnomalyAcknowledgeModal } from "../AnomalyAcknowledgeModal";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -105,7 +107,8 @@ function CollapsedAssetRow({ asset, onClick, readOnly }) {
 }
 
 function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly }) {
-  const anomaly = detectAssetAnomaly(asset);
+  const { message, acknowledged, ackReason, acknowledge } = useAnomalyAcknowledgement(asset);
+  const [ackOpen, setAckOpen] = useState(false);
 
   return (
     <div className="border-b border-border-subtle bg-surface-muted/60 last:border-b-0">
@@ -169,11 +172,13 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
             placeholder="What happens if this asset is compromised or lost?"
             className="field-control resize-y"
           />
-          {anomaly ? (
-            <p className="mt-1.5 inline-flex items-start gap-1.5 text-xs font-medium text-amber-800">
-              <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {anomaly}
-            </p>
-          ) : null}
+          <AnomalyWarningChip
+            message={message}
+            acknowledged={acknowledged}
+            ackReason={ackReason}
+            readOnly={readOnly}
+            onAcknowledge={() => setAckOpen(true)}
+          />
         </div>
 
         <div className="mt-4 space-y-1.5">
@@ -197,6 +202,16 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
           </div>
         )}
       </div>
+
+      <AnomalyAcknowledgeModal
+        open={ackOpen}
+        message={message}
+        onClose={() => setAckOpen(false)}
+        onConfirm={async (reason, note) => {
+          await acknowledge(reason, note);
+          setAckOpen(false);
+        }}
+      />
     </div>
   );
 }

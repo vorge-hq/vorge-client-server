@@ -85,6 +85,6 @@ Per `docs/plan.md` + build plans. Status is indicative — verify against code b
 | Field mode | Offline/field foundations | 🟡 v1 foundations |
 | Exports | Word / PDF | ⬜ To confirm |
 | Admin config | Users, facilities, dropdowns | 🟡 Built |
-| AI features (6) | AI service module | ⬜ Not started (spec in Drive) |
+| AI features (6) | AI service module | 🟡 AD-1 anomaly acknowledgement (Section 3 assets) shipped 2026-05-29 (client-only, advisory). AD-2–AD-4 + other AI features not started; backend rule engine deferred. |
 
 Legend: ✅ done · 🟡 partial / needs verification · ⬜ not started.

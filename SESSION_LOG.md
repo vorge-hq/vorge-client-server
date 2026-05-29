@@ -1,3 +1,44 @@
+2026-05-29 — AD-1: anomaly acknowledgement on Section 3 assets
+  Spec (businesslogic §9.2) defines real-time anomaly detection as a paid
+    recurring add-on with a flag → acknowledge (4 reasons) → audit loop.
+    Demo had only the rule (detectAssetAnomaly) rendered as a passive
+    amber note — no acknowledge loop. AD-1 adds the Author-facing loop
+    (the demo-sellable mechanic); backend engine/debounce/other sections
+    deferred to AD-2+.
+  Shipped (client-only, advisory — never blocks workflow):
+    - useAnomalyAcknowledgement hook: rule call + per-Author validity via
+      a criticality/consequences SNAPSHOT (editing either field auto-
+      invalidates the ack and re-fires the warning; no explicit clear).
+      Rule id "asset-criticality-consequences"; keyed by session.user.id.
+    - AnomalyWarningChip (tokens only — semantic-warning + text-*; no new
+      zinc): warning state with Acknowledge button; muted "acknowledged
+      — {reason}" state after dismissal (kept visible for transparency).
+    - AnomalyAcknowledgeModal: reuses shared (tokenized) Modal; reasons
+      Not applicable / False positive / Will address / Other (note
+      required iff Other).
+    - WorkspaceContext.acknowledgeAnomaly: writes the ack snapshot onto
+      the asset + appends an "anomaly-ack" audit entry atomically (mirrors
+      addComment). Lowercase-hyphen action, matching existing vocab.
+    - Wired into AssetDisaggregationSection (ExpandedAssetRow); Acknowledge
+      hidden when readOnly (non-Author or non-Draft).
+  Defaults accepted (Q1–Q3): per-Author key on the asset (demo assets are
+    workspace-global, so "per-assessment" is approximated — v1 limitation);
+    soften (not hide) acknowledged chip; lowercase "anomaly-ack" audit.
+  Key files: client/src/components/AnomalyWarningChip.jsx;
+    client/src/features/assessmentWorkspace/{useAnomalyAcknowledgement.js,
+    AnomalyAcknowledgeModal.jsx}; edits to AssetDisaggregationSection.jsx
+    + WorkspaceContext.jsx. Tests: client/src/data/assets.test.js (7) +
+    AssetDisaggregationSection.test.jsx (2 RTL).
+  Tests: 139 client passing (was 130 — +9). Build clean.
+  Decision record: product-decision-log.md AD-1 entry (incl. AD-1→AD-4
+    arc table). Advisory-only — does not gate submit/review/approve.
+  Deferred (handoff): AD-2 (Sections 5/6 + server engine/debounce),
+    AD-3 (admin dismissal-rate tuning), AD-4 (cross-facility); admin
+    enable toggle (none wired today — always-on for demo).
+  Next: commit (done); push is user's call.
+
+================================================================
+
 2026-05-29 — LoginPage dark-mode brand contrast + real logo
   QA: in dark mode the Vantage wordmark, "Sign in to continue" heading,
     and primary Sign-in button were all brand-navy on near-navy bg —

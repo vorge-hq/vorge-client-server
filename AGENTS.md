@@ -92,6 +92,7 @@ For single-side iteration:
 1. Run `make test`. The Claude Code PreToolUse hook in `.claude/hooks/pre-commit.js` will block commits if it fails, but running it yourself first saves a hook cycle.
 2. Confirm `.env` is not in the staged set: `git status`.
 3. Prefer small, focused commits. Reviewing a 30-file commit is hard.
+4. If the commit touches `client/src`, `server/src`, or `server/migrations`, append `SESSION_LOG.md` and update `docs/production-status.md` in the same commit.
 
 ## Known design concerns (queued for senior dev review)
 
@@ -103,12 +104,12 @@ These are flagged but unresolved. Touch them only with explicit instruction:
 - Permission scoping for filtered audit log queries.
 - Internal `version` field — clean up or repurpose.
 
-## Production push roadmap (current focus)
+## Production push roadmap
 
-We are on the `feature/production-hardening` branch. Phases, in order:
+Work happens on `main`. See `docs/production-status.md` for the living checklist. Phases, in order:
 
-1. **Phase 1 — Real authentication.** Replace `demoSession`-driven client flow with real login → JWT → refresh, gate demo personas behind `import.meta.env.DEV`, finish the server `auth` module (login, refresh, logout, password reset stubs).
-2. **Phase 2 — Tenant isolation hardening.** Audit every repository for `facilityId` scoping. Add integration tests that prove cross-tenant access returns 403 / 404. Make `requireFacilityAccess` non-optional on all data routes.
+1. **Phase 1 — Real authentication. ✅ Complete.** Real login → JWT → refresh, demo personas gated behind the demo flag, password reset, and TOTP MFA all shipped (auth chunks 0–4). Records: `SESSION_LOG.md`, git tags, `docs/decisions/chunk-4-*`.
+2. **Phase 2 — Tenant isolation hardening. ⬅ Next.** Audit every repository for `facilityId` scoping. Add integration tests that prove cross-tenant access returns 403 / 404. Make `requireFacilityAccess` non-optional on all data routes.
 3. **Phase 3 — Production hosting.** Managed Postgres, server host, secrets management, error monitoring, audit log retention policy, Vercel envs pointing at the prod API.
 
 ## Out-of-scope files

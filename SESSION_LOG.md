@@ -1,3 +1,36 @@
+2026-05-29 — Fix: tokenize auth-page bg-white surfaces (dark-mode contrast)
+  QA (real phone, dark mode) surfaced unreadable text in the LoginPage
+    demo role-picker modal right after the zinc migration (a05da19).
+  Root cause: the migration tokenized the text (text-text-primary etc.,
+    which flip light in dark mode) but left the co-located surfaces as
+    hardcoded bg-white (never themes). Result in dark mode: light text
+    on a white card = unreadable. A half-migrated surface — the exact
+    risk the scoping report flagged. NOT a missed zinc class (zinc sweep
+    was clean) and NOT viewport-driven: the modal has zero responsive
+    prefixes. The "mobile only" symptom was per-device localStorage —
+    that phone had vantage-theme=dark stored from a prior logged-in
+    session; the app still doesn't honor prefers-color-scheme, so dark
+    mode on /login is localStorage-driven.
+  Fix: migrated all 6 bg-white in auth pages to surface tokens —
+    LoginPage role-picker modal → bg-surface-overlay (dialog-over-scrim
+    elevation), LoginPage demo-bypass button + MfaEnroll QR/recovery
+    boxes + MfaSettings 2 sections → bg-surface-raised. All surface
+    tokens are #FFFFFF in light (zero light-mode change) and dark
+    grays in dark mode (readable with the light text tokens).
+  Scope: stayed entirely in auth-page files (no shared components /
+    Chunk B). Completes the auth-page surface migration left half-done
+    by the zinc-only sweep.
+  Note/assumption: MfaEnroll QR box is now a dark surface in dark mode;
+    the QR PNG carries its own white background so it stays scannable
+    (the dark box is only the padding ring). Verify if real-auth MFA
+    enroll is ever exercised in dark mode.
+  Key files: LoginPage.jsx, MfaEnrollPage.jsx, MfaSettingsPage.jsx.
+  Tests: 130 client passing (unchanged — visual-only). Build clean.
+  Only zinc left in auth: LoginPage:179 modal scrim (deferred by
+    decision; theme-agnostic).
+
+================================================================
+
 2026-05-29 — Doc catch-up + dark-mode Chunk A (auth pages)
   Catch-up (closing a grounding gap — SESSION_LOG was one beat behind):
     - 2026-05-28/29 doc setup landed: docs/production-status.md created

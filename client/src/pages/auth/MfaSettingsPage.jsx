@@ -75,7 +75,7 @@ export function MfaSettingsPage() {
         {success ? <Banner tone="success" title="Done">{success}</Banner> : null}
         {error ? <Banner tone="danger" title="Failed">{error}</Banner> : null}
 
-        <section className="mb-8 rounded-md border border-border-default bg-white p-5">
+        <section className="mb-8 rounded-md border border-border-default bg-surface-raised p-5">
           <h2 className="mb-2 text-base font-semibold">Regenerate recovery codes</h2>
           <p className="mb-4 text-sm text-text-muted">
             Invalidates your current 10 codes and issues a fresh set. Requires your current
@@ -114,7 +114,7 @@ export function MfaSettingsPage() {
           )}
         </section>
 
-        <section className="rounded-md border border-border-default bg-white p-5">
+        <section className="rounded-md border border-border-default bg-surface-raised p-5">
           <h2 className="mb-2 text-base font-semibold">Disable MFA</h2>
           {requiredForRole ? (
             <p className="text-sm text-text-muted">

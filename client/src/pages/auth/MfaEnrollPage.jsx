@@ -116,7 +116,7 @@ export function MfaEnrollPage() {
             ) : null}
 
             {qrDataUrl ? (
-              <div className="mb-6 rounded-md border border-border-default bg-white p-4">
+              <div className="mb-6 rounded-md border border-border-default bg-surface-raised p-4">
                 <img src={qrDataUrl} alt="MFA QR code" className="mx-auto h-48 w-48" />
                 {manualKey ? (
                   <p className="mt-3 text-center text-xs text-text-muted">
@@ -168,7 +168,7 @@ export function MfaEnrollPage() {
               Store them in a password manager. Each code works once if you lose access to your
               authenticator.
             </Banner>
-            <div className="mt-4 rounded-md border border-border-default bg-white p-3 font-mono text-sm">
+            <div className="mt-4 rounded-md border border-border-default bg-surface-raised p-3 font-mono text-sm">
               {recoveryCodes.map((c) => (
                 <div key={c}>{c}</div>
               ))}

@@ -162,7 +162,7 @@ function DemoLoginPage() {
             <button
               type="button"
               onClick={() => setStage(STAGES.ROLE_PICKER)}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border-strong bg-white px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-sunken"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border-strong bg-surface-raised px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-sunken"
             >
               <Sparkles size={14} className="text-text-muted" aria-hidden />
               Demo bypass — skip sign-in
@@ -177,7 +177,7 @@ function DemoLoginPage() {
 
       {stage === STAGES.ROLE_PICKER ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-default bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-default bg-surface-overlay p-6 shadow-xl">
             <div className="mb-1 flex items-start justify-between">
               <h2 className="text-base font-semibold tracking-tight text-text-primary">
                 Demo: choose a role

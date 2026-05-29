@@ -8,7 +8,7 @@
 
 ## Doc updates — automatic (user will not prompt for this)
 
-Update SESSION_LOG.md (append) and docs/production-stat(checklist/focus) when ANY of these is true:
+Update SESSION_LOG.md (append) and docs/production-status.md (checklist/focus) when ANY of these is true:
 1. Before `git commit` if changes include client/src/, server/src/, or server/migrations/
 2. When you finish a coding task — before your final reply to the user
 3. When the user says ship, done, merge, commit, or PR

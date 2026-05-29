@@ -1,3 +1,22 @@
+2026-05-29 — Doc catch-up + dark-mode Chunk A (auth pages)
+  Catch-up (closing a grounding gap — SESSION_LOG was one beat behind):
+    - 2026-05-28/29 doc setup landed: docs/production-status.md created
+      (the living map; SESSION_LOG stays the diary), CLAUDE.md replaced
+      + line-11 typo fixed, AGENTS.md updated (Phase 1 ✅ / Phase 2 ⬅,
+      doc-update bullet under "Before committing"), .claude/hooks/
+      pre-commit.js extended with a non-blocking doc-update WARNING.
+      Commits 85105a7, 4c6334c (pushed).
+    - Dark-mode Chunk A was attempted on 2026-05-28 then reverted before
+      review (no shipped code; working tree returned to 5bbf903). The
+      plan file ~/.claude/plans/vantage-phase-1-pure-kernighan.md remains
+      valid as the forward plan.
+    - Parked, still open: critical-severity dark text awaiting designer
+      sign-off (#FF5C61, already AA-passing — non-code blocker); Vercel
+      "not a member of the team" deploy email — watching for recurrence.
+  Chunk A (this session): pending — appended below on landing.
+
+================================================================
+
 2026-05-28 — Section 6 validation: human labels instead of raw eval IDs
   Phone QA surfaced: Section 6 validation banner read
     "Evaluation e-at-t5-1779934620202 is missing the risk scenario."

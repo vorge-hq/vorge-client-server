@@ -26,7 +26,7 @@ Four reference frames describe the same product at different altitudes. Three ar
 | Phase 1 — Real authentication | ✅ **Done** | Login → JWT → refresh, demo gating, password reset, TOTP MFA. Chunks 0–4 complete. |
 | Phase 2 — Tenant isolation hardening | ⬜ Not started | `requireFacilityAccess` exists but not enforced on every data route; repo scoping audit + cross-tenant tests outstanding. |
 | Phase 3 — Production hosting | ⬜ Not started | Managed Postgres, server host, secrets mgmt, monitoring, audit retention, prod Vercel envs. |
-| Dark mode (side-quest) | 🟡 **~40%** | Logged-in AppShell themes correctly. Auth pages still on `zinc-*`; no theme toggle on login/MFA routes; `prefers-color-scheme` not honored; critical-severity text pending designer sign-off. |
+| Dark mode (side-quest) | 🟡 **~52%** | Logged-in AppShell themes correctly. **Auth pages migrated off `zinc-*` → design tokens (Chunk A, 2026-05-29)** — 7/48 files. Still pending: no theme toggle on login/MFA routes; `prefers-color-scheme` not honored (so dark mode won't activate pre-login yet); other surfaces (dashboards/components/workspace/admin); critical-severity text awaiting designer sign-off. |
 
 Demo is deployed manually (`vercel --prod`) to `vantage-demo-roles.vercel.app`; git auto-deploy intentionally disconnected.
 
@@ -50,7 +50,7 @@ Demo is deployed manually (`vercel --prod`) to `vantage-demo-roles.vercel.app`; 
 
 | Item | Status |
 |---|---|
-| Auth pages off `zinc-*` (incl. LoginPage "SRA Platform" subhead) | Deferred — folds into dark-mode work |
+| Auth pages off `zinc-*` (incl. LoginPage "SRA Platform" subhead) | ✅ Done — Chunk A, 2026-05-29 (scrim left literal by decision) |
 | Theme toggle on public / login / MFA routes | Deferred (its own chunk) |
 | `prefers-color-scheme` support in `useTheme` | Deferred (pairs with auth-page theming) |
 | Critical-severity dark text — designer sign-off on WCAG override (`#FF5C61`) | Pending designer (non-code blocker; current value passes AA) |

@@ -13,7 +13,28 @@
     - Parked, still open: critical-severity dark text awaiting designer
       sign-off (#FF5C61, already AA-passing — non-code blocker); Vercel
       "not a member of the team" deploy email — watching for recurrence.
-  Chunk A (this session): pending — appended below on landing.
+  Chunk A landed (this session): zinc→token migration on the 7 auth
+    pages (LoginPage, ForgotPassword, ResetPassword, MfaVerify,
+    MfaEnroll, MfaLockout, MfaSettings). Narrow scope by decision —
+    toggle-on-auth and prefers-color-scheme split out to future chunks
+    (last night's bundling caused complication).
+    Mapping: text-zinc-900/700→text-text-primary, 500→text-text-muted,
+    400→text-text-disabled; border-zinc-200→border-border-default,
+    300→border-border-strong; bg-zinc-200(dividers)→bg-border-default,
+    bg-zinc-50→bg-surface-sunken, hover:bg-zinc-100→hover:bg-surface-muted.
+    Left literal by decision: LoginPage role-picker modal scrim
+    bg-zinc-900/30 (theme-agnostic dark overlay; no --scrim token, and
+    surface-inverse would flip white in dark). bg-white untouched
+    (not a zinc class; separate dark-mode gap).
+  Key files: client/src/pages/auth/*.jsx (7 files).
+  Tests: 130 client passing (unchanged — migration is visual-only, no
+    class assertions). Production build clean.
+  Visual: not human-verified in this environment. Light mode now uses
+    the brand gray ramp (cool/navy-tinted) instead of Tailwind warm
+    zinc — a subtle intended hue correction, not a regression. Dark
+    mode on auth pages still won't activate pre-login until the toggle
+    + prefers-color-scheme chunk ships (accepted for this chunk).
+  Commits: 0a61faa (Task 1 catch-up) + this one (auth migration).
 
 ================================================================
 

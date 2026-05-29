@@ -63,7 +63,7 @@ export function MfaSettingsPage() {
 
   return (
     <main
-      className="flex min-h-screen items-start justify-center bg-surface-sunken p-6 text-zinc-900"
+      className="flex min-h-screen items-start justify-center bg-surface-sunken p-6 text-text-primary"
       style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="mt-12 w-full max-w-[480px]">
@@ -75,9 +75,9 @@ export function MfaSettingsPage() {
         {success ? <Banner tone="success" title="Done">{success}</Banner> : null}
         {error ? <Banner tone="danger" title="Failed">{error}</Banner> : null}
 
-        <section className="mb-8 rounded-md border border-zinc-200 bg-white p-5">
+        <section className="mb-8 rounded-md border border-border-default bg-white p-5">
           <h2 className="mb-2 text-base font-semibold">Regenerate recovery codes</h2>
-          <p className="mb-4 text-sm text-zinc-500">
+          <p className="mb-4 text-sm text-text-muted">
             Invalidates your current 10 codes and issues a fresh set. Requires your current
             authenticator code.
           </p>
@@ -86,7 +86,7 @@ export function MfaSettingsPage() {
               <Banner tone="warning" title="You will not see these again">
                 Save them in a password manager.
               </Banner>
-              <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 font-mono text-sm">
+              <div className="mt-3 rounded-md border border-border-default bg-surface-sunken p-3 font-mono text-sm">
                 {newCodes.map((c) => (
                   <div key={c}>{c}</div>
                 ))}
@@ -114,16 +114,16 @@ export function MfaSettingsPage() {
           )}
         </section>
 
-        <section className="rounded-md border border-zinc-200 bg-white p-5">
+        <section className="rounded-md border border-border-default bg-white p-5">
           <h2 className="mb-2 text-base font-semibold">Disable MFA</h2>
           {requiredForRole ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-text-muted">
               MFA is required for your role and cannot be disabled. Contact an admin to change role
               assignments.
             </p>
           ) : (
             <>
-              <p className="mb-4 text-sm text-zinc-500">
+              <p className="mb-4 text-sm text-text-muted">
                 Requires your password and a current authenticator code.
               </p>
               <form className="space-y-3" onSubmit={handleDisable}>
@@ -156,7 +156,7 @@ export function MfaSettingsPage() {
           )}
         </section>
 
-        <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+        <div className="mt-8 text-[11px] leading-relaxed text-text-disabled">
           <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
           MFA settings changes are logged to the immutable audit trail.
         </div>

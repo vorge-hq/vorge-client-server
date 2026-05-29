@@ -87,7 +87,7 @@ export function MfaEnrollPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-text-primary"
       style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="w-full max-w-[400px]">
@@ -96,7 +96,7 @@ export function MfaEnrollPage() {
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
           <div className="font-semibold tracking-tight text-primary">Vantage</div>
-          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+          <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
         {!recoveryCodes ? (
@@ -104,7 +104,7 @@ export function MfaEnrollPage() {
             <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
               Set up multi-factor authentication
             </h1>
-            <p className="mb-8 text-sm text-zinc-500">
+            <p className="mb-8 text-sm text-text-muted">
               Scan the QR code in your authenticator app (1Password, Authy, Google Authenticator),
               then enter the 6-digit code below.
             </p>
@@ -116,10 +116,10 @@ export function MfaEnrollPage() {
             ) : null}
 
             {qrDataUrl ? (
-              <div className="mb-6 rounded-md border border-zinc-200 bg-white p-4">
+              <div className="mb-6 rounded-md border border-border-default bg-white p-4">
                 <img src={qrDataUrl} alt="MFA QR code" className="mx-auto h-48 w-48" />
                 {manualKey ? (
-                  <p className="mt-3 text-center text-xs text-zinc-500">
+                  <p className="mt-3 text-center text-xs text-text-muted">
                     Or enter this key manually: <code className="break-all font-mono">{manualKey}</code>
                   </p>
                 ) : null}
@@ -168,7 +168,7 @@ export function MfaEnrollPage() {
               Store them in a password manager. Each code works once if you lose access to your
               authenticator.
             </Banner>
-            <div className="mt-4 rounded-md border border-zinc-200 bg-white p-3 font-mono text-sm">
+            <div className="mt-4 rounded-md border border-border-default bg-white p-3 font-mono text-sm">
               {recoveryCodes.map((c) => (
                 <div key={c}>{c}</div>
               ))}
@@ -180,7 +180,7 @@ export function MfaEnrollPage() {
             >
               Download recovery-codes.txt
             </button>
-            <label className="mt-4 flex items-center gap-2 text-sm text-zinc-700">
+            <label className="mt-4 flex items-center gap-2 text-sm text-text-primary">
               <input
                 type="checkbox"
                 checked={acknowledged}
@@ -199,7 +199,7 @@ export function MfaEnrollPage() {
           </>
         )}
 
-        <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+        <div className="mt-8 text-[11px] leading-relaxed text-text-disabled">
           <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
           MFA enrollment is logged to the immutable audit trail.
         </div>

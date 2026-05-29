@@ -96,7 +96,7 @@ function DemoLoginPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-text-primary"
       style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="w-full max-w-[400px]">
@@ -105,14 +105,14 @@ function DemoLoginPage() {
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
           <div className="font-semibold tracking-tight text-primary">Vantage</div>
-          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+          <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
         <>
             <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
               Sign in to continue
             </h1>
-            <p className="mb-8 text-sm text-zinc-500">
+            <p className="mb-8 text-sm text-text-muted">
               Use your Vantage credentials.
             </p>
 
@@ -154,21 +154,21 @@ function DemoLoginPage() {
             </form>
 
             <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-zinc-200" />
-              <span className="text-xs uppercase tracking-wider text-zinc-400">or</span>
-              <div className="h-px flex-1 bg-zinc-200" />
+              <div className="h-px flex-1 bg-border-default" />
+              <span className="text-xs uppercase tracking-wider text-text-disabled">or</span>
+              <div className="h-px flex-1 bg-border-default" />
             </div>
 
             <button
               type="button"
               onClick={() => setStage(STAGES.ROLE_PICKER)}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border-strong bg-white px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-sunken"
             >
-              <Sparkles size={14} className="text-zinc-500" aria-hidden />
+              <Sparkles size={14} className="text-text-muted" aria-hidden />
               Demo bypass — skip sign-in
             </button>
 
-            <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+            <div className="mt-8 text-[11px] leading-relaxed text-text-disabled">
               <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
               All sign-in attempts are logged to the immutable audit trail.
             </div>
@@ -177,21 +177,21 @@ function DemoLoginPage() {
 
       {stage === STAGES.ROLE_PICKER ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border-default bg-white p-6 shadow-xl">
             <div className="mb-1 flex items-start justify-between">
-              <h2 className="text-base font-semibold tracking-tight text-zinc-900">
+              <h2 className="text-base font-semibold tracking-tight text-text-primary">
                 Demo: choose a role
               </h2>
               <button
                 type="button"
                 onClick={() => setStage(STAGES.CREDENTIALS)}
-                className="rounded p-1 hover:bg-zinc-100"
+                className="rounded p-1 hover:bg-surface-muted"
                 aria-label="Close"
               >
                 <X size={14} aria-hidden />
               </button>
             </div>
-            <p className="mb-5 text-sm text-zinc-500">
+            <p className="mb-5 text-sm text-text-muted">
               For the demo, pick the role you want to enter as. The platform shows different surfaces per
               role.
             </p>
@@ -203,17 +203,17 @@ function DemoLoginPage() {
                     key={role}
                     type="button"
                     onClick={() => pickRole(role)}
-                    className="group w-full rounded-lg border border-zinc-200 p-3 text-left transition-colors hover:border-primary-200 hover:bg-primary-10"
+                    className="group w-full rounded-lg border border-border-default p-3 text-left transition-colors hover:border-primary-200 hover:bg-primary-10"
                   >
                     <div className="mb-0.5 flex items-center justify-between">
-                      <span className="text-sm font-medium text-zinc-900">{role}</span>
+                      <span className="text-sm font-medium text-text-primary">{role}</span>
                       <ArrowRight
                         size={14}
-                        className="text-zinc-400 transition-all group-hover:text-zinc-700"
+                        className="text-text-disabled transition-all group-hover:text-text-primary"
                         aria-hidden
                       />
                     </div>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-text-muted">
                       {persona?.name} — {PERSONA_HINTS[role]}
                     </span>
                   </button>
@@ -284,7 +284,7 @@ function ProdLoginPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-text-primary"
       style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="w-full max-w-[400px]">
@@ -293,13 +293,13 @@ function ProdLoginPage() {
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
           <div className="font-semibold tracking-tight text-primary">Vantage</div>
-          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+          <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
         <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
           Sign in to continue
         </h1>
-        <p className="mb-8 text-sm text-zinc-500">Use your Vantage credentials.</p>
+        <p className="mb-8 text-sm text-text-muted">Use your Vantage credentials.</p>
 
         <form className="space-y-3" onSubmit={handleSubmit} noValidate>
           <div>
@@ -349,12 +349,12 @@ function ProdLoginPage() {
         </form>
 
         <div className="mt-4 text-center">
-          <Link to="/forgot-password" className="text-sm text-zinc-500 hover:text-primary">
+          <Link to="/forgot-password" className="text-sm text-text-muted hover:text-primary">
             Forgot password?
           </Link>
         </div>
 
-        <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+        <div className="mt-8 text-[11px] leading-relaxed text-text-disabled">
           <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
           All sign-in attempts are logged to the immutable audit trail.
         </div>

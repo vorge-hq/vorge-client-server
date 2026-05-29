@@ -62,7 +62,7 @@ export function ResetPasswordPage() {
 
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-zinc-900"
+      className="flex min-h-screen items-center justify-center bg-surface-sunken p-6 text-text-primary"
       style={{ fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif" }}
     >
       <div className="w-full max-w-[400px]">
@@ -71,13 +71,13 @@ export function ResetPasswordPage() {
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
           <div className="font-semibold tracking-tight text-primary">Vantage</div>
-          <div className="ml-1 text-xs text-zinc-500">SRA Platform</div>
+          <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
         <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
           Set a new password
         </h1>
-        <p className="mb-8 text-sm text-zinc-500">
+        <p className="mb-8 text-sm text-text-muted">
           Pick something at least {MIN_PASSWORD_LENGTH} characters long. Existing sessions on other devices will sign out.
         </p>
 
@@ -163,12 +163,12 @@ export function ResetPasswordPage() {
         )}
 
         <div className="mt-4 text-center">
-          <Link to="/login" className="text-sm text-zinc-500 hover:text-primary">
+          <Link to="/login" className="text-sm text-text-muted hover:text-primary">
             Back to sign in
           </Link>
         </div>
 
-        <div className="mt-8 text-[11px] leading-relaxed text-zinc-400">
+        <div className="mt-8 text-[11px] leading-relaxed text-text-disabled">
           <Lock size={11} className="mr-1 inline -mt-0.5" aria-hidden />
           Password-reset attempts are logged to the immutable audit trail.
         </div>

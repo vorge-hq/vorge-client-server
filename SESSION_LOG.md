@@ -1,3 +1,41 @@
+2026-05-29 — LoginPage dark-mode brand contrast + real logo
+  QA: in dark mode the Vantage wordmark, "Sign in to continue" heading,
+    and primary Sign-in button were all brand-navy on near-navy bg —
+    low contrast, weak brand, unclear CTA. Placeholder Lucide shield
+    still in use instead of a real logo.
+  Key finding (changed the approach): the repo ALREADY had designer-made
+    theme-correct logo SVGs in client/src/assets/ —
+    vantage-logo-on-light.svg (black wordmark) + vantage-logo-on-dark.svg
+    (white wordmark), added 2026-05-12, never wired into LoginPage. So
+    the planned JPEG processing (crop mark / strip white bg) was
+    unnecessary; the provided PNG is superseded.
+  Shipped (Option 3 — gold CTA + lighter-navy heading):
+    - Brand lockup: replaced Lucide shield + "Vantage" text with the
+      existing SVGs, swapped by theme (block dark:hidden / hidden
+      dark:block), h-8. "SRA Platform" stays token text. Applied to BOTH
+      DemoLoginPage and ProdLoginPage lockups.
+    - Heading: + dark:text-primary-300 (#7B99B3 lighter navy).
+    - Sign-in button: dark-mode brand-amber #F49D0D bg + dark-navy text
+      (#070E16) + #FFB020 hover + transparent border. Brand gold matches
+      the logo square. LOCAL dark: utility (not a token) to keep the
+      gold CTA scoped to LoginPage — a global token would leak it to
+      every primary button.
+  Decisions: white wordmark (designer asset as-is, not recoloured);
+    gold = brand-mark amber over semantic-warning/lighter-amber; no new
+    design tokens (Tailwind dark: + existing primary ramp).
+  Key files: client/src/pages/auth/LoginPage.jsx;
+    client/src/assets/vantage-logo-on-{light,dark}.svg (existing, wired).
+  Tests: 130 client passing (unchanged — visual-only). Build clean.
+  Visual QA: NOT human-verified in this env (static change). Needs a
+    desktop+mobile light/dark eyeball before relying on it.
+  Decision records: product-decision-log.md (structured entry) +
+    considered-and-deferred.md (gold-CTA-app-wide; mark-only asset).
+  Deferred: gold CTA app-wide + promote #F49D0D to an action token;
+    mark-only logo asset for compact contexts.
+  Next: commit + push; deploy is user's call after visual verification.
+
+================================================================
+
 2026-05-29 — Fix: tokenize auth-page bg-white surfaces (dark-mode contrast)
   QA (real phone, dark mode) surfaced unreadable text in the LoginPage
     demo role-picker modal right after the zinc migration (a05da19).

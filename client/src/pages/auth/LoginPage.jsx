@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Shield, Sparkles, X } from "lucide-react";
+import { ArrowRight, Lock, Sparkles, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { isDemoEnabled } from "../../auth/demoFlag";
 import { ROLES, demoSession, getDemoPersona, isRoleMfaRequired } from "../../auth/session";
@@ -9,6 +9,8 @@ import { Banner } from "../../components/Banner";
 import { FormField, TextInput } from "../../components/FormField";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { getHomeRouteForRole } from "../../features/navigation/navigation";
+import vantageLogoOnLight from "../../assets/vantage-logo-on-light.svg";
+import vantageLogoOnDark from "../../assets/vantage-logo-on-dark.svg";
 
 const SESSION_STORAGE_KEY = "vantage.session";
 const TOKEN_STORAGE_KEY = "vantage.session.token";
@@ -101,15 +103,21 @@ function DemoLoginPage() {
     >
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-            <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
-          </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <img
+            src={vantageLogoOnLight}
+            alt="Vantage"
+            className="block h-8 w-auto dark:hidden"
+          />
+          <img
+            src={vantageLogoOnDark}
+            alt="Vantage"
+            className="hidden h-8 w-auto dark:block"
+          />
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
         <>
-            <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
+            <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary dark:text-primary-300">
               Sign in to continue
             </h1>
             <p className="mb-8 text-sm text-text-muted">
@@ -147,7 +155,7 @@ function DemoLoginPage() {
               </div>
               <button
                 type="submit"
-                className="btn-primary mt-2 w-full justify-center py-2.5"
+                className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F49D0D] dark:text-primary-900 dark:hover:bg-[#FFB020]"
               >
                 Sign in
               </button>
@@ -289,14 +297,20 @@ function ProdLoginPage() {
     >
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-            <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
-          </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <img
+            src={vantageLogoOnLight}
+            alt="Vantage"
+            className="block h-8 w-auto dark:hidden"
+          />
+          <img
+            src={vantageLogoOnDark}
+            alt="Vantage"
+            className="hidden h-8 w-auto dark:block"
+          />
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
-        <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary">
+        <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary dark:text-primary-300">
           Sign in to continue
         </h1>
         <p className="mb-8 text-sm text-text-muted">Use your Vantage credentials.</p>
@@ -341,7 +355,7 @@ function ProdLoginPage() {
 
           <button
             type="submit"
-            className="btn-primary mt-2 w-full justify-center py-2.5"
+            className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F49D0D] dark:text-primary-900 dark:hover:bg-[#FFB020]"
             disabled={submitting}
           >
             {submitting ? "Signing in…" : "Sign in"}

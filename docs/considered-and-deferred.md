@@ -368,3 +368,47 @@ user-scoped Node version manager — nvm or fnm — so global tool installs
 - Another EACCES error blocks something time-sensitive — e.g. a deploy
   needs a CLI upgrade and sudo isn't immediately available.
 - A new project requires multiple Node versions concurrently.
+
+## Gold CTA in dark mode — apply app-wide + promote to a token
+Considered: 2026-05-29 (during LoginPage brand-contrast fix)
+Status: deferred
+
+### What we considered
+The dark-mode "gold CTA" treatment (brand-amber #F49D0D background +
+dark-navy text) shipped on LoginPage's Sign-in button. The same pattern
+would benefit every primary CTA across the app (dashboards, workspace,
+admin) for visual consistency in dark mode.
+
+### Why we deferred
+- Applied as a LOCAL `dark:` utility on LoginPage only, on purpose — a
+  global token change would leak gold to every primary button at once,
+  unreviewed.
+- App-wide rollout is a designer-reviewed decision (does every primary
+  action go gold in dark, or only auth/marketing surfaces?).
+
+### Revisit conditions
+- Designer signs off on gold-as-primary-CTA in dark mode globally.
+- A CTA-token chunk: promote the local #F49D0D utility to an action
+  token (e.g. `--action-primary-default` dark override or a dedicated
+  `--action-cta` token) and apply via `.btn-primary`.
+
+## Logo: mark-only asset for compact contexts
+Considered: 2026-05-29 (during LoginPage logo wiring)
+Status: deferred
+
+### What we considered
+The repo's logo SVGs (`vantage-logo-on-{light,dark}.svg`) are full
+horizontal lockups (amber mark + "Vantage" wordmark). A mark-only asset
+(just the amber rounded-square + white shield) would help compact
+contexts: favicon, collapsed nav, mobile headers, app icons.
+
+### Why we deferred
+- LoginPage needs the full lockup, which already exists and is wired.
+- No current surface needs the mark alone. The dark-mode logo question
+  the task worried about turned out to be already solved (designer
+  shipped both theme variants), so no designer ask is outstanding.
+
+### Revisit conditions
+- A compact surface needs the mark without the wordmark. Extraction is
+  trivial: the lockup SVG cropped to `viewBox="0 0 37 37"` is just the
+  square (the wordmark paths sit at x>37 and clip out).

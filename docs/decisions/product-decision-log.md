@@ -575,3 +575,79 @@ banner row → scroll to and focus the Asset N × Threat cell. Today
 navigation would mean threading richer error objects (with `assetId`,
 `threatId`) through the validator AND refactoring the banner to render
 JSX rows instead of strings. Worth doing next; not in this chunk.
+
+## 2026-05-29: LoginPage dark-mode brand contrast + real logo
+Date: 2026-05-29
+Decided by: Solo
+Status: locked
+
+### Context
+In dark mode the LoginPage brand elements blended into the dark navy
+page: the "Vantage" wordmark, "Sign in to continue" heading, and the
+primary "Sign in" button all rendered in brand navy (primary-500) on a
+near-navy background. Low contrast, weak brand presence, unclear primary
+action.
+
+Separately, the brand lockup used a placeholder Lucide shield, not the
+real logo.
+
+### Options considered (brand contrast)
+- A: Lighter navy across the board (wordmark + heading + button all
+  lighter navy). Keeps monochrome but the CTA stops reading as the
+  primary action.
+- B: White brand everything. High contrast but loses brand colour and
+  the CTA still competes with text.
+- C: Elevated card behind the form. Adds structure but doesn't fix the
+  navy-on-navy colour problem.
+- **3 (chosen): Gold CTA + lighter-navy heading.** Sign-in button →
+  brand-amber background with dark-navy text (becomes the obvious
+  primary action and ties to the logo's amber mark); heading → lighter
+  navy (primary-300 #7B99B3); wordmark handled by the logo asset (see
+  below). Light mode unchanged.
+
+### Options considered (logo)
+The task assumed only a white-background JPEG existed and proposed
+processing it (crop mark, strip white, render wordmark as text).
+**Exploration found this unnecessary**: the repo already contains
+designer-made, theme-correct SVG lockups in `client/src/assets/` —
+`vantage-logo-on-light.svg` (wordmark as black paths) and
+`vantage-logo-on-dark.svg` (wordmark as white paths). Both vector,
+transparent, full mark+wordmark, added 2026-05-12 but never wired into
+LoginPage. The provided PNG is superseded.
+
+### Decision
+- Wire the existing SVGs by theme: `on-light` shown in light
+  (`block dark:hidden`), `on-dark` in dark (`hidden dark:block`). No
+  image processing. The lockup `<img>` replaces both the Lucide shield
+  AND the separate "Vantage" text; "SRA Platform" stays as token text.
+- Dark wordmark stays **white** (the designer's on-dark asset as-is),
+  not recoloured to lighter navy. Max contrast, uses the real brand
+  asset, zero vector editing. Heading still goes lighter-navy per
+  Option 3 — white logo wordmark + lighter-navy heading + gold CTA is a
+  clean hierarchy.
+- CTA gold = **brand-mark amber #F49D0D** (matches the logo square) over
+  semantic-warning #F59E0B or a lighter amber-400. Applied as a LOCAL
+  dark utility (`dark:bg-[#F49D0D] dark:text-primary-900
+  dark:hover:bg-[#FFB020] dark:border-transparent`) — deliberately NOT a
+  token, to keep the gold-CTA scoped to LoginPage. A global token change
+  would leak gold to every primary button app-wide.
+- Lockup size: `h-8` (32px) — bigger presence than the 28px placeholder,
+  balanced against the "SRA Platform" subhead. Horizontal lockup (matches
+  the asset's native orientation).
+- No new design tokens. Uses Tailwind `dark:` utilities + the existing
+  primary ramp (primary-300) and a local hex for the brand gold.
+
+### Applies to
+Both LoginPage variants (DemoLoginPage + ProdLoginPage) — identical
+lockup, heading, and button treatment.
+
+### Open question / deferred
+The gold-CTA-in-dark-mode pattern should extend to other primary CTAs
+(dashboards, workspace, admin) for consistency, and the local #F49D0D
+utility should then be promoted to a proper action token. Deferred to a
+designer-reviewed CTA-token chunk so we don't leak gold piecemeal.
+
+### Related artifacts
+- `client/src/pages/auth/LoginPage.jsx` (both variants).
+- `client/src/assets/vantage-logo-on-{light,dark}.svg` (existing, now wired).
+- SESSION_LOG 2026-05-29.

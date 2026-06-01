@@ -6,8 +6,8 @@ export const FACILITIES = Object.freeze([
   {
     id: "fac-1",
     operatorId: "op-a",
-    name: "Lagos Refinery",
-    displayName: "Operator A — Lagos Refinery",
+    name: "Eko Petrochemical Hub",
+    displayName: "Operator A — Eko Petrochemical Hub",
     type: "Refinery",
     region: "Lagos, Nigeria",
     accountableManager: "Daniel Mensah",
@@ -19,8 +19,8 @@ export const FACILITIES = Object.freeze([
   {
     id: "fac-2",
     operatorId: "op-a",
-    name: "Bonny Terminal",
-    displayName: "Operator A — Bonny Terminal",
+    name: "Delta Crest Terminal",
+    displayName: "Operator A — Delta Crest Terminal",
     type: "Marine Terminal",
     region: "Rivers State, Nigeria",
     accountableManager: "Hassan Al-Mansoori",
@@ -31,8 +31,8 @@ export const FACILITIES = Object.freeze([
   {
     id: "fac-3",
     operatorId: "op-a",
-    name: "Fujairah Marine Terminal",
-    displayName: "Operator A — Fujairah Marine Terminal",
+    name: "Gulf Horizon Terminal",
+    displayName: "Operator A — Gulf Horizon Terminal",
     type: "Marine Terminal",
     region: "Fujairah, United Arab Emirates",
     accountableManager: "Nadia Haddad",

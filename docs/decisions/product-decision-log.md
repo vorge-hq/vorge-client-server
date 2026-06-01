@@ -726,3 +726,54 @@ existing lowercase-hyphen vocab rather than introducing `AI_ANOMALY_*`.
   | AD-2 | Anomaly rules for Sections 5 & 6; server engine + 800ms debounce |
   | AD-3 | Admin dismissal-rate / tuning surface (AI Operations Playbook) |
   | AD-4 | Cross-facility consistency flagging (businesslogic Feature 3) |
+
+## 2026-06-01: Demo facility de-identification rename
+Three of the demo's mock facilities reused the names of real
+refineries/terminals (Lagos Refinery, Bonny Terminal, Fujairah Marine
+Terminal). To de-couple the demo from any real site while keeping demo
+verisimilitude, renamed to fully fictional names:
+
+- Lagos Refinery → **Eko Petrochemical Hub** ("Eko" is the Yoruba name
+  for the Lagos area)
+- Bonny Terminal → **Delta Crest Terminal**
+- Fujairah Marine Terminal → **Gulf Horizon Terminal**
+
+Pure data rename: 94 literal-text occurrences across 16 client/src files
+(zero in server/docs), swept with a scoped `find ... -exec sed -i ''`
+plus a single manual edit to a case-insensitive regex in
+`AuthorDashboard.test.jsx`. The 3 replacement strings are full
+multi-word names — collision-free, order-independent. 139 client tests
+pass unchanged; this is purely a string rename with no behaviour change.
+
+Source-of-truth files updated: `auth/session.js`
+(`DEMO_SESSION.facilities`) and `data/operators.js` (`FACILITIES` —
+prod-shape with `type`, `accountableManager`, `regulator`, etc.). All
+derived strings (assessment names like "Eko Petrochemical Hub — 2026
+SRA", audit log entries, notifications, mitigations, admin assignments,
+dashboard rows, modal copy, section displays) cascaded automatically
+through the sed pass.
+
+### Sub-decisions
+- **Regions kept** ("Lagos, Nigeria" / "Rivers State, Nigeria" /
+  "Fujairah, United Arab Emirates"). "Eko" being acknowledged-Lagos
+  makes the regional context consistent; full anonymization would lose
+  verisimilitude and expand scope to ~15 more strings.
+- **Regulator strings kept** (Department of Petroleum Resources etc.) —
+  tied to the kept regions.
+- **`accountableManager` names kept** — geographically consistent with
+  kept regions; not facility names.
+- **fac-4 Pernis Refinery Complex and fac-5 Jurong Storage Terminal NOT
+  renamed.** Also real-place names; out of stated scope this pass.
+  Logged in `considered-and-deferred.md`.
+
+### Revisit conditions
+- A prospect or customer flags the kept geographic context (regions /
+  regulators / manager names) as too on-the-nose → second-pass full
+  anonymization.
+- fac-4 / fac-5 renamed if the demo expands to use them prominently and
+  the same de-identification rationale applies.
+
+### Related artifacts
+- 16 modified files in `client/src/` (all `*.js`/`*.jsx`).
+- SESSION_LOG 2026-06-01 entry.
+- Deferred entries in `docs/considered-and-deferred.md`.

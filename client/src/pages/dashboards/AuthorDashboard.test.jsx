@@ -38,8 +38,8 @@ function renderDashboard() {
   );
 }
 
-function findLagosRow() {
-  return screen.getByRole("button", { name: /lagos refinery.*2026 sra/i });
+function findEkoRow() {
+  return screen.getByRole("button", { name: /eko petrochemical hub.*2026 sra/i });
 }
 
 beforeEach(() => {
@@ -56,7 +56,7 @@ describe("AuthorDashboard — row click navigation", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "false");
     const user = userEvent.setup();
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     // Click a non-button cell — pick the Name cell.
     const cells = within(row).getAllByRole("cell");
     await user.click(cells[0]);
@@ -69,7 +69,7 @@ describe("AuthorDashboard — row click navigation", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "true");
     const user = userEvent.setup();
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     const cells = within(row).getAllByRole("cell");
     await user.click(cells[0]);
     expect(screen.getByTestId("location").textContent).toBe(
@@ -81,7 +81,7 @@ describe("AuthorDashboard — row click navigation", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "false");
     const user = userEvent.setup();
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     // The row's inner button has a label that includes an arrow; match by trailing "→".
     const openButton = within(row).getByRole("button", { name: /→/ });
     await user.click(openButton);
@@ -97,7 +97,7 @@ describe("AuthorDashboard — keyboard interactivity", () => {
   test("Enter on focused row navigates", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "false");
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     row.focus();
     fireEvent.keyDown(row, { key: "Enter" });
     expect(screen.getByTestId("location").textContent).toBe(
@@ -108,7 +108,7 @@ describe("AuthorDashboard — keyboard interactivity", () => {
   test("Space on focused row navigates and prevents default", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "false");
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     row.focus();
     const event = fireEvent.keyDown(row, { key: " " });
     // fireEvent returns false when preventDefault was called on the event.
@@ -123,10 +123,10 @@ describe("AuthorDashboard — a11y attributes", () => {
   test("row exposes role=button, tabIndex=0, and aria-label referencing the assessment name", () => {
     vi.stubEnv("VITE_ENABLE_DEMO", "false");
     renderDashboard();
-    const row = findLagosRow();
+    const row = findEkoRow();
     expect(row.tagName).toBe("TR");
     expect(row.getAttribute("role")).toBe("button");
     expect(row.getAttribute("tabindex")).toBe("0");
-    expect(row.getAttribute("aria-label")).toMatch(/lagos refinery/i);
+    expect(row.getAttribute("aria-label")).toMatch(/eko petrochemical hub/i);
   });
 });

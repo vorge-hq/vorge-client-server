@@ -19,7 +19,7 @@ export function NewAssessmentModal({ onClose, onCreate }) {
   );
   const allFacilityOptions = [...knownFacilityNames, ...rememberedNames];
 
-  const [facility, setFacility] = useState(allFacilityOptions[0] || "Lagos Refinery");
+  const [facility, setFacility] = useState(allFacilityOptions[0] || "Eko Petrochemical Hub");
   const [source, setSource] = useState("clone");
 
   function handleCreate() {

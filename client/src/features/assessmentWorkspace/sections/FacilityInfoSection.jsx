@@ -28,7 +28,7 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
   const { suggestionsFor, recordFacility } = useOperatorMemory(operatorId);
 
   const [data, setData] = useState({
-    name: assessment?.facilityName || "Lagos Refinery",
+    name: assessment?.facilityName || "Eko Petrochemical Hub",
     region: "Lagos, Nigeria",
     location: "12.07°N, 3.87°E",
     nature: NATURE_OPTIONS[0],
@@ -37,7 +37,7 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
     regulated: "Yes",
     regulator: "Department of Petroleum Resources",
     general:
-      "Lagos Refinery is the primary refining and export facility for Operator A in the Lagos region. The site comprises a process unit, tank farm, control room, marine loading terminal, fuel loading skid, and supporting administration buildings. Operations run 24/7 with shift handovers at 06:00 and 18:00 local time."
+      "Eko Petrochemical Hub is the primary refining and export facility for Operator A in the Lagos region. The site comprises a process unit, tank farm, control room, marine loading terminal, fuel loading skid, and supporting administration buildings. Operations run 24/7 with shift handovers at 06:00 and 18:00 local time."
   });
 
   const commentKind = getCommentPermission({

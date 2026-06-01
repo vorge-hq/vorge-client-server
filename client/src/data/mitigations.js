@@ -108,7 +108,7 @@ export const MITIGATIONS = Object.freeze(generateMitigations(EVALUATIONS, "ass-1
 export const MY_MITIGATIONS = Object.freeze([
   {
     id: "mit-001",
-    facility: "Lagos Refinery",
+    facility: "Eko Petrochemical Hub",
     facilityId: "fac-1",
     assessmentId: "ass-1-2026",
     cycle: "2026 SRA",
@@ -153,7 +153,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-002",
-    facility: "Lagos Refinery",
+    facility: "Eko Petrochemical Hub",
     facilityId: "fac-1",
     assessmentId: "ass-1-2026",
     cycle: "2026 SRA",
@@ -174,7 +174,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-003",
-    facility: "Bonny Terminal",
+    facility: "Delta Crest Terminal",
     facilityId: "fac-2",
     assessmentId: "ass-2-2025",
     cycle: "2025 SRA",
@@ -235,7 +235,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-004",
-    facility: "Lagos Refinery",
+    facility: "Eko Petrochemical Hub",
     facilityId: "fac-1",
     assessmentId: "ass-1-2025",
     cycle: "2025 SRA",
@@ -297,7 +297,7 @@ export const MY_MITIGATIONS = Object.freeze([
   },
   {
     id: "mit-005",
-    facility: "Fujairah Marine Terminal",
+    facility: "Gulf Horizon Terminal",
     facilityId: "fac-3",
     assessmentId: "ass-3-2026",
     cycle: "2026 SRA",

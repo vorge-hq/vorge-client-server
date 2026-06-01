@@ -28,7 +28,7 @@ const SEED_TEAM = [
 
 const SEED_REFS = [
   { id: "r1", description: "Site security plan (2024)", type: "PDF" },
-  { id: "r2", description: "Lagos Refinery perimeter as-built drawings", type: "DWG" },
+  { id: "r2", description: "Eko Petrochemical Hub perimeter as-built drawings", type: "DWG" },
   { id: "r3", description: "Last SRA exported document", type: "DOCX" }
 ];
 

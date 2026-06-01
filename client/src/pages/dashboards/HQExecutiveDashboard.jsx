@@ -84,7 +84,7 @@ export function HQExecutiveDashboard() {
     }).length;
     return {
       facilityId: "fac-1",
-      name: "Lagos Refinery",
+      name: "Eko Petrochemical Hub",
       open,
       high,
       vhigh,
@@ -121,8 +121,8 @@ export function HQExecutiveDashboard() {
     {
       id: "f1",
       title: "Maritime threat under-rated",
-      detail: "Fujairah Marine Terminal rated Maritime as Low; 4 of 5 peer facilities rated Medium or High.",
-      facility: "Fujairah Marine Terminal"
+      detail: "Gulf Horizon Terminal rated Maritime as Low; 4 of 5 peer facilities rated Medium or High.",
+      facility: "Gulf Horizon Terminal"
     },
     {
       id: "f2",

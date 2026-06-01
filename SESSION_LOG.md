@@ -1,3 +1,40 @@
+2026-06-01 — Demo facility rename (de-identification)
+  Three mock facilities reused names of real refineries/terminals.
+    Renamed for de-identification:
+      Lagos Refinery         → Eko Petrochemical Hub
+      Bonny Terminal         → Delta Crest Terminal
+      Fujairah Marine Terminal → Gulf Horizon Terminal
+    "Eko" is Yoruba for the Lagos area; the others are fully fictional.
+  Approach: literal-text sed across client/src/{**/*.js,**/*.jsx} +
+    one manual update to the case-insensitive regex in
+    AuthorDashboard.test.jsx (findLagosRow → findEkoRow; /lagos refinery/i
+    → /eko petrochemical hub/i ×2). Replaced FULL multi-word names only
+    — no collisions, no accidental matches in identifiers.
+  Scope: 94 occurrences across 16 files (client/src ONLY — server/docs
+    clean). Source-of-truth: auth/session.js (DEMO_FACILITY,
+    DEMO_SESSION.facilities) + data/operators.js (FACILITIES, prod-shape).
+    Derived strings cascaded: data/{auditLog,notifications,assessments,
+    admin,mitigations}.js (33+11+9+9+6=68 hits), the assessment-name
+    suffixes (e.g. "Lagos Refinery — 2026 SRA" → "Eko Petrochemical Hub
+    — 2026 SRA"), plus dashboard, modal, and section display strings.
+  Defaults accepted (Q1–Q3 from plan):
+    - Q1 KEEP region strings ("Lagos, Nigeria" etc.) and regulator
+      strings — geographic verisimilitude consistent with "Eko" = Lagos.
+    - Q2 LEAVE accountableManager names (Daniel Mensah, Hassan
+      Al-Mansoori, Nadia Haddad) — geographically consistent with Q1.
+    - Q3 LEAVE fac-4 Pernis Refinery Complex + fac-5 Jurong Storage
+      Terminal — also real-place names but you scoped to 3 facilities;
+      logged in considered-and-deferred for a follow-up.
+  Key files: 15 modified via sed + AuthorDashboard.test.jsx via Edit.
+  Tests: 139 client passing (unchanged — data rename, no behaviour).
+    Build clean.
+  Decision record: product-decision-log.md narrative entry (defect-fix
+    tone). Deferred: Pernis + Jurong rename, full region/regulator
+    anonymization — both in considered-and-deferred.md.
+  Next: commit + push (per standing prefs); deploy at user's call.
+
+================================================================
+
 2026-05-29 — AD-1: anomaly acknowledgement on Section 3 assets
   Spec (businesslogic §9.2) defines real-time anomaly detection as a paid
     recurring add-on with a flag → acknowledge (4 reasons) → audit loop.

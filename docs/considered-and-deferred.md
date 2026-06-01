@@ -412,3 +412,53 @@ contexts: favicon, collapsed nav, mobile headers, app icons.
 - A compact surface needs the mark without the wordmark. Extraction is
   trivial: the lockup SVG cropped to `viewBox="0 0 37 37"` is just the
   square (the wordmark paths sit at x>37 and clip out).
+
+## Rename fac-4 Pernis Refinery Complex + fac-5 Jurong Storage Terminal
+Considered: 2026-06-01 (during demo facility de-identification rename)
+Status: deferred
+
+### What we considered
+Renaming `fac-4 Pernis Refinery Complex (Rotterdam)` and `fac-5 Jurong
+Storage Terminal (Singapore)` in the same de-identification pass that
+renamed fac-1/2/3. Both are real-place names like the originals.
+
+### Why we deferred
+- The screenshot brief was explicit to 3 facilities (the visible "All
+  assessments" rows). Expanding scope risks unintended changes and we
+  didn't have fictional name suggestions for these.
+- fac-4 and fac-5 don't appear in seeded audit / mitigation / notification
+  records (they're aggregate-only in HQ_AGGREGATE), so they're less
+  visible than fac-1/2/3 and lower priority.
+
+### Revisit conditions
+- The demo starts using fac-4 or fac-5 prominently (a featured screen,
+  workflow, or prospect path).
+- A prospect/customer flags either name as too on-the-nose.
+- We choose to standardise: rename ALL real-place facilities for full
+  de-identification consistency.
+
+## Full geographic anonymization (regions, regulators, manager names)
+Considered: 2026-06-01 (during demo facility de-identification rename)
+Status: deferred
+
+### What we considered
+Replacing the kept geographic context strings — `region` ("Lagos,
+Nigeria", "Rivers State, Nigeria", "Fujairah, United Arab Emirates"),
+`regulator` (Department of Petroleum Resources, Nigerian Maritime
+Administration, Federal Transport Authority UAE), and
+`accountableManager` (Daniel Mensah, Hassan Al-Mansoori, Nadia Haddad).
+
+### Why we deferred
+- Default interpretation: keep geographic context because "Eko" is
+  acknowledged Lagos and the demo benefits from regional verisimilitude.
+- Full anonymization would expand scope to ~15+ more strings across
+  session.js, operators.js, FacilityInfoSection narrative copy, and the
+  mitigations.js "Bonny shipyard" reference.
+- A prospect-driven trigger is the right time to redo this — speculative
+  anonymization without that signal is over-scoping.
+
+### Revisit conditions
+- A prospect or customer flags region/regulator/manager strings as too
+  on-the-nose.
+- Demo expands into FacilityInfoSection-heavy scenarios where the
+  narrative geographic copy is more prominent.

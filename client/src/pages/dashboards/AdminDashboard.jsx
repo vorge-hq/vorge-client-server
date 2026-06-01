@@ -48,7 +48,7 @@ export function AdminDashboard() {
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2.5 py-1 text-[11px] font-semibold text-secondary-800">
-          <Settings size={10} aria-hidden /> Facility: Lagos Refinery
+          <Settings size={10} aria-hidden /> Facility: Eko Petrochemical Hub
         </span>
       </header>
 

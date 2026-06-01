@@ -13,7 +13,7 @@ function renderSection(readOnly = false) {
       <AuthProvider initialSession={DEMO_SESSION}>
         <WorkspaceProvider>
           <AssetDisaggregationSection
-            assessment={{ state: "Draft", name: "Lagos Refinery — 2026 SRA" }}
+            assessment={{ state: "Draft", name: "Eko Petrochemical Hub — 2026 SRA" }}
             readOnly={readOnly}
             errors={[]}
           />

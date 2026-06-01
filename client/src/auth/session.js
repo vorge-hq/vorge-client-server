@@ -35,11 +35,11 @@ const DEMO_USER = Object.freeze({
 
 const DEMO_FACILITY = Object.freeze({
   id: "fac-1",
-  name: "Lagos Refinery",
+  name: "Eko Petrochemical Hub",
   operator: "Operator A",
   operatorId: "op-a",
   region: "Lagos, Nigeria",
-  displayName: "Operator A — Lagos Refinery"
+  displayName: "Operator A — Eko Petrochemical Hub"
 });
 
 export const DEMO_SESSION = Object.freeze({
@@ -49,19 +49,19 @@ export const DEMO_SESSION = Object.freeze({
     DEMO_FACILITY,
     {
       id: "fac-2",
-      name: "Bonny Terminal",
+      name: "Delta Crest Terminal",
       operator: "Operator A",
       operatorId: "op-a",
       region: "Rivers State, Nigeria",
-      displayName: "Operator A — Bonny Terminal"
+      displayName: "Operator A — Delta Crest Terminal"
     },
     {
       id: "fac-3",
-      name: "Fujairah Marine Terminal",
+      name: "Gulf Horizon Terminal",
       operator: "Operator A",
       operatorId: "op-a",
       region: "Fujairah, United Arab Emirates",
-      displayName: "Operator A — Fujairah Marine Terminal"
+      displayName: "Operator A — Gulf Horizon Terminal"
     }
   ],
   actingRole: ROLES.AUTHOR,

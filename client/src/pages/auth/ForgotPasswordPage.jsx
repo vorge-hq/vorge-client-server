@@ -46,7 +46,7 @@ export function ForgotPasswordPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="font-semibold tracking-tight text-primary">Vorge</div>
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
@@ -54,7 +54,7 @@ export function ForgotPasswordPage() {
           Reset your password
         </h1>
         <p className="mb-8 text-sm text-text-muted">
-          Enter the email tied to your Vantage account. If it&rsquo;s registered, we&rsquo;ll send a reset link.
+          Enter the email tied to your Vorge account. If it&rsquo;s registered, we&rsquo;ll send a reset link.
         </p>
 
         {submitted ? (

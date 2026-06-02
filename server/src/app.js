@@ -20,7 +20,7 @@ app.use((req, _res, next) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "vantage-server" });
+  res.json({ status: "ok", service: "vorge-server" });
 });
 
 app.use("/api/auth", authRoutes);

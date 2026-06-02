@@ -240,7 +240,8 @@ router.post("/switch-role", authenticate, async (req, res, next) => {
     });
   }
 
-  const presentedRefresh = req.cookies[env.refreshCookieName];
+  const presentedRefresh =
+    req.cookies[env.refreshCookieName] || req.cookies[env.legacyRefreshCookieName];
 
   if (!presentedRefresh) {
     return res
@@ -315,7 +316,8 @@ router.post("/switch-role", authenticate, async (req, res, next) => {
 // ─── LOGOUT ───────────────────────────────────────────────────────────────
 
 router.post("/logout", authenticate, async (req, res, next) => {
-  const presentedRefresh = req.cookies[env.refreshCookieName];
+  const presentedRefresh =
+    req.cookies[env.refreshCookieName] || req.cookies[env.legacyRefreshCookieName];
 
   try {
     const { familyId } = await db.transaction(async (trx) => {
@@ -348,7 +350,8 @@ router.post("/logout", authenticate, async (req, res, next) => {
 // ─── REFRESH ──────────────────────────────────────────────────────────────
 
 router.post("/refresh", async (req, res, next) => {
-  const presentedRefresh = req.cookies[env.refreshCookieName];
+  const presentedRefresh =
+    req.cookies[env.refreshCookieName] || req.cookies[env.legacyRefreshCookieName];
 
   if (!presentedRefresh) {
     return res

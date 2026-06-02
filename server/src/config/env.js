@@ -24,11 +24,17 @@ const env = {
       ? process.env.COOKIE_SECURE === "true"
       : nodeEnv === "production",
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
-  refreshCookieName: "vantage_refresh",
+  refreshCookieName: "vorge_refresh",
+  // Vantage→Vorge rebrand fallback: accept the legacy cookie on read for
+  // one release window so in-flight sessions survive the deploy. Writes
+  // and clears always use the new name. Drop after one cycle.
+  legacyRefreshCookieName: "vantage_refresh",
   refreshCookiePath: "/api/auth",
   mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY || DEV_PLACEHOLDER_MFA_KEY,
   mfaEnforcementEnabled: process.env.MFA_ENFORCEMENT_ENABLED !== "false",
-  mfaTrustCookieName: "vantage_mfa_trust",
+  mfaTrustCookieName: "vorge_mfa_trust",
+  // Same rebrand fallback as refreshCookieName above.
+  legacyMfaTrustCookieName: "vantage_mfa_trust",
   mfaTrustCookiePath: "/api/auth",
   mfaTrustCookieMaxAgeMs: 30 * 24 * 60 * 60 * 1000
 };

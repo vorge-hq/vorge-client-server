@@ -54,7 +54,7 @@ export function FieldModeModal({ onClose }) {
               <div>
                 <p className="font-medium">Offline auth uses PIN or biometric — never the full password.</p>
                 <p className="mt-1 text-[11px]">
-                  Vantage issues a server-signed offline token that expires after 1, 3, 5, or 7 days. If the PIN
+                  Vorge issues a server-signed offline token that expires after 1, 3, 5, or 7 days. If the PIN
                   fails too many times, the offline cache is wiped.
                 </p>
               </div>
@@ -64,7 +64,7 @@ export function FieldModeModal({ onClose }) {
           <section>
             <h3 className="text-[12px] font-semibold text-text-secondary">Install as PWA</h3>
             <p className="mt-1 text-[11px] text-text-muted">
-              Add Vantage to your home screen so the field crew can launch the app offline. Same browser engine,
+              Add Vorge to your home screen so the field crew can launch the app offline. Same browser engine,
               dedicated icon.
             </p>
             <button
@@ -76,7 +76,7 @@ export function FieldModeModal({ onClose }) {
               {installState === "idle" ? <Download size={13} /> : null}
               {installState === "installing" ? <Loader2 size={13} className="animate-spin" /> : null}
               {installState === "done" ? <CheckCircle2 size={13} /> : null}
-              {installState === "idle" ? "Install Vantage" : null}
+              {installState === "idle" ? "Install Vorge" : null}
               {installState === "installing" ? "Installing…" : null}
               {installState === "done" ? "Installed" : null}
             </button>

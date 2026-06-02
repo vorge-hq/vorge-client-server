@@ -3,7 +3,7 @@ set -euo pipefail
 
 # scripts/setup-first.sh
 # ------------------------------------------------------------
-# First-time local/dev setup for Vantage.
+# First-time local/dev setup for Vorge.
 #
 # This script may run migrations and safe initialization steps.
 # It must avoid destructive actions unless explicitly confirmed.

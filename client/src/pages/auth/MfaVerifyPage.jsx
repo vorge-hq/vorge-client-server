@@ -7,7 +7,7 @@ import { ApiError, apiRequest } from "../../api/client";
 import { Banner } from "../../components/Banner";
 import { getHomeRouteForRole } from "../../features/navigation/navigation";
 
-const SESSION_STORAGE_KEY = "vantage.session";
+const SESSION_STORAGE_KEY = "vorge.session";
 
 export function MfaVerifyPage() {
   if (isDemoEnabled()) return <Navigate to="/login" replace />;
@@ -80,7 +80,7 @@ export function MfaVerifyPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="font-semibold tracking-tight text-primary">Vorge</div>
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 

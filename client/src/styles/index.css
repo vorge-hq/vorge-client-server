@@ -1,5 +1,5 @@
 /* ============================================================
-   Vantage design tokens — v2 (with dark mode)
+   Vorge design tokens — v2 (with dark mode)
    Single source of truth for brand colors.
    ============================================================ */
 
@@ -445,7 +445,7 @@
     @apply text-xs font-semibold uppercase tracking-wide text-text-muted;
   }
 
-  /* Dark app header (vantage TopBar) */
+  /* Dark app header (vorge TopBar) */
   .app-topbar {
     @apply flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-primary-500 px-4 text-text-inverse sm:px-5;
   }

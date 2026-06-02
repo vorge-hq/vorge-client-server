@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { OPERATOR_MEMORY_PREFIX as KEY_PREFIX } from "../config/storageKeys";
 
 /**
  * useOperatorMemory
@@ -31,7 +32,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
  */
 
 const HISTORY_CAP = 20;
-const KEY_PREFIX = "vantage:op:";
 const KEY_SUFFIX = ":siteHistory";
 
 const FACILITY_FIELDS = ["name", "region", "location", "type", "manager", "regulator"];

@@ -5,9 +5,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { isDemoEnabled } from "../../auth/demoFlag";
 import { ApiError, apiRequest } from "../../api/client";
 import { Banner } from "../../components/Banner";
+import { SESSION_STORAGE_KEY } from "../../config/storageKeys";
 import { getHomeRouteForRole } from "../../features/navigation/navigation";
-
-const SESSION_STORAGE_KEY = "vantage.session";
 
 export function MfaEnrollPage() {
   if (isDemoEnabled()) return <Navigate to="/login" replace />;
@@ -72,7 +71,7 @@ export function MfaEnrollPage() {
   function handleDownload() {
     if (!recoveryCodes) return;
     const text =
-      "Vantage MFA recovery codes\n" +
+      "Vorge MFA recovery codes\n" +
       "Keep these safe — they will not be shown again.\n\n" +
       recoveryCodes.join("\n") +
       "\n";
@@ -80,7 +79,7 @@ export function MfaEnrollPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "vantage-recovery-codes.txt";
+    a.download = "vorge-recovery-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -95,7 +94,7 @@ export function MfaEnrollPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="font-semibold tracking-tight text-primary">Vorge</div>
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 

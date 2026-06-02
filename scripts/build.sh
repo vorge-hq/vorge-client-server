@@ -3,7 +3,7 @@ set -euo pipefail
 
 # scripts/build.sh
 # ------------------------------------------------------------
-# Owns the actual Vantage build process.
+# Owns the actual Vorge build process.
 #
 # This script is intentionally separate from the Makefile.
 #
@@ -23,7 +23,7 @@ if [[ "${1:-}" == "--first" ]]; then
   MODE="first"
 fi
 
-echo "==> Vantage build started"
+echo "==> Vorge build started"
 echo "==> Mode: ${MODE}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

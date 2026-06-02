@@ -28,7 +28,7 @@ const DEMO_USER = Object.freeze({
   id: "user-demo-author",
   name: "Adaeze Okeke",
   initials: "AO",
-  email: "adaeze.okeke@vantage.local",
+  email: "adaeze.okeke@vorge.local",
   title: "Author",
   mfaEnabled: false
 });
@@ -93,7 +93,7 @@ export const DEMO_PERSONAS = Object.freeze({
     userId: "user-demo-author",
     name: "Adaeze Okeke",
     initials: "AO",
-    email: "adaeze.okeke@vantage.local",
+    email: "adaeze.okeke@vorge.local",
     title: "Author",
     mfaEnabled: false,
     home: "/dashboard"
@@ -102,7 +102,7 @@ export const DEMO_PERSONAS = Object.freeze({
     userId: "user-a-reviewer",
     name: "Mei-Lin Tanaka",
     initials: "MT",
-    email: "meilin.tanaka@vantage.local",
+    email: "meilin.tanaka@vorge.local",
     title: "Reviewer",
     mfaEnabled: true,
     home: "/dashboard"
@@ -111,7 +111,7 @@ export const DEMO_PERSONAS = Object.freeze({
     userId: "user-m-approver",
     name: "Rafael Castellanos",
     initials: "RC",
-    email: "rafael.castellanos@vantage.local",
+    email: "rafael.castellanos@vorge.local",
     title: "Approver",
     mfaEnabled: true,
     home: "/dashboard"
@@ -120,7 +120,7 @@ export const DEMO_PERSONAS = Object.freeze({
     userId: "user-demo-exec",
     name: "Sarah Chen",
     initials: "SC",
-    email: "sarah.chen@vantage.local",
+    email: "sarah.chen@vorge.local",
     title: "HQ Executive",
     mfaEnabled: true,
     home: "/dashboard"
@@ -129,7 +129,7 @@ export const DEMO_PERSONAS = Object.freeze({
     userId: "user-demo-admin",
     name: "Olivia Bennett",
     initials: "OB",
-    email: "olivia.bennett@vantage.local",
+    email: "olivia.bennett@vorge.local",
     title: "Administrator",
     mfaEnabled: true,
     home: "/admin"

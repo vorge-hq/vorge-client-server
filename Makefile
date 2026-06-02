@@ -1,6 +1,6 @@
 # Makefile
 # ------------------------------------------------------------
-# Developer-facing command interface for Vantage.
+# Developer-facing command interface for Vorge.
 #
 # Important:
 # - The Makefile should stay thin.
@@ -20,7 +20,7 @@ COMPOSE := docker compose
 .PHONY: help start stop restart logs build build-first setup-first test migrate clean dev-demo dev-prod
 
 help:
-	@echo "Vantage developer commands:"
+	@echo "Vorge developer commands:"
 	@echo ""
 	@echo "  make start        Start Docker services only"
 	@echo "  make stop         Stop Docker services only"

@@ -1,8 +1,8 @@
 # BusinessLogic.md
 
-**Vantage SRA Platform — Business Logic Specification**
+**Vorge SRA Platform — Business Logic Specification**
 
-> Compiled for the Vantage build. This document is the canonical source of truth for **what the platform does** — the rules, behaviours, entities, workflows, and edge cases the application must implement.
+> Compiled for the Vorge build. This document is the canonical source of truth for **what the platform does** — the rules, behaviours, entities, workflows, and edge cases the application must implement.
 >
 > **It is not a technical-stack spec.** Tech stack, API design, deployment, and code structure are covered in companion docs (`server.md`, `client.md`, `readme.md`). This file should drive what the code does, not how it's built.
 >
@@ -39,16 +39,16 @@
 
 ## 1. Overview & naming conventions
 
-### What Vantage is
+### What Vorge is
 
-Vantage is a multi-tenant B2B web application that replaces the existing Word-document Security Risk Assessment (SRA) workflow with a structured, multi-user, audit-defensible system. It is purpose-built for security consultancies that deliver SRA engagements to operator clients (oil & gas, mining, ports, critical infrastructure, etc.), with a deployment model that supports the consultant delivering an engagement and then transitioning ongoing platform ownership to the operator's team.
+Vorge is a multi-tenant B2B web application that replaces the existing Word-document Security Risk Assessment (SRA) workflow with a structured, multi-user, audit-defensible system. It is purpose-built for security consultancies that deliver SRA engagements to operator clients (oil & gas, mining, ports, critical infrastructure, etc.), with a deployment model that supports the consultant delivering an engagement and then transitioning ongoing platform ownership to the operator's team.
 
 Each **facility** (refinery, terminal, FPSO, depot, etc.) is its own deployment unit. An operator may have many facilities deployed; isolation between facilities is strict at the data layer.
 
 ### Naming
 
 - **Alora** — the company that operates the platform (the consultancy / SaaS vendor). Internal name; never user-visible inside the product.
-- **Vantage** — the platform itself. This is the user-facing brand.
+- **Vorge** — the platform itself. This is the user-facing brand.
 - **Operator** — the customer organisation. Owns one or more facilities. Has its own users, configuration, and HQ-level views.
 - **Facility** — a deployment unit (refinery, terminal, FPSO, depot, mining site, port, etc.). The atomic unit of isolation. Every assessment, library entry, configuration, and user role is scoped to a facility (or to a list of facilities for multi-facility users).
 - **Assessment** (also called an SRA, an SRA cycle) — a single instance of the 9-section template completed for a facility, typically annually. Has a state, a Lead Author, a versioned history.
@@ -312,9 +312,9 @@ Every API endpoint must validate **all four** of:
 
 ### 4.1 Sign-in
 
-Vantage uses **dedicated platform credentials**, NOT corporate single sign-on (SSO via SAML or OIDC is **explicitly out of scope** at client request). This is a deliberate security architecture choice that keeps the platform isolated from the broader corporate identity system.
+Vorge uses **dedicated platform credentials**, NOT corporate single sign-on (SSO via SAML or OIDC is **explicitly out of scope** at client request). This is a deliberate security architecture choice that keeps the platform isolated from the broader corporate identity system.
 
-- Each user has their own email and password specific to Vantage.
+- Each user has their own email and password specific to Vorge.
 - Passwords stored using a strong password-hashing function (bcrypt or stronger; Argon2 acceptable).
 - **Failed login attempts are rate-limited** and accounts lock automatically after a configurable number of failures.
 - **Every sign-in attempt** (successful or failed) writes an audit entry with timestamp, user, source IP, MFA outcome (where applicable), and result.
@@ -919,7 +919,7 @@ The build also includes a **basic offline experience** that prevents the worst U
 
 ## 9. AI features
 
-Vantage has **six AI features** sitting on a shared **AI service module**. Three are base (included in build), two are paid recurring add-ons, one is bespoke (built only when commissioned).
+Vorge has **six AI features** sitting on a shared **AI service module**. Three are base (included in build), two are paid recurring add-ons, one is bespoke (built only when commissioned).
 
 > **Critical architectural rule:** **All AI features call through the AI service module. NONE call providers directly.** If a developer writes `import OpenAI` or `import Anthropic` anywhere in feature code, that is an architectural violation that must be caught in code review.
 
@@ -935,7 +935,7 @@ Vantage has **six AI features** sitting on a shared **AI service module**. Three
 - Rate-limits per facility to prevent runaway feature usage.
 
 **What the module does NOT do (deliberate v1 scope):**
-- **No entity tokenisation or obfuscation.** Vantage v1 sends real entity names to providers. Can be added later as paid hardening if a regulated customer requires it.
+- **No entity tokenisation or obfuscation.** Vorge v1 sends real entity names to providers. Can be added later as paid hardening if a regulated customer requires it.
 - **No multi-provider gateway with adapters.** Just Together AI primary plus frontier API fallback.
 - **No prompt management UI.** Prompt templates live in version-controlled config files; updates go through normal code review.
 - **No model fine-tuning.** Stock model checkpoints with prompt engineering only.
@@ -968,7 +968,7 @@ Vantage has **six AI features** sitting on a shared **AI service module**. Three
 - Author completes Sections 2 through 7.
 - Author opens Section 1 or Section 8.
 - Author clicks Generate Draft. Loading state appears (3–8 seconds typical).
-- Vantage backend gathers structured data, sends to Together AI with the locked prompt template, receives draft, displays in edit panel marked "AI-generated, requires human review."
+- Vorge backend gathers structured data, sends to Together AI with the locked prompt template, receives draft, displays in edit panel marked "AI-generated, requires human review."
 - Author edits in place. Word count visible. Token-cost indicator hidden by default but available in a small details disclosure.
 - Author clicks Save or Save and Continue. Final text persists; **AI-generated original retained in audit log alongside the edited final** so Approver can compare.
 - Author can regenerate (same input, retried) or generate a fresh draft after editing structured data.
@@ -984,7 +984,7 @@ Vantage has **six AI features** sitting on a shared **AI service module**. Three
 
 ### 9.2 Feature 2 — Real-time anomaly detection (ADD-ON, recurring)
 
-**What it does:** As an Author enters data in Sections 3 (Assets), 5 (Cross-Reference Matrix), and 6 (Vulnerability Evaluations), Vantage runs lightweight checks on save and surfaces inline warnings for likely errors:
+**What it does:** As an Author enters data in Sections 3 (Assets), 5 (Cross-Reference Matrix), and 6 (Vulnerability Evaluations), Vorge runs lightweight checks on save and surfaces inline warnings for likely errors:
 - Rating math that does not add up (R1 inconsistent with severity × likelihood inputs)
 - Scenarios that do not match the chosen threat type (e.g., a civil unrest scenario describing a pirate boarding)
 - Severity ratings inconsistent with asset criticality (e.g., Massive consequence on a Low-criticality asset)
@@ -1014,7 +1014,7 @@ Vantage has **six AI features** sitting on a shared **AI service module**. Three
 
 **What it does:** A nightly batch job compares each facility's risk ratings against peer facilities (similar facility class, region, threat profile) within the same operator's portfolio. Statistical outliers — ratings that diverge 2+ standard deviations from peer norm on shared scenario patterns — are flagged.
 
-For each flagged outlier, Vantage generates a **short prose rationale** (LLM-generated) visible on the HQ Executive dashboard explaining what factors might justify or question the divergence.
+For each flagged outlier, Vorge generates a **short prose rationale** (LLM-generated) visible on the HQ Executive dashboard explaining what factors might justify or question the divergence.
 
 **User flow:**
 - Nightly batch job runs after midnight UTC.
@@ -1081,12 +1081,12 @@ Examples:
 
 ### 9.6 Feature 6 — Smart tagging of risk scenarios (BASE)
 
-**What it does:** When an Author saves a new risk scenario, Vantage suggests 2–4 tags from a controlled vocabulary (threat type, asset class, region, consequence category) for the Author to confirm or override. Drives consistency in downstream analytics, search, and cross-facility comparison.
+**What it does:** When an Author saves a new risk scenario, Vorge suggests 2–4 tags from a controlled vocabulary (threat type, asset class, region, consequence category) for the Author to confirm or override. Drives consistency in downstream analytics, search, and cross-facility comparison.
 
 **User flow:**
 - Author writes a new risk scenario in Section 6.
 - Author clicks Save (or autosave fires).
-- Vantage backend calls the AI service module with scenario text + controlled vocabulary, requesting **structured output** (JSON: `{ tags: [...] }`).
+- Vorge backend calls the AI service module with scenario text + controlled vocabulary, requesting **structured output** (JSON: `{ tags: [...] }`).
 - System validates returned tags against the controlled vocabulary and **discards any not in the dictionary**.
 - Suggested tags appear as chips below the scenario, marked "AI-suggested."
 - Author can keep all suggestions, remove individual ones, add manual tags from the vocabulary, or override entirely.
@@ -1573,7 +1573,7 @@ Per-user preferences for notification frequency (immediate / daily digest / off)
 
 ### 17.1 Mandatory from day one
 
-Vantage **must be multi-facility from the first commit, not retrofitted.** Every Assessment, library entry, threat list, matrix, role assignment, etc. must be stored with a `facility_id`; application code reads the right configuration based on which facility the user belongs to.
+Vorge **must be multi-facility from the first commit, not retrofitted.** Every Assessment, library entry, threat list, matrix, role assignment, etc. must be stored with a `facility_id`; application code reads the right configuration based on which facility the user belongs to.
 
 The build ships with the first facility's configuration as seeded data; subsequent facilities are onboarded as new deployments **without rework**.
 
@@ -1903,17 +1903,17 @@ This section lists every `TODO:` and `QUESTION:` flagged inline. Resolve each be
 
 ### General consistency between sources
 
-18. **Tech stack alignment.** The Vantage Dev Build Plan and Dev Team MSA specify **Next.js + TypeScript + shadcn/ui + Supabase Auth**. The friend's prompt to the user mentions **plain React + Vite + Express + raw JWT**. Resolve which stack is canonical before development. Recommended: stick with the official Vantage build plan stack (Next.js + Supabase Auth) — it's already contractually specified in the MSA, supports per-role MFA out of the box, and matches the dev team's preference. **Confirm.**
+18. **Tech stack alignment.** The Vorge Dev Build Plan and Dev Team MSA specify **Next.js + TypeScript + shadcn/ui + Supabase Auth**. The friend's prompt to the user mentions **plain React + Vite + Express + raw JWT**. Resolve which stack is canonical before development. Recommended: stick with the official Vorge build plan stack (Next.js + Supabase Auth) — it's already contractually specified in the MSA, supports per-role MFA out of the box, and matches the dev team's preference. **Confirm.**
 
 19. **Test coverage target.** The friend's prompt says "almost 100% code coverage"; the MSA Schedule C says "at least 70% test coverage on critical modules." Resolve: which is canonical? Recommended: **70% on critical modules** (matrix engine, permission checks, audit log, AI service module, sync logic) with full coverage of authentication, authorisation, and state-machine transition code. 100% is impractical and counterproductive for UI code. **Confirm.**
 
-20. **AI obfuscation for v1.** The User Flows says AI features "MUST call through the AI gateway and obfuscation layer (sensitive entities tokenised before leaving the platform, substituted back before display)." The AI Features Spec says **"No entity tokenisation or obfuscation. Vantage v1 sends real entity names to providers."** **Reconcile.** Recommended: AI Features Spec is authoritative — v1 does NOT have obfuscation; this is a deliberate scope choice that can be added later as paid hardening for regulated customers. Update the User Flows text to remove the obfuscation requirement. **Confirm.**
+20. **AI obfuscation for v1.** The User Flows says AI features "MUST call through the AI gateway and obfuscation layer (sensitive entities tokenised before leaving the platform, substituted back before display)." The AI Features Spec says **"No entity tokenisation or obfuscation. Vorge v1 sends real entity names to providers."** **Reconcile.** Recommended: AI Features Spec is authoritative — v1 does NOT have obfuscation; this is a deliberate scope choice that can be added later as paid hardening for regulated customers. Update the User Flows text to remove the obfuscation requirement. **Confirm.**
 
 ### Known demo-vs-spec divergences (caught during audit)
 
 These are places where the JSX demo behaviour does NOT match the source spec. The spec is the canonical source for production; flagging here so the divergences don't propagate during development.
 
-21. **Reviewer send-back signature clearing.** Spec (User Flows §Workflow state machine) says reviewer-send-back clears Author + Reviewer signatures. Demo (`vantage_demo_roles.jsx` line 1029-1034) does NOT clear signatures on this transition; only the Reviewer state is reset. Production must follow the spec — clear both signatures so the Document Approvals table honestly reflects "no current submission" during a send-back-to-draft state.
+21. **Reviewer send-back signature clearing.** Spec (User Flows §Workflow state machine) says reviewer-send-back clears Author + Reviewer signatures. Demo (`vorge_demo_roles.jsx` line 1029-1034) does NOT clear signatures on this transition; only the Reviewer state is reset. Production must follow the spec — clear both signatures so the Document Approvals table honestly reflects "no current submission" during a send-back-to-draft state.
 
 22. **`Cancelled` mitigation status in demo.** Demo Section 7 has filter logic `m.status !== 'Cancelled'` (line 5511 of `Section7`) anticipating a Cancelled status, but the seed data never sets it and the Mitigation Owner spec explicitly says cancellation is NOT a Mitigation Owner action ("cancellation is the Author's authority during a new cycle"). Production should NOT include Cancelled as a Mitigation Owner-settable status. The Author's pre-approval Section 7 may have an "Agreed = No" path that is the closest analogue.
 
@@ -1949,7 +1949,7 @@ The following are **explicitly NOT in v1 build scope** and should not be impleme
 ## 22. Glossary
 
 - **Alora** — the company operating the platform (consultancy / vendor). Internal name.
-- **Vantage** — the platform itself. User-facing brand.
+- **Vorge** — the platform itself. User-facing brand.
 - **Assessment** — one instance of the 9-section SRA template completed for a facility in a cycle.
 - **Cycle** — colloquial for a round of SRA work producing one Assessment. Annual is typical.
 - **Document Approvals** — the front-matter signature table on the exported document showing Author / Reviewer / Approver names, positions, signatures, dates.
@@ -1960,10 +1960,10 @@ The following are **explicitly NOT in v1 build scope** and should not be impleme
 - **Mitigation Owner** — platform role for users who progress approved mitigations. Held via the Mitigation Owner Pool.
 - **Mitigation Owner Pool** — facility-level mapping of role labels (e.g. "Security Manager") to platform users.
 - **Operator** — customer organisation. Has one or more facilities.
-- **PWA** — Progressive Web App. The installable form of Vantage used for Field mode.
+- **PWA** — Progressive Web App. The installable form of Vorge used for Field mode.
 - **R1 / R2** — Pre-mitigation (R1) and post-mitigation (R2) risk ratings, calculated from the configurable 5×5 matrix.
 - **RLS** — Row-level security. Database-layer enforcement of facility isolation.
-- **SRA** — Security Risk Assessment. The 9-section assessment Vantage produces.
+- **SRA** — Security Risk Assessment. The 9-section assessment Vorge produces.
 - **Version** — immutable snapshot of an Assessment finalised at the moment of approval.
 
 ---
@@ -1972,7 +1972,7 @@ The following are **explicitly NOT in v1 build scope** and should not be impleme
 
 - **Version**: 1.0 (draft)
 - **Last updated**: May 2026
-- **Compiled from**: Platform Overview, User Flows, Workflow Validation, AI Features Specification, Design Brief, Master Build Plan, Dev Build Plan, SRA Template, Dev Team MSA, vantage_demo_roles.jsx (live prototype source)
+- **Compiled from**: Platform Overview, User Flows, Workflow Validation, AI Features Specification, Design Brief, Master Build Plan, Dev Build Plan, SRA Template, Dev Team MSA, vorge_demo_roles.jsx (live prototype source)
 - **Owner**: [TODO: assign]
 - **Related docs**: `server.md`, `client.md`, `readme.md`, `plan.md` (these to be authored separately and reference this BusinessLogic.md)
 

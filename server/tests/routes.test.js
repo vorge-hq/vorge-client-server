@@ -363,7 +363,7 @@ const user = {
   email: "author@example.com",
   name: "Demo Author",
   mfaEnabled: true,
-  passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+  passwordHash: bcrypt.hashSync("VorgeDemo123!", 4),
   roleAssignments: [
     { role: ROLES.AUTHOR, facilityId: "facility-1", operatorId: "operator-1" },
     { role: ROLES.REVIEWER, facilityId: "facility-1", operatorId: "operator-1" },
@@ -404,7 +404,7 @@ beforeEach(() => {
 
 function extractRefreshCookie(response) {
   const setCookies = response.headers["set-cookie"] || [];
-  const refreshSetCookie = setCookies.find((c) => c.startsWith("vantage_refresh="));
+  const refreshSetCookie = setCookies.find((c) => c.startsWith("vorge_refresh="));
   if (!refreshSetCookie) return null;
   return refreshSetCookie.split(";")[0];
 }
@@ -417,7 +417,7 @@ describe("database-backed route wiring", () => {
   test("logs in against the user repository and returns a session token", async () => {
     const response = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     expect(response.body.token).toBeTruthy();
@@ -503,7 +503,7 @@ describe("auth session lifecycle", () => {
   test("login mints a token carrying both sub and sid claims and sets the refresh cookie", async () => {
     const response = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const payload = jwt.verify(response.body.token, env.jwtSecret);
@@ -512,7 +512,7 @@ describe("auth session lifecycle", () => {
     expect(sessionRepository.__active.has(payload.sid)).toBe(true);
 
     const setCookies = response.headers["set-cookie"] || [];
-    const refreshCookie = setCookies.find((c) => c.startsWith("vantage_refresh="));
+    const refreshCookie = setCookies.find((c) => c.startsWith("vorge_refresh="));
     expect(refreshCookie).toBeDefined();
     expect(refreshCookie).toMatch(/HttpOnly/i);
     expect(refreshCookie).toMatch(/SameSite=Strict/i);
@@ -527,7 +527,7 @@ describe("auth session lifecycle", () => {
   test("logout revokes the session AND the refresh family; reusing the cookie post-logout fails", async () => {
     const loginResponse = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const token = loginResponse.body.token;
@@ -543,9 +543,9 @@ describe("auth session lifecycle", () => {
 
     // Server cleared the cookie
     const clearCookies = logoutResponse.headers["set-cookie"] || [];
-    const clearLine = clearCookies.find((c) => c.startsWith("vantage_refresh="));
+    const clearLine = clearCookies.find((c) => c.startsWith("vorge_refresh="));
     expect(clearLine).toBeDefined();
-    expect(clearLine).toMatch(/vantage_refresh=;/);
+    expect(clearLine).toMatch(/vorge_refresh=;/);
 
     // Access token replay → 401
     const meAfter = await request(app)
@@ -565,7 +565,7 @@ describe("auth session lifecycle", () => {
   test("switch-role rotates the session and the refresh token within the same family", async () => {
     const loginResponse = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const oldToken = loginResponse.body.token;
@@ -625,7 +625,7 @@ describe("auth session lifecycle", () => {
       email: "reviewer@example.com",
       name: "Demo Reviewer",
       mfaEnabled: true,
-      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      passwordHash: bcrypt.hashSync("VorgeDemo123!", 4),
       roleAssignments: [
         { role: ROLES.REVIEWER, facilityId: "facility-2", operatorId: "operator-2" }
       ],
@@ -646,11 +646,11 @@ describe("auth session lifecycle", () => {
 
     const loginA = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const loginB = await request(app)
       .post("/api/auth/login")
-      .send({ email: userB.email, password: "VantageDemo123!" })
+      .send({ email: userB.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const tokenA = loginA.body.token;
@@ -691,7 +691,7 @@ describe("auth refresh-token lifecycle", () => {
   test("POST /refresh with valid cookie returns new access token and rotates the refresh cookie", async () => {
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const cookie = extractRefreshCookie(login);
     const oldSid = jwt.verify(login.body.token, env.jwtSecret).sid;
@@ -715,7 +715,7 @@ describe("auth refresh-token lifecycle", () => {
   test("POST /refresh twice with the SAME cookie within the reuse window: both succeed; second is reuse-window (no new cookie set)", async () => {
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const cookie = extractRefreshCookie(login);
 
@@ -728,13 +728,13 @@ describe("auth refresh-token lifecycle", () => {
     expect(secondSid).toBe(firstSid); // descendant's session
     // Reuse-window response does NOT re-set the cookie
     const setCookies = second.headers["set-cookie"] || [];
-    expect(setCookies.find((c) => c.startsWith("vantage_refresh="))).toBeUndefined();
+    expect(setCookies.find((c) => c.startsWith("vorge_refresh="))).toBeUndefined();
   });
 
   test("POST /refresh past the reuse window with an already-used cookie: 401 + entire family revoked", async () => {
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const cookie = extractRefreshCookie(login);
 
@@ -765,7 +765,7 @@ describe("auth refresh-token lifecycle", () => {
   test("POST /refresh after logout returns 401 (family already revoked)", async () => {
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const cookie = extractRefreshCookie(login);
     const token = login.body.token;
@@ -786,7 +786,7 @@ describe("auth refresh-token lifecycle", () => {
       email: "reviewer@example.com",
       name: "Demo Reviewer",
       mfaEnabled: true,
-      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      passwordHash: bcrypt.hashSync("VorgeDemo123!", 4),
       roleAssignments: [
         { role: ROLES.REVIEWER, facilityId: "facility-2", operatorId: "operator-2" }
       ],
@@ -807,11 +807,11 @@ describe("auth refresh-token lifecycle", () => {
 
     const loginA = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const loginB = await request(app)
       .post("/api/auth/login")
-      .send({ email: userB.email, password: "VantageDemo123!" })
+      .send({ email: userB.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const cookieA = extractRefreshCookie(loginA);
@@ -885,7 +885,7 @@ describe("auth password reset lifecycle", () => {
     // Set up: log in to create an active session + refresh family.
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const sid = jwt.verify(login.body.token, env.jwtSecret).sid;
     expect(sessionRepository.__active.has(sid)).toBe(true);
@@ -970,7 +970,7 @@ describe("auth password reset lifecycle", () => {
       email: "reviewer@example.com",
       name: "Demo Reviewer",
       mfaEnabled: true,
-      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      passwordHash: bcrypt.hashSync("VorgeDemo123!", 4),
       roleAssignments: [
         { role: ROLES.REVIEWER, facilityId: "facility-2", operatorId: "operator-2" }
       ],
@@ -992,11 +992,11 @@ describe("auth password reset lifecycle", () => {
     // Both users log in.
     const loginA = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
     const loginB = await request(app)
       .post("/api/auth/login")
-      .send({ email: userB.email, password: "VantageDemo123!" })
+      .send({ email: userB.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const sidA = jwt.verify(loginA.body.token, env.jwtSecret).sid;
@@ -1041,7 +1041,7 @@ describe("auth password reset lifecycle", () => {
 });
 
 describe("auth mfa lifecycle", () => {
-  const adminPasswordHash = bcrypt.hashSync("VantageDemo123!", 4);
+  const adminPasswordHash = bcrypt.hashSync("VorgeDemo123!", 4);
   const adminUser = {
     id: "user-admin",
     email: "admin@operator-a.example",
@@ -1096,7 +1096,7 @@ describe("auth mfa lifecycle", () => {
   test("login as MFA-required user (not enrolled) returns mfaRequired+enrollmentNeeded; /me is gated 403", async () => {
     const response = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
 
     expect(response.body.mfaRequired).toBe(true);
@@ -1114,7 +1114,7 @@ describe("auth mfa lifecycle", () => {
   test("full enrollment flow: enroll-start → enroll-verify with bypass code → recovery codes returned, /me unlocks", async () => {
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
     const token = login.body.token;
 
@@ -1152,7 +1152,7 @@ describe("auth mfa lifecycle", () => {
 
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
     expect(login.body.mfaSatisfied).toBe(false);
     expect(login.body.enrollmentNeeded).toBe(false);
@@ -1183,7 +1183,7 @@ describe("auth mfa lifecycle", () => {
 
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
 
     const recovery = await request(app)
@@ -1210,13 +1210,13 @@ describe("auth mfa lifecycle", () => {
 
     const authorLogin = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     await request(app)
       .post("/api/auth/mfa/disable")
       .set("Authorization", `Bearer ${authorLogin.body.token}`)
-      .send({ password: "VantageDemo123!", code: "000000" })
+      .send({ password: "VorgeDemo123!", code: "000000" })
       .expect(200);
 
     // Now Admin (MFA-required) attempts disable → 403
@@ -1224,7 +1224,7 @@ describe("auth mfa lifecycle", () => {
     seedVerifiedSecret(adminUser.id);
     const adminLogin = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
     // First satisfy MFA so we can reach the disable handler with mfaSatisfied=true
     await request(app)
@@ -1236,7 +1236,7 @@ describe("auth mfa lifecycle", () => {
     const disableResp = await request(app)
       .post("/api/auth/mfa/disable")
       .set("Authorization", `Bearer ${adminLogin.body.token}`)
-      .send({ password: "VantageDemo123!", code: "000000" })
+      .send({ password: "VorgeDemo123!", code: "000000" })
       .expect(403);
     expect(disableResp.body.error.code).toBe("MFA_REQUIRED_FOR_ROLE");
 
@@ -1262,7 +1262,7 @@ describe("auth mfa lifecycle", () => {
       id: "user-outsider",
       email: "outsider@operator-b.example",
       name: "Outsider Admin",
-      passwordHash: bcrypt.hashSync("VantageDemo123!", 4),
+      passwordHash: bcrypt.hashSync("VorgeDemo123!", 4),
       mfaEnabled: true,
       mfaEnrolledAt: new Date(),
       mfaFailedAttempts: 0,
@@ -1289,7 +1289,7 @@ describe("auth mfa lifecycle", () => {
     // Login the in-facility admin and satisfy MFA
     const adminLogin = await request(app)
       .post("/api/auth/login")
-      .send({ email: adminUser.email, password: "VantageDemo123!" })
+      .send({ email: adminUser.email, password: "VorgeDemo123!" })
       .expect(200);
     await request(app)
       .post("/api/auth/mfa/verify")
@@ -1307,7 +1307,7 @@ describe("auth mfa lifecycle", () => {
     // Now login outsider admin
     const outsiderLogin = await request(app)
       .post("/api/auth/login")
-      .send({ email: outsiderAdmin.email, password: "VantageDemo123!" })
+      .send({ email: outsiderAdmin.email, password: "VorgeDemo123!" })
       .expect(200);
     await request(app)
       .post("/api/auth/mfa/verify")
@@ -1351,7 +1351,7 @@ describe("auth mfa lifecycle", () => {
 
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email: dualRoleUser.email, password: "VantageDemo123!" })
+      .send({ email: dualRoleUser.email, password: "VorgeDemo123!" })
       .expect(200);
     expect(login.body.enrollmentNeeded).toBe(true);
 
@@ -1401,7 +1401,7 @@ describe("auth mfa lifecycle", () => {
     // the requesting user. Passing adminUser's code → 401.
     const authorLogin = await request(app)
       .post("/api/auth/login")
-      .send({ email: user.email, password: "VantageDemo123!" })
+      .send({ email: user.email, password: "VorgeDemo123!" })
       .expect(200);
 
     // user attempts to use admin's recovery code → 401 INVALID_RECOVERY_CODE

@@ -28,7 +28,7 @@ describe("totpService.buildOtpauthUrl", () => {
       accountLabel: "adaeze@operator-a.example"
     });
     expect(url).toContain("otpauth://totp/");
-    expect(url).toContain("issuer=Vantage");
+    expect(url).toContain("issuer=Vorge");
     expect(url).toContain("algorithm=SHA1");
     expect(url).toContain("digits=6");
     expect(url).toContain("period=30");
@@ -44,7 +44,7 @@ describe("totpService.verifyCode (real verification)", () => {
   test("accepts a code generated for the current window", () => {
     const secret = totpService.generateSecret();
     const totp = new OTPAuth.TOTP({
-      issuer: "Vantage",
+      issuer: "Vorge",
       label: "test",
       algorithm: "SHA1",
       digits: 6,
@@ -59,7 +59,7 @@ describe("totpService.verifyCode (real verification)", () => {
   test("accepts a code from the previous window (window=±1)", () => {
     const secret = totpService.generateSecret();
     const totp = new OTPAuth.TOTP({
-      issuer: "Vantage",
+      issuer: "Vorge",
       label: "test",
       algorithm: "SHA1",
       digits: 6,
@@ -74,7 +74,7 @@ describe("totpService.verifyCode (real verification)", () => {
   test("rejects a code from two windows ago", () => {
     const secret = totpService.generateSecret();
     const totp = new OTPAuth.TOTP({
-      issuer: "Vantage",
+      issuer: "Vorge",
       label: "test",
       algorithm: "SHA1",
       digits: 6,

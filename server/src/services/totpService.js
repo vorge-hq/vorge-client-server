@@ -1,7 +1,7 @@
 const OTPAuth = require("otpauth");
 const env = require("../config/env");
 
-const ISSUER = "Vantage";
+const ISSUER = "Vorge";
 const TOTP_PARAMS = {
   algorithm: "SHA1",
   digits: 6,

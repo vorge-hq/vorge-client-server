@@ -1,4 +1,4 @@
-# Vantage API Contract Foundation
+# Vorge API Contract Foundation
 
 The server owns this contract. The client consumes it and must not duplicate server authorization logic.
 

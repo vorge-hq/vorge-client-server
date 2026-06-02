@@ -1,4 +1,4 @@
-# Vantage Client Build Plan
+# Vorge Client Build Plan
 
 This document references `plan.md`, `docs/BusinessLogic.md`, `docs/UIUX.md`, and `server-build-plan.md`.
 
@@ -16,7 +16,7 @@ Card-first lists, full-screen mobile panels, sticky bottom navigation, large tap
 
 ## Design System Strategy
 
-Tailwind tokens cover Vantage navy/ink, risk band colors (Low/Medium/High/Very High), state colors (Draft/In Review/Awaiting Approval/Approved), and role tones. Reusable component primitives (Chip, Card, KpiCard, Banner, Modal, Tabs, FormField, EmptyState, PageHeader) live under `src/components/` and ship the same visual language to every screen.
+Tailwind tokens cover Vorge navy/ink, risk band colors (Low/Medium/High/Very High), state colors (Draft/In Review/Awaiting Approval/Approved), and role tones. Reusable component primitives (Chip, Card, KpiCard, Banner, Modal, Tabs, FormField, EmptyState, PageHeader) live under `src/components/` and ship the same visual language to every screen.
 
 ## Role-Based Navigation Strategy
 

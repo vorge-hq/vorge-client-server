@@ -88,7 +88,7 @@ async function enrollStart({ user }, trx = db) {
 
   const otpauthUrl = totpService.buildOtpauthUrl({
     secretBase32,
-    accountLabel: `Vantage:${user.email}`
+    accountLabel: `Vorge:${user.email}`
   });
   const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
 

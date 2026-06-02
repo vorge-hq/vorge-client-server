@@ -3,7 +3,7 @@ set -euo pipefail
 
 # scripts/migrate.sh
 # ------------------------------------------------------------
-# Controlled database migration runner for Vantage.
+# Controlled database migration runner for Vorge.
 #
 # Migrations are explicit.
 # This script should be safe to call when migrations are idempotent.

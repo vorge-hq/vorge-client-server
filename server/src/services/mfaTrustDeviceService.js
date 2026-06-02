@@ -54,7 +54,9 @@ function clearCookie(res) {
  */
 async function validateCookie(req, userId, now = new Date(), trx) {
   if (!req || !userId) return false;
-  const plaintext = req.cookies && req.cookies[env.mfaTrustCookieName];
+  const plaintext =
+    req.cookies &&
+    (req.cookies[env.mfaTrustCookieName] || req.cookies[env.legacyMfaTrustCookieName]);
   if (!plaintext) return false;
   const tokenHash = hashToken(plaintext);
   const row = await mfaTrustedDeviceRepository.findActiveByHash(tokenHash, now, trx);

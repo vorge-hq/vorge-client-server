@@ -49,7 +49,7 @@ async function upsert(trx, table, rows) {
 }
 
 async function seed() {
-  const passwordHash = await bcrypt.hash("VantageDemo123!", env.bcryptRounds);
+  const passwordHash = await bcrypt.hash("VorgeDemo123!", env.bcryptRounds);
 
   await db.transaction(async (trx) => {
     await upsert(trx, "operators", [
@@ -263,7 +263,7 @@ async function seed() {
       .ignore();
   });
 
-  console.log("Seeded Vantage demo data.");
+  console.log("Seeded Vorge demo data.");
 }
 
 seed()

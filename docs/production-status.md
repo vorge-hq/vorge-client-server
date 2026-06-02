@@ -1,8 +1,8 @@
 # Production Status
 
-Living checklist and map for getting Vantage to production. **`SESSION_LOG.md` is the diary** (append-only, chronological, what-happened). **This file is the map** (current state, what's left, work order). Keep this file current when status changes; never duplicate the diary here.
+Living checklist and map for getting Vorge to production. **`SESSION_LOG.md` is the diary** (append-only, chronological, what-happened). **This file is the map** (current state, what's left, work order). Keep this file current when status changes; never duplicate the diary here.
 
-Last updated: 2026-05-29 · Branch: `main` · Tree: clean at the latest auth + demo-polish work.
+Last updated: 2026-06-02 · Branch: `main` · Tree: clean. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
 
 ---
 
@@ -28,7 +28,7 @@ Four reference frames describe the same product at different altitudes. Three ar
 | Phase 3 — Production hosting | ⬜ Not started | Managed Postgres, server host, secrets mgmt, monitoring, audit retention, prod Vercel envs. |
 | Dark mode (side-quest) | 🟡 **~52%** | Logged-in AppShell themes correctly. **Auth pages fully tokenized (Chunk A + bg-white surface fix, 2026-05-29)** — text AND surfaces theme-safe; 7/48 files. **LoginPage brand+logo dark treatment landed (2026-05-29):** real logo SVGs wired (white wordmark in dark), lighter-navy heading, brand-amber #F49D0D gold CTA (LoginPage-scoped). Still pending: same brand/logo treatment on the other 6 auth pages; gold-CTA app-wide; theme toggle on login/MFA; `prefers-color-scheme` not honored (dark is localStorage-driven); shared components (Chunk B) + dashboards/workspace/admin; critical-severity text awaiting designer. |
 
-Demo is deployed manually (`vercel --prod`) to `vantage-demo-roles.vercel.app`; git auto-deploy intentionally disconnected.
+Demo is deployed manually (`vercel --prod`) to `vorge-demo-roles.vercel.app`; git auto-deploy intentionally disconnected.
 
 ---
 

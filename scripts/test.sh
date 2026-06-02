@@ -3,7 +3,7 @@ set -euo pipefail
 
 # scripts/test.sh
 # ------------------------------------------------------------
-# Runs the Vantage test suite.
+# Runs the Vorge test suite.
 #
 # Unit tests for core application logic are mandatory.
 # The build process calls this script before producing artifacts.

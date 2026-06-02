@@ -9,11 +9,9 @@ import {
 } from "./session";
 import { isDemoEnabled } from "./demoFlag";
 import { apiRequest } from "../api/client";
+import { SESSION_STORAGE_KEY, TOKEN_STORAGE_KEY } from "../config/storageKeys";
 
 const AuthContext = createContext(null);
-
-const SESSION_STORAGE_KEY = "vantage.session";
-const TOKEN_STORAGE_KEY = "vantage.session.token";
 
 function readStoredSession() {
   if (isDemoEnabled()) return null;

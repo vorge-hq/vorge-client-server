@@ -1,9 +1,9 @@
 {
-  "name": "vantage-client",
+  "name": "vorge-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Vantage mobile-first React client",
+  "description": "Vorge mobile-first React client",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",

@@ -70,7 +70,7 @@ export function ResetPasswordPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="font-semibold tracking-tight text-primary">Vorge</div>
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 

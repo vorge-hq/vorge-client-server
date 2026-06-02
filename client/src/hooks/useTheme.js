@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { THEME_STORAGE_KEY as STORAGE_KEY } from "../config/storageKeys";
 
-const STORAGE_KEY = "vantage-theme";
 const DARK_CLASS = "dark";
 const LIGHT = "light";
 const DARK = "dark";

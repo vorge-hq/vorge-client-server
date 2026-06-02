@@ -1,5 +1,5 @@
 /**
- * Vantage tailwind config — v2
+ * Vorge tailwind config — v2
  * Extends Tailwind so devs can write utility classes against the
  * tokens defined in src/styles/index.css.
  *

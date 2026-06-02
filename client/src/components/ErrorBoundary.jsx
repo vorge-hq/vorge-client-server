@@ -18,7 +18,7 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("[Vantage] Unhandled render error", error, info);
+    console.error("[Vorge] Unhandled render error", error, info);
   }
 
   handleReload = () => {
@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component {
               <h1 className="text-base font-semibold text-text-primary">Something went wrong</h1>
             </div>
             <p className="mb-4 text-sm leading-relaxed text-text-secondary">
-              The Vantage app hit an unexpected error and couldn't continue. Your data is safe — try
+              The Vorge app hit an unexpected error and couldn't continue. Your data is safe — try
               reloading the page. If this keeps happening, let your administrator know.
             </p>
             {this.state.error?.message ? (

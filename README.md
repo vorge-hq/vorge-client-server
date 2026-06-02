@@ -1,6 +1,6 @@
-# Vantage SRA
+# Vorge SRA
 
-Vantage SRA is a mobile-first, multi-tenant Security Risk Assessment platform. It replaces Word-document-based SRA workflows with a structured, multi-user, audit-defensible client/server application.
+Vorge SRA is a mobile-first, multi-tenant Security Risk Assessment platform. It replaces Word-document-based SRA workflows with a structured, multi-user, audit-defensible client/server application.
 
 `docs/BusinessLogic.md` is the canonical source for business behavior.
 
@@ -43,7 +43,7 @@ make dev-demo   # VITE_ENABLE_DEMO=true  — role picker + persona switcher (cur
 make dev-prod   # VITE_ENABLE_DEMO=false — real login form, no demo personas on the client
 ```
 
-The demo personas (Adaeze, Mei-Lin, Rafael, Sarah, Olivia, Marcus on `@vantage.local`) exist only on the client — they are never seeded into the database. `make dev-prod` against the local DB will only accept the seeded users from `server/src/db/seed.js`:
+The demo personas (Adaeze, Mei-Lin, Rafael, Sarah, Olivia, Marcus on `@vorge.local`) exist only on the client — they are never seeded into the database. `make dev-prod` against the local DB will only accept the seeded users from `server/src/db/seed.js`:
 
 | Name | Email | MFA |
 |---|---|---|
@@ -54,7 +54,7 @@ The demo personas (Adaeze, Mei-Lin, Rafael, Sarah, Olivia, Marcus on `@vantage.l
 | Olivia Bennett | `olivia.bennett@operator-a.example` | enabled |
 | Marcus Johnson | `marcus.johnson@operator-a.example` | disabled |
 
-All seeded users share the password `VantageDemo123!`. MFA enforcement is not wired client-side yet — `make dev-prod` accepts the seeded password and lands you on the role's home route.
+All seeded users share the password `VorgeDemo123!`. MFA enforcement is not wired client-side yet — `make dev-prod` accepts the seeded password and lands you on the role's home route.
 
 ## Notes
 

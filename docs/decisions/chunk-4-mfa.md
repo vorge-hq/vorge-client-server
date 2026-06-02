@@ -130,7 +130,7 @@ This interpretation is recorded here so that future review (or a future engineer
 
 - This file: `docs/decisions/chunk-4-mfa.md` (lockbox).
 - Companion: `docs/decisions/chunk-4-ui-checklist.md` (5 screens, build mode per screen).
-- Plan file (Claude-internal, not committed to repo): `~/.claude/plans/vantage-auth-chunk-bright-lagoon.md`.
+- Plan file (Claude-internal, not committed to repo): `~/.claude/plans/vorge-auth-chunk-bright-lagoon.md`.
 
 ## Post-chunk-4 follow-ups (tracked here, not in chunk 4)
 

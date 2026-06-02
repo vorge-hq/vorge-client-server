@@ -1,8 +1,8 @@
-# Vantage Client Architecture
+# Vorge Client Architecture
 
 ## Overview
 
-The Vantage client is a mobile-first React/Vite/Tailwind application. It renders role-aware workflows for Security Risk Assessments while treating the server as the authority for permissions, facility access, state transitions, validation, and audit-triggering actions.
+The Vorge client is a mobile-first React/Vite/Tailwind application. It renders role-aware workflows for Security Risk Assessments while treating the server as the authority for permissions, facility access, state transitions, validation, and audit-triggering actions.
 
 ## Routing
 

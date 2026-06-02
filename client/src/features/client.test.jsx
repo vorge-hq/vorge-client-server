@@ -1713,8 +1713,8 @@ describe("LoginPage env-gated modes", () => {
     });
 
     expect(await screen.findByText("Dashboard ready")).toBeTruthy();
-    expect(window.localStorage.getItem("vantage.session.token")).toBe("test-token");
-    const stored = JSON.parse(window.localStorage.getItem("vantage.session"));
+    expect(window.localStorage.getItem("vorge.session.token")).toBe("test-token");
+    const stored = JSON.parse(window.localStorage.getItem("vorge.session"));
     expect(stored.token).toBe("test-token");
     expect(stored.demo).toBe(false);
   });

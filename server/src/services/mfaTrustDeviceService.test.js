@@ -35,7 +35,7 @@ describe("mfaTrustDeviceService.issueCookie", () => {
       "trx"
     );
     expect(res.cookie).toHaveBeenCalledWith(
-      "vantage_mfa_trust",
+      "vorge_mfa_trust",
       plaintext,
       expect.objectContaining({
         httpOnly: true,
@@ -59,19 +59,19 @@ describe("mfaTrustDeviceService.validateCookie", () => {
   });
 
   test("returns false when DB row not found", async () => {
-    const req = { cookies: { vantage_mfa_trust: "abc" } };
+    const req = { cookies: { vorge_mfa_trust: "abc" } };
     expect(await trustDevice.validateCookie(req, "user-1")).toBe(false);
   });
 
   test("returns false when row belongs to a different user", async () => {
     repo.findActiveByHash.mockResolvedValue({ id: "td-1", userId: "user-other" });
-    const req = { cookies: { vantage_mfa_trust: "abc" } };
+    const req = { cookies: { vorge_mfa_trust: "abc" } };
     expect(await trustDevice.validateCookie(req, "user-1")).toBe(false);
   });
 
   test("returns true and touches last_seen when row matches", async () => {
     repo.findActiveByHash.mockResolvedValue({ id: "td-1", userId: "user-1" });
-    const req = { cookies: { vantage_mfa_trust: "abc" } };
+    const req = { cookies: { vorge_mfa_trust: "abc" } };
     expect(await trustDevice.validateCookie(req, "user-1")).toBe(true);
     expect(repo.touchLastSeen).toHaveBeenCalledWith("td-1", expect.any(Date), undefined);
   });
@@ -87,7 +87,7 @@ describe("mfaTrustDeviceService.clearCookie / revokeAllForUser", () => {
     const res = fakeRes();
     trustDevice.clearCookie(res);
     expect(res.clearCookie).toHaveBeenCalledWith(
-      "vantage_mfa_trust",
+      "vorge_mfa_trust",
       expect.objectContaining({ httpOnly: true, sameSite: "strict", path: "/api/auth" })
     );
   });

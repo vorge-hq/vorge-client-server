@@ -1,7 +1,7 @@
 # Marketing & Positioning — Pointer
 
 The detailed marketing positioning, competitive analysis, and
-customer-facing language decisions for Vantage are NOT in this code
+customer-facing language decisions for Vorge are NOT in this code
 repo. They live in the project documentation folder at:
 
 `Backup/Business/Security Risk/`

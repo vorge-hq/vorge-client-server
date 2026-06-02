@@ -13,7 +13,7 @@ import {
   Users,
   Wand2
 } from "lucide-react";
-import vantageLogoOnDark from "../assets/vantage-logo-on-dark.svg";
+import vorgeLogoOnDark from "../assets/vorge-logo-on-dark.svg";
 import { useAuth } from "../auth/AuthContext";
 import { isDemoEnabled } from "../auth/demoFlag";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -318,8 +318,8 @@ export function AppShell() {
 
       <header className="app-topbar sticky top-0 z-30">
         <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Link to={home} className="flex shrink-0 items-center" aria-label="Vantage home">
-            <img src={vantageLogoOnDark} alt="Vantage" className="h-7 w-auto" />
+          <Link to={home} className="flex shrink-0 items-center" aria-label="Vorge home">
+            <img src={vorgeLogoOnDark} alt="Vorge" className="h-7 w-auto" />
           </Link>
 
           <div className="hidden h-4 w-px bg-white/20 sm:block" aria-hidden />

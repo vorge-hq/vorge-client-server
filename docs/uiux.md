@@ -1,11 +1,11 @@
 
 ⸻
 
-Prompt for UI/UX AI Agent: Build the Vantage App Interface
+Prompt for UI/UX AI Agent: Build the Vorge App Interface
 
-You are a senior product designer and UI/UX architect. Design the complete user interface, screen system, navigation, and user flows for a product called Vantage.
+You are a senior product designer and UI/UX architect. Design the complete user interface, screen system, navigation, and user flows for a product called Vorge.
 
-Vantage is a mobile-first, responsive web app that must also work well on desktop/tablet. It is a B2B security risk assessment platform used by consultants and operators in industries such as oil and gas, mining, ports, terminals, critical infrastructure, and offshore facilities.
+Vorge is a mobile-first, responsive web app that must also work well on desktop/tablet. It is a B2B security risk assessment platform used by consultants and operators in industries such as oil and gas, mining, ports, terminals, critical infrastructure, and offshore facilities.
 
 The product replaces a Word-document-based Security Risk Assessment workflow with a structured, multi-user, audit-defensible digital system.
 
@@ -28,11 +28,11 @@ The app should support a PWA-style experience, including offline/field mode.
 
 Product name
 
-Vantage
+Vorge
 
 What the app does
 
-Vantage allows security consultants and operator teams to create, review, approve, track, and export Security Risk Assessments, called SRAs.
+Vorge allows security consultants and operator teams to create, review, approve, track, and export Security Risk Assessments, called SRAs.
 
 Each SRA is completed for a specific Facility. A facility may be a refinery, terminal, FPSO, depot, mine, port, plant, or other operating site.
 
@@ -448,7 +448,7 @@ Screens:
 
 Important UX rules:
 
-* Vantage uses dedicated credentials, not corporate SSO.
+* Vorge uses dedicated credentials, not corporate SSO.
 * MFA requirement depends on role/facility policy.
 * Failed sign-ins should show secure, non-revealing messages.
 * Offline login uses PIN or biometric, not full password.
@@ -1048,7 +1048,7 @@ If dual-role policy is Warn:
 
 12. Field Mode / Offline UX
 
-Vantage must support a field mode for low-connectivity environments.
+Vorge must support a field mode for low-connectivity environments.
 
 Field mode is not mobile-only. It must work on:
 
@@ -1687,7 +1687,7 @@ Design the interface so these can be toggled/configured later.
 
 25. Final Instruction to the UI/UX Agent
 
-Design Vantage as a serious enterprise workflow product, not a generic dashboard.
+Design Vorge as a serious enterprise workflow product, not a generic dashboard.
 
 The heart of the product is the assessment workspace, especially Sections 3–7:
 

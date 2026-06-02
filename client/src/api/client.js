@@ -2,8 +2,8 @@ import { isDemoEnabled } from "../auth/demoFlag";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 
-const SESSION_STORAGE_KEY = "vantage.session";
-const TOKEN_STORAGE_KEY = "vantage.session.token";
+const SESSION_STORAGE_KEY = "vorge.session";
+const TOKEN_STORAGE_KEY = "vorge.session.token";
 const REFRESH_PATH = "/api/auth/refresh";
 
 let refreshPromise = null;

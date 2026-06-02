@@ -1,8 +1,8 @@
 {
-  "name": "vantage-server",
+  "name": "vorge-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Vantage secure REST API",
+  "description": "Vorge secure REST API",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

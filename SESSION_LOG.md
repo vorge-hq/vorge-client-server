@@ -1,3 +1,56 @@
+2026-06-02 — Rebrand: Vorge (full code + assets + docs)
+  Trademark/identity conflict with a UK company → renamed Vantage to
+    Vorge across the entire codebase. Same product, same lockup style;
+    new wordmark and slightly lighter brand amber (#F4B860 vs #F49D0D).
+  Scope: ~325 hits across ~80 files. Bulk sed (case-sensitive, both
+    forms) across client/, server/, docs/, scripts/, .claude/hooks/,
+    AGENTS.md, CLAUDE.md, README.md, SESSION_LOG.md, Makefile.
+  Intentional kept-as-vantage items (3):
+    - server DATABASE_URL default DB name → kept "vantage" (env.js +
+      knexfile.js) so Docker/Postgres still works without recreating
+      the database. docker-compose POSTGRES_DB and container names
+      left untouched for the same reason.
+    - .env.example untouched (human review per user instruction).
+    - Drive .docx references in docs/ (Vantage_User_Flows.docx etc.)
+      reverted post-sed — the actual Drive files have NOT been renamed,
+      so the references must keep pointing at the real filenames.
+  Logo / favicon:
+    - Copied 2 new SVGs in from /Volumes/.../vorge logo/ → renamed to
+      client/src/assets/vorge-logo-on-{light,dark}.svg.
+    - Deleted old vantage-logo-on-{light,dark}.{svg,png}.
+    - Created client/public/favicon.svg by viewBox-cropping the
+      light SVG to 0 0 37 37 (mark only), linked in client/index.html.
+  Storage keys (Q1 override = migration shim, NOT hard cut):
+    - New central client/src/config/storageKeys.js with all keys.
+    - client/src/config/legacyStorageMigration.js — one-shot, idempotent,
+      best-effort. Called from main.jsx before React mounts.
+    - Migrates: vantage.session, vantage.session.token, vantage-theme,
+      vantage:demo:mobile-gate-dismissed, vantage:op:* → vorge.* counterparts.
+    - 5 new vitest cases in legacyStorageMigration.test.js.
+    - Existing consumers (AuthContext, useTheme, useOperatorMemory,
+      computeInitialDismissed, MfaEnrollPage) now import from the
+      central file.
+  Server cookies (one release window dual-read):
+    - env.js: added legacyRefreshCookieName ("vantage_refresh") and
+      legacyMfaTrustCookieName ("vantage_mfa_trust"). Writes/clears
+      use the new names; reads fall back to legacy if new absent.
+    - 4 read sites updated: 3 in modules/auth/routes.js, 1 in
+      services/mfaTrustDeviceService.js. Drop after one release.
+  CTA cohesion (Q2 default): LoginPage dark-mode Sign-in button
+    dark:bg-[#F49D0D] → #F4B860 to match the new brand mark. Hover
+    stays #FFB020. Both Demo + Prod login variants.
+  Tests: 144 client passing (was 139 — +5 migration tests), 192 server
+    passing (unchanged). Client build clean.
+  Deferred (Q3 + infra): website/ (gitignored homepage generator,
+    62 hits) and Drive .docx renames — separate user-controlled work.
+    GitHub repo, Vercel project name, local directory rename are
+    user UI/CLI work outside any commit. All logged in
+    considered-and-deferred.md.
+  Next: commit + push (per overrides); do NOT vercel --prod unless
+    user asks.
+
+================================================================
+
 2026-06-01 — Demo facility rename (de-identification)
   Three mock facilities reused names of real refineries/terminals.
     Renamed for de-identification:
@@ -77,18 +130,18 @@
 ================================================================
 
 2026-05-29 — LoginPage dark-mode brand contrast + real logo
-  QA: in dark mode the Vantage wordmark, "Sign in to continue" heading,
+  QA: in dark mode the Vorge wordmark, "Sign in to continue" heading,
     and primary Sign-in button were all brand-navy on near-navy bg —
     low contrast, weak brand, unclear CTA. Placeholder Lucide shield
     still in use instead of a real logo.
   Key finding (changed the approach): the repo ALREADY had designer-made
     theme-correct logo SVGs in client/src/assets/ —
-    vantage-logo-on-light.svg (black wordmark) + vantage-logo-on-dark.svg
+    vorge-logo-on-light.svg (black wordmark) + vorge-logo-on-dark.svg
     (white wordmark), added 2026-05-12, never wired into LoginPage. So
     the planned JPEG processing (crop mark / strip white bg) was
     unnecessary; the provided PNG is superseded.
   Shipped (Option 3 — gold CTA + lighter-navy heading):
-    - Brand lockup: replaced Lucide shield + "Vantage" text with the
+    - Brand lockup: replaced Lucide shield + "Vorge" text with the
       existing SVGs, swapped by theme (block dark:hidden / hidden
       dark:block), h-8. "SRA Platform" stays token text. Applied to BOTH
       DemoLoginPage and ProdLoginPage lockups.
@@ -102,7 +155,7 @@
     gold = brand-mark amber over semantic-warning/lighter-amber; no new
     design tokens (Tailwind dark: + existing primary ramp).
   Key files: client/src/pages/auth/LoginPage.jsx;
-    client/src/assets/vantage-logo-on-{light,dark}.svg (existing, wired).
+    client/src/assets/vorge-logo-on-{light,dark}.svg (existing, wired).
   Tests: 130 client passing (unchanged — visual-only). Build clean.
   Visual QA: NOT human-verified in this env (static change). Needs a
     desktop+mobile light/dark eyeball before relying on it.
@@ -124,7 +177,7 @@
     risk the scoping report flagged. NOT a missed zinc class (zinc sweep
     was clean) and NOT viewport-driven: the modal has zero responsive
     prefixes. The "mobile only" symptom was per-device localStorage —
-    that phone had vantage-theme=dark stored from a prior logged-in
+    that phone had vorge-theme=dark stored from a prior logged-in
     session; the app still doesn't honor prefers-color-scheme, so dark
     mode on /login is localStorage-driven.
   Fix: migrated all 6 bg-white in auth pages to surface tokens —
@@ -157,7 +210,7 @@
       Commits 85105a7, 4c6334c (pushed).
     - Dark-mode Chunk A was attempted on 2026-05-28 then reverted before
       review (no shipped code; working tree returned to 5bbf903). The
-      plan file ~/.claude/plans/vantage-phase-1-pure-kernighan.md remains
+      plan file ~/.claude/plans/vorge-phase-1-pure-kernighan.md remains
       valid as the forward plan.
     - Parked, still open: critical-severity dark text awaiting designer
       sign-off (#FF5C61, already AA-passing — non-code blocker); Vercel
@@ -317,13 +370,13 @@
 
 ================================================================
 
-2026-05-28 — Manual Vercel deploy setup for vantage-demo-roles
+2026-05-28 — Manual Vercel deploy setup for vorge-demo-roles
   Vercel CLI installed and authenticated (alora-ops account)
-  Project linked: alora-ops-projects/vantage-demo-roles
+  Project linked: alora-ops-projects/vorge-demo-roles
   .vercel/ folder in repo root (gitignored, per-machine config)
   Env var set: VITE_ENABLE_DEMO=true on production scope
   Build settings fixed: Root Directory = client, Framework = Vite
-  First successful deploy: db1ac21 main HEAD → vantage-demo-roles.vercel.app
+  First successful deploy: db1ac21 main HEAD → vorge-demo-roles.vercel.app
   Deploy ID: dpl_5abKiN4Nn9BGgYDubxvxhkngfgMi
   Pattern established: vercel --prod from repo root deploys current main HEAD to demo URL. No git auto-deploy (intentional — git integration in dashboard remains disconnected).
   Next: mobile-readable warning for demo (Level 1 only)
@@ -398,7 +451,7 @@
   
 ================================================================
 
-# Vantage Build — Session Log
+# Vorge Build — Session Log
 
 Append entries at the end of every working session. Newest at top.
 

@@ -1,8 +1,8 @@
-# Vantage Master Implementation Plan
+# Vorge Master Implementation Plan
 
 ## Product Summary
 
-Vantage is a multi-tenant B2B Security Risk Assessment platform that replaces Word-document-based SRA workflows with structured, multi-user, audit-defensible software. `docs/BusinessLogic.md` is the canonical source for roles, workflows, lifecycle rules, audit behavior, facility isolation, mitigation workflow, field mode, exports, and admin configuration.
+Vorge is a multi-tenant B2B Security Risk Assessment platform that replaces Word-document-based SRA workflows with structured, multi-user, audit-defensible software. `docs/BusinessLogic.md` is the canonical source for roles, workflows, lifecycle rules, audit behavior, facility isolation, mitigation workflow, field mode, exports, and admin configuration.
 
 ## Architecture Overview
 

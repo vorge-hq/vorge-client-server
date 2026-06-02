@@ -1,7 +1,7 @@
 # Product Decision Log
 
 Running record of significant product, feature, and architecture
-decisions across the Vantage platform. Append-only — when a decision
+decisions across the Vorge platform. Append-only — when a decision
 is later revised, add a new entry referencing the old one rather than
 editing in place.
 
@@ -315,7 +315,7 @@ Status: locked
 ### Context
 Designer's dark-mode preview HTML included an amber-on-dark "CTA
 button" sample. Identified during dark-mode-spec review as template
-residue from a different project — gold is Vantage's identity color
+residue from a different project — gold is Vorge's identity color
 (logo, sparkle marker, selective accent pills), not an action color.
 
 ### Options considered
@@ -326,7 +326,7 @@ residue from a different project — gold is Vantage's identity color
 B.
 
 ### Rationale
-Gold is the Vantage identity mark. Repurposing it as a primary CTA
+Gold is the Vorge identity mark. Repurposing it as a primary CTA
 dilutes the visual hierarchy and makes the brand harder to read at a
 glance. Buttons stay on the primary navy ramp; gold appears in logo,
 sparkle marker, and selective accent pills only.
@@ -351,7 +351,7 @@ Status: locked
 ### Context
 Designer's "Token usage roles" labeled tertiary teal (T-400 family)
 as both "Success/Progress" and AI accent. Identified during dark-mode
-review as a role overlap. Teal is Vantage's AI affordance color (per
+review as a role overlap. Teal is Vorge's AI affordance color (per
 chunk-0 dark mode sweep, commit 9d8d372). Success and progress have
 semantic-green and severity-low coverage already.
 
@@ -364,7 +364,7 @@ semantic-green and severity-low coverage already.
 B.
 
 ### Rationale
-Teal is a strong visual signal in the Vantage palette. Reserving it
+Teal is a strong visual signal in the Vorge palette. Reserving it
 for AI lets users build a reliable "this is AI" reading at a glance,
 unconfused by success or progress states. Semantic green and sage are
 already established for success and progress respectively.
@@ -419,9 +419,9 @@ Decided by: Solo
 Status: locked
 
 ### Context
-The Phase 1 demo is now deployed to `vantage-demo-roles.vercel.app` (env
+The Phase 1 demo is now deployed to `vorge-demo-roles.vercel.app` (env
 flag `VITE_ENABLE_DEMO=true`). Prospects routinely open demo links on
-phones. The Vantage platform is desk-only by design — topbar, role
+phones. The Vorge platform is desk-only by design — topbar, role
 switcher, dashboard tables, and assessment shell all assume tablet/desktop
 viewports. We need to set expectations without blocking; first-impression
 quality at a small viewport is worse than a one-tap pre-roll explaining
@@ -446,7 +446,7 @@ Option C: soft warning gate, demo-mode only, gated by:
 sessionStorage key absent.
 
 Threshold = 1024 (Tailwind `lg:`).
-Persistence = `sessionStorage`, key `vantage:demo:mobile-gate-dismissed`.
+Persistence = `sessionStorage`, key `vorge:demo:mobile-gate-dismissed`.
 Check on mount only — no resize listener.
 
 Option D is recorded in `docs/considered-and-deferred.md` and is not in
@@ -583,7 +583,7 @@ Status: locked
 
 ### Context
 In dark mode the LoginPage brand elements blended into the dark navy
-page: the "Vantage" wordmark, "Sign in to continue" heading, and the
+page: the "Vorge" wordmark, "Sign in to continue" heading, and the
 primary "Sign in" button all rendered in brand navy (primary-500) on a
 near-navy background. Low contrast, weak brand presence, unclear primary
 action.
@@ -610,8 +610,8 @@ The task assumed only a white-background JPEG existed and proposed
 processing it (crop mark, strip white, render wordmark as text).
 **Exploration found this unnecessary**: the repo already contains
 designer-made, theme-correct SVG lockups in `client/src/assets/` —
-`vantage-logo-on-light.svg` (wordmark as black paths) and
-`vantage-logo-on-dark.svg` (wordmark as white paths). Both vector,
+`vorge-logo-on-light.svg` (wordmark as black paths) and
+`vorge-logo-on-dark.svg` (wordmark as white paths). Both vector,
 transparent, full mark+wordmark, added 2026-05-12 but never wired into
 LoginPage. The provided PNG is superseded.
 
@@ -619,7 +619,7 @@ LoginPage. The provided PNG is superseded.
 - Wire the existing SVGs by theme: `on-light` shown in light
   (`block dark:hidden`), `on-dark` in dark (`hidden dark:block`). No
   image processing. The lockup `<img>` replaces both the Lucide shield
-  AND the separate "Vantage" text; "SRA Platform" stays as token text.
+  AND the separate "Vorge" text; "SRA Platform" stays as token text.
 - Dark wordmark stays **white** (the designer's on-dark asset as-is),
   not recoloured to lighter navy. Max contrast, uses the real brand
   asset, zero vector editing. Heading still goes lighter-navy per
@@ -649,7 +649,7 @@ designer-reviewed CTA-token chunk so we don't leak gold piecemeal.
 
 ### Related artifacts
 - `client/src/pages/auth/LoginPage.jsx` (both variants).
-- `client/src/assets/vantage-logo-on-{light,dark}.svg` (existing, now wired).
+- `client/src/assets/vorge-logo-on-{light,dark}.svg` (existing, now wired).
 - SESSION_LOG 2026-05-29.
 
 ## AD-1: Anomaly acknowledgement on Section 3 assets
@@ -777,3 +777,85 @@ through the sed pass.
 - 16 modified files in `client/src/` (all `*.js`/`*.jsx`).
 - SESSION_LOG 2026-06-01 entry.
 - Deferred entries in `docs/considered-and-deferred.md`.
+
+## 2026-06-02: Rebrand Vorge (full)
+A trademark/identity conflict with a UK company prompted renaming the
+project from Vantage to Vorge. Same product, same horizontal lockup
+(amber rounded square + white shield), new wordmark, slightly lighter
+brand amber.
+
+### Scope
+Full sweep across `client/`, `server/`, `docs/`, `scripts/`,
+`.claude/hooks/`, root-level docs and Makefile — case-sensitive sed on
+both `Vantage` and `vorge`. ~325 occurrences, ~80 files.
+
+### Intentional kept-as-vantage
+Three exclusions, all to avoid breaking running infrastructure:
+
+1. **Postgres DB name** in `server/src/config/env.js` + `server/knexfile.js`
+   default `DATABASE_URL` (`postgresql://.../vorge`) — sed swept these to
+   `vorge` and they were reverted. Matched by docker-compose's
+   `POSTGRES_DB`, `container_name` entries and `vantage_pgdata` volume
+   which were kept intact (docker-compose.yml not in sweep scope).
+   Renaming the DB / containers / volume is a separate (destructive)
+   migration that resets local dev databases — out of this rebrand.
+2. **`.env.example`** untouched (human review item; secrets/shape
+   changes need a separate review).
+3. **Drive `Vantage_*.docx`** filename references in `docs/`,
+   `SESSION_LOG.md`, etc. The actual Drive files have not been
+   renamed; references must continue to point at the real filenames.
+
+### Sub-decisions (Q1–Q3 overrides)
+- **Q1 OVERRIDE — migration shim, not hard cut.** New
+  `client/src/config/storageKeys.js` centralises the brand-prefixed
+  keys; `legacyStorageMigration.js` runs once on app boot (from
+  `main.jsx`, before React mounts) and copies any
+  `vantage.session` / `vantage.session.token` / `vantage-theme` /
+  `vantage:demo:mobile-gate-dismissed` / `vantage:op:*` values to
+  their `vorge.*` counterparts, idempotently and best-effort. 5 new
+  vitest cases cover the migration. **Server cookies** mirror the
+  approach: writes use `vorge_refresh` / `vorge_mfa_trust`; reads
+  fall back to legacy names if the new cookie is absent — one release
+  window, then drop.
+- **Q2 — CTA brand-amber updated.** LoginPage dark-mode Sign-in button
+  `dark:bg-[#F49D0D]` → `dark:bg-[#F4B860]` to keep the original
+  "match the logo square" cohesion (Vorge's mark amber is the lighter
+  `#F4B860`). Hover stays `#FFB020`.
+- **Q3 — defer `website/` + Drive `.docx` renames.** Logged in
+  `considered-and-deferred.md` so neither is forgotten.
+
+### Logos / favicon
+- Provided SVGs at `/Volumes/UOIT GDrive Backup/Business/Security
+  Risk/vorge logo/` copied into `client/src/assets/` as
+  `vorge-logo-on-{light,dark}.svg`; old `vantage-logo-on-*` assets
+  deleted. Imports already swept by sed.
+- `client/public/favicon.svg` derived from the light lockup with the
+  viewBox clipped to `0 0 37 37` (mark only); linked in
+  `client/index.html`.
+
+### Verification
+- `cd client && npm test` → 144 passing (139 + 5 migration tests).
+- `cd client && npm run build` → clean.
+- `cd server && npm test` → 192 passing (unchanged).
+- Final case-insensitive grep across all swept paths returned zero
+  unintentional matches.
+
+### Revisit conditions
+- Old localStorage keys can be dropped (delete the migration shim)
+  after a release window where ~all users have been online once.
+- Legacy cookie reads in server can be dropped after a similar window.
+- DB rename + container rename only when a fresh-DB migration is
+  acceptable (likely combined with the move to managed Postgres in
+  Phase 3).
+
+### Related artifacts
+- New: `client/src/config/storageKeys.js`,
+  `legacyStorageMigration.js`, its test,
+  `client/src/assets/vorge-logo-on-{light,dark}.svg`,
+  `client/public/favicon.svg`.
+- Removed: `client/src/assets/vantage-logo-on-{light,dark}.svg`,
+  `vantage-logo-on-light.png`.
+- Modified: ~80 files swept; `LoginPage.jsx` CTA hex; cookie reads
+  in `routes.js` + `mfaTrustDeviceService.js`; `env.js` adds two
+  legacy cookie names; `main.jsx` invokes the migration shim.
+- SESSION_LOG 2026-06-02; considered-and-deferred entries below.

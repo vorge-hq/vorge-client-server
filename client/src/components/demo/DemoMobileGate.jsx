@@ -43,7 +43,7 @@ export function DemoMobileGate({ children }) {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
             <Shield size={15} strokeWidth={2.5} className="text-warning" aria-hidden />
           </div>
-          <div className="font-semibold tracking-tight text-primary">Vantage</div>
+          <div className="font-semibold tracking-tight text-primary">Vorge</div>
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
         </div>
 
@@ -51,7 +51,7 @@ export function DemoMobileGate({ children }) {
           id={HEADING_ID}
           className="mb-3 text-[22px] font-semibold tracking-tight text-text-primary"
         >
-          Vantage is built for tablet and desktop
+          Vorge is built for tablet and desktop
         </h1>
         <p className="mb-8 text-sm text-text-secondary">
           This demo is best experienced on a larger screen — the platform is

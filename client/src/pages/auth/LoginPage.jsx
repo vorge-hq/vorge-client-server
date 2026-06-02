@@ -9,11 +9,11 @@ import { Banner } from "../../components/Banner";
 import { FormField, TextInput } from "../../components/FormField";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { getHomeRouteForRole } from "../../features/navigation/navigation";
-import vantageLogoOnLight from "../../assets/vantage-logo-on-light.svg";
-import vantageLogoOnDark from "../../assets/vantage-logo-on-dark.svg";
+import vorgeLogoOnLight from "../../assets/vorge-logo-on-light.svg";
+import vorgeLogoOnDark from "../../assets/vorge-logo-on-dark.svg";
 
-const SESSION_STORAGE_KEY = "vantage.session";
-const TOKEN_STORAGE_KEY = "vantage.session.token";
+const SESSION_STORAGE_KEY = "vorge.session";
+const TOKEN_STORAGE_KEY = "vorge.session.token";
 
 const PERSONA_HINTS = {
   [ROLES.AUTHOR]: "Drafts and edits assessments; field mode and submissions.",
@@ -104,13 +104,13 @@ function DemoLoginPage() {
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2">
           <img
-            src={vantageLogoOnLight}
-            alt="Vantage"
+            src={vorgeLogoOnLight}
+            alt="Vorge"
             className="block h-8 w-auto dark:hidden"
           />
           <img
-            src={vantageLogoOnDark}
-            alt="Vantage"
+            src={vorgeLogoOnDark}
+            alt="Vorge"
             className="hidden h-8 w-auto dark:block"
           />
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
@@ -121,7 +121,7 @@ function DemoLoginPage() {
               Sign in to continue
             </h1>
             <p className="mb-8 text-sm text-text-muted">
-              Use your Vantage credentials.
+              Use your Vorge credentials.
             </p>
 
             <form className="space-y-3" onSubmit={handleCredentials}>
@@ -155,7 +155,7 @@ function DemoLoginPage() {
               </div>
               <button
                 type="submit"
-                className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F49D0D] dark:text-primary-900 dark:hover:bg-[#FFB020]"
+                className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F4B860] dark:text-primary-900 dark:hover:bg-[#FFB020]"
               >
                 Sign in
               </button>
@@ -298,13 +298,13 @@ function ProdLoginPage() {
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2">
           <img
-            src={vantageLogoOnLight}
-            alt="Vantage"
+            src={vorgeLogoOnLight}
+            alt="Vorge"
             className="block h-8 w-auto dark:hidden"
           />
           <img
-            src={vantageLogoOnDark}
-            alt="Vantage"
+            src={vorgeLogoOnDark}
+            alt="Vorge"
             className="hidden h-8 w-auto dark:block"
           />
           <div className="ml-1 text-xs text-text-muted">SRA Platform</div>
@@ -313,7 +313,7 @@ function ProdLoginPage() {
         <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-primary dark:text-primary-300">
           Sign in to continue
         </h1>
-        <p className="mb-8 text-sm text-text-muted">Use your Vantage credentials.</p>
+        <p className="mb-8 text-sm text-text-muted">Use your Vorge credentials.</p>
 
         <form className="space-y-3" onSubmit={handleSubmit} noValidate>
           <div>
@@ -355,7 +355,7 @@ function ProdLoginPage() {
 
           <button
             type="submit"
-            className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F49D0D] dark:text-primary-900 dark:hover:bg-[#FFB020]"
+            className="btn-primary mt-2 w-full justify-center py-2.5 dark:border-transparent dark:bg-[#F4B860] dark:text-primary-900 dark:hover:bg-[#FFB020]"
             disabled={submitting}
           >
             {submitting ? "Signing in…" : "Sign in"}

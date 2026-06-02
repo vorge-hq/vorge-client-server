@@ -1,6 +1,7 @@
 import { isDemoEnabled } from "../../auth/demoFlag";
+import { DEMO_GATE_DISMISSED_KEY as DISMISSED_STORAGE_KEY } from "../../config/storageKeys";
 
-export const DISMISSED_STORAGE_KEY = "vantage:demo:mobile-gate-dismissed";
+export { DISMISSED_STORAGE_KEY };
 export const MOBILE_BREAKPOINT = 1024;
 
 export function computeInitialDismissed(deps = {}) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Vantage SRA — Claude Code PreToolUse hook.
+// Vorge SRA — Claude Code PreToolUse hook.
 // Fires on every Bash tool call. If the command is `git commit`, runs
 // `make test` from the repo root first. Non-zero exit blocks the commit.
 

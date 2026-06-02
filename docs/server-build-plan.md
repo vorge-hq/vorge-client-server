@@ -1,4 +1,4 @@
-# Vantage Server Build Plan
+# Vorge Server Build Plan
 
 This document references `plan.md` and `docs/BusinessLogic.md`.
 

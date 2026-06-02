@@ -1,8 +1,8 @@
-# Vantage Server Architecture
+# Vorge Server Architecture
 
 ## Overview
 
-The Vantage server is an Express REST API backed by PostgreSQL. It enforces the business rules in `docs/BusinessLogic.md`, including authentication, authorization, facility isolation, assessment lifecycle, audit logging, mitigation workflow, and admin configuration foundations.
+The Vorge server is an Express REST API backed by PostgreSQL. It enforces the business rules in `docs/BusinessLogic.md`, including authentication, authorization, facility isolation, assessment lifecycle, audit logging, mitigation workflow, and admin configuration foundations.
 
 ## API Modules
 

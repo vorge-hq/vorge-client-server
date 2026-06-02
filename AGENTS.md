@@ -1,4 +1,4 @@
-# Vantage SRA — Agent Instructions
+# Vorge SRA — Agent Instructions
 
 These rules apply to any AI agent working in this repo (Claude Code, Cursor agents, etc.). Read this file first and treat it as authoritative.
 

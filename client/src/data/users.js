@@ -5,7 +5,7 @@ export const USERS = Object.freeze([
     id: "user-demo-author",
     name: "Adaeze Okeke",
     initials: "AO",
-    email: "adaeze.okeke@vantage.local",
+    email: "adaeze.okeke@vorge.local",
     title: "Author",
     mfaEnabled: false,
     roles: [
@@ -19,7 +19,7 @@ export const USERS = Object.freeze([
     id: "user-a-reviewer",
     name: "Mei-Lin Tanaka",
     initials: "MT",
-    email: "meilin.tanaka@vantage.local",
+    email: "meilin.tanaka@vorge.local",
     title: "Reviewer",
     mfaEnabled: true,
     roles: [
@@ -34,7 +34,7 @@ export const USERS = Object.freeze([
     id: "user-m-approver",
     name: "Rafael Castellanos",
     initials: "RC",
-    email: "rafael.castellanos@vantage.local",
+    email: "rafael.castellanos@vorge.local",
     title: "Approver",
     mfaEnabled: true,
     roles: [
@@ -48,7 +48,7 @@ export const USERS = Object.freeze([
     id: "user-demo-exec",
     name: "Sarah Chen",
     initials: "SC",
-    email: "sarah.chen@vantage.local",
+    email: "sarah.chen@vorge.local",
     title: "HQ Executive",
     mfaEnabled: true,
     roles: [
@@ -65,7 +65,7 @@ export const USERS = Object.freeze([
     id: "user-demo-admin",
     name: "Olivia Bennett",
     initials: "OB",
-    email: "olivia.bennett@vantage.local",
+    email: "olivia.bennett@vorge.local",
     title: "Administrator",
     mfaEnabled: true,
     roles: [

@@ -318,7 +318,7 @@ viewports. Either via Tailwind responsive utilities across every screen,
 or a separate mobile-first variant routed by viewport.
 
 ### Why we deferred
-- Vantage's product brief is desk-only: analysts working at their desk.
+- Vorge's product brief is desk-only: analysts working at their desk.
   Mobile is not a real use case for the platform — it's only a real use
   case for *opening a demo link*. Solving the demo problem (set
   expectations on small screens) is much cheaper than building screens
@@ -397,8 +397,8 @@ Considered: 2026-05-29 (during LoginPage logo wiring)
 Status: deferred
 
 ### What we considered
-The repo's logo SVGs (`vantage-logo-on-{light,dark}.svg`) are full
-horizontal lockups (amber mark + "Vantage" wordmark). A mark-only asset
+The repo's logo SVGs (`vorge-logo-on-{light,dark}.svg`) are full
+horizontal lockups (amber mark + "Vorge" wordmark). A mark-only asset
 (just the amber rounded-square + white shield) would help compact
 contexts: favicon, collapsed nav, mobile headers, app icons.
 
@@ -462,3 +462,65 @@ Administration, Federal Transport Authority UAE), and
   on-the-nose.
 - Demo expands into FacilityInfoSection-heavy scenarios where the
   narrative geographic copy is more prominent.
+
+## website/ marketing homepage — rebrand sweep
+Considered: 2026-06-02 (during Vorge rebrand)
+Status: deferred
+
+### What we considered
+Including the gitignored `website/` generator (`Vorge_Homepage_v2_Spec.docx`
+in there too) in the rebrand sweep. 62 Vantage hits across 13 files.
+
+### Why we deferred
+`website/` is a separate codebase per `AGENTS.md` "Out-of-scope files."
+Rebranding it is its own release with its own deploy path; not
+appropriate to bundle with the app rebrand commit.
+
+### Revisit conditions
+- A scheduled marketing-site refresh.
+- The marketing site begins linking into the app under the Vorge
+  brand and any visible cross-link inconsistency becomes a quality
+  issue.
+
+## Drive `Vantage_*.docx` renames
+Considered: 2026-06-02 (during Vorge rebrand)
+Status: deferred (user-controlled)
+
+### What we considered
+Renaming the Drive files (`Vantage_Master_Build_Plan.docx`,
+`Vantage_User_Flows.docx`, `Vantage_Product_Roadmap.docx`,
+`Vantage_Vercel_Deployment_Guide.docx`, etc., catalogued in
+`docs/decisions/HISTORICAL_CONTEXT.md`) so their references in the
+repo can be updated to `Vorge_*.docx`.
+
+### Why we deferred
+The Drive files are external; renaming happens in the Drive UI under
+the project owner's control. Repo references must continue to point at
+the real filenames until those renames happen.
+
+### Revisit conditions
+- Project owner renames the Drive files. Then a small follow-up commit
+  updates the repo references (sed `Vantage_` → `Vorge_` in `docs/` +
+  `SESSION_LOG.md`).
+
+## Infra renames (GitHub repo, Vercel project, local dir)
+Considered: 2026-06-02 (during Vorge rebrand)
+Status: deferred (manual UI/CLI work)
+
+### What we considered
+- GitHub repo `vorge-hq/vorge-client-server` → `vorge-hq/vorge-…`
+  (org + repo both contain Vorge).
+- Vercel project `vorge-demo-roles` → `vorge-…` (also changes the
+  deploy subdomain `vorge-demo-roles.vercel.app`).
+- Local repo directory `/Users/Solo/Documents/vorge-client-server/`.
+
+### Why we deferred
+All three are platform UI / shell work that lives outside any code
+commit. The GitHub org rename in particular has cascade effects (any
+in-flight CI tokens / webhooks tied to the old name break).
+
+### Revisit conditions
+- A planned downtime window for the URL change (Vercel) — affects the
+  live demo URL prospects use.
+- Coordinated GitHub org rename + local clone re-point + CI re-issue
+  (one focused sitting).

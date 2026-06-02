@@ -218,7 +218,7 @@ function NotificationsTab() {
       <CardHeader
         eyebrow="Triggers"
         title="Notification triggers"
-        description="Default Vantage triggers. Custom triggers and email templates ship in Phase 3."
+        description="Default Vorge triggers. Custom triggers and email templates ship in Phase 3."
       />
       <ul className="mt-4 grid gap-3">
         {NOTIFICATION_TRIGGERS.map((trigger) => (

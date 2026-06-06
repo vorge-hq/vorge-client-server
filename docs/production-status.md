@@ -2,13 +2,13 @@
 
 Living checklist and map for getting Vorge to production. **`SESSION_LOG.md` is the diary** (append-only, chronological, what-happened). **This file is the map** (current state, what's left, work order). Keep this file current when status changes; never duplicate the diary here.
 
-Last updated: 2026-06-02 · Branch: `main` · Tree: clean. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
+Last updated: 2026-06-04 · Branch: `main` · Tree: clean. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
 
 ---
 
 ## Planning layers
 
-Four reference frames describe the same product at different altitudes. Three are top-level tracks; auth chunks are the breakdown of Production-push Phase 1.
+Four reference frames describe the same product at different altitudes. Three are top-level tracks; auth chunks are the breakdown of Production-push Phase 1. `docs/roadmap.md` (last row) is not a fifth frame — it synthesizes all of them into one strategic view.
 
 | Layer | Where it lives | Scope |
 |---|---|---|
@@ -16,6 +16,7 @@ Four reference frames describe the same product at different altitudes. Three ar
 | ↳ **Auth chunks 0–4** | `SESSION_LOG.md` + git tags + `docs/decisions/chunk-4-*` | The completed Phase 1 breakdown. Chunks 0–3 predate the lockbox pattern (see `HISTORICAL_CONTEXT.md`); chunk 4 onward has decision records. |
 | **MSA milestones M1–M6** | Drive (`Vantage_Master_Build_Plan.docx`); index in `docs/decisions/HISTORICAL_CONTEXT.md` | Contractual delivery schedule across dev / designer / AI-ops. Not mirrored in-repo. |
 | **Full v1 product** | `docs/plan.md`, `docs/server-build-plan.md`, `docs/client-build-plan.md`, `docs/businesslogic.md` | The complete v1 feature set the platform is being built toward. |
+| **Strategic roadmap** | **See also: `docs/roadmap.md`** | Retrospective + forward synthesis across all layers: evidence-backed current-state matrix, Now/Next/Later horizons, dependency graph. The strategic superset of this tactical map. |
 
 ---
 
@@ -83,7 +84,7 @@ Per `docs/plan.md` + build plans. Status is indicative — verify against code b
 | Audit logging | Immutable, append-only, hash-chain fields | 🟡 Built; retention policy = Phase 3 |
 | Mitigation workflow | Post-approval Mitigation Owner track | 🟡 Built |
 | Field mode | Offline/field foundations | 🟡 v1 foundations |
-| Exports | Word / PDF | ⬜ To confirm |
+| Exports | Word / PDF | ⬜ Not started — confirmed absent: no client export lib, only `alert()` stubs, no server route (audit 2026-06-04, see `docs/roadmap.md` §4) |
 | Admin config | Users, facilities, dropdowns | 🟡 Built |
 | AI features (6) | AI service module | 🟡 AD-1 anomaly acknowledgement (Section 3 assets) shipped 2026-05-29 (client-only, advisory). AD-2–AD-4 + other AI features not started; backend rule engine deferred. |
 

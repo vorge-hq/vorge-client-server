@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const db = require("../db/knex");
+const { activeConn } = require("../db/requestScope");
 const { createAuditEntry } = require("../services/auditService");
 
 function toAuditRow(entry) {
@@ -21,7 +21,7 @@ function toAuditRow(entry) {
   };
 }
 
-async function getPreviousHash({ facilityId, trx = db }) {
+async function getPreviousHash({ facilityId, trx = activeConn() }) {
   const query = trx("audit_log_entries").select("hash").orderBy("created_at", "desc").orderBy("id", "desc").first();
 
   if (facilityId) {
@@ -34,7 +34,7 @@ async function getPreviousHash({ facilityId, trx = db }) {
   return latest?.hash || null;
 }
 
-async function appendAuditLog(event, trx = db) {
+async function appendAuditLog(event, trx = activeConn()) {
   const previousHash = await getPreviousHash({ facilityId: event.facilityId, trx });
   const entry = createAuditEntry({ ...event, previousHash });
 

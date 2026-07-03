@@ -43,8 +43,37 @@ function filterFacilityScopedRecords({ records, user, actingRole }) {
   );
 }
 
+// SQL-level facility/operator scope for the acting role, mirroring
+// canAccessFacility exactly (so a list query's results equal a per-row
+// canAccessFacility filter) but expressed as id sets a query can push into a
+// WHERE — no fetch-all-then-filter-in-JS. Author/Reviewer/etc → their assigned
+// facilities; HQ Executive → its operator(s); cross-facility Admin → its
+// operator(s). Lives here beside canAccessFacility (not in a repository) so both
+// repositories and the facility-scope middleware can share it without importing
+// a data-access module.
+function facilityScopeFor({ user, actingRole }) {
+  const assignments = (user && user.roleAssignments) || [];
+  const facilityIds = assignments
+    .filter((a) => a.role === actingRole && a.facilityId)
+    .map((a) => a.facilityId);
+
+  const operatorIds = [];
+  if (actingRole === ROLES.HQ_EXECUTIVE) {
+    for (const a of assignments) {
+      if (a.role === ROLES.HQ_EXECUTIVE && a.operatorId) operatorIds.push(a.operatorId);
+    }
+  }
+  if (actingRole === ROLES.ADMIN) {
+    for (const a of assignments) {
+      if (a.role === ROLES.ADMIN && a.crossFacility === true && a.operatorId) operatorIds.push(a.operatorId);
+    }
+  }
+  return { facilityIds: [...new Set(facilityIds)], operatorIds: [...new Set(operatorIds)] };
+}
+
 module.exports = {
   hasFacilityRole,
   canAccessFacility,
-  filterFacilityScopedRecords
+  filterFacilityScopedRecords,
+  facilityScopeFor
 };

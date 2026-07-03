@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const db = require("../db/knex");
+const { activeConn } = require("../db/requestScope");
 const { ASSESSMENT_STATES, MITIGATION_STATUSES, ROLES } = require("../services/constants");
 const { canAccessFacility } = require("../services/facilityAccessService");
 
@@ -57,7 +57,7 @@ function mapMitigation(row, logs = []) {
   };
 }
 
-function mitigationBaseQuery(trx = db) {
+function mitigationBaseQuery(trx = activeConn()) {
   return trx("mitigations as m")
     .join("assessments as a", "m.assessment_id", "a.id")
     .join("facilities as f", "m.facility_id", "f.id")
@@ -92,7 +92,7 @@ function isVisibleMitigation({ mitigation, user, actingRole }) {
   );
 }
 
-async function getLogsForMitigations(mitigationIds, trx = db) {
+async function getLogsForMitigations(mitigationIds, trx = activeConn()) {
   if (mitigationIds.length === 0) {
     return new Map();
   }
@@ -145,7 +145,7 @@ function calculateKpis(mitigations, now = new Date()) {
     );
 }
 
-async function listMine({ user, actingRole, trx = db }) {
+async function listMine({ user, actingRole, trx = activeConn() }) {
   const rows = await mitigationBaseQuery(trx)
     .where("m.owner_user_id", user.id)
     .orderBy("m.updated_at", "desc");
@@ -160,7 +160,7 @@ async function listMine({ user, actingRole, trx = db }) {
   };
 }
 
-async function getMitigationForUser({ mitigationId, user, actingRole, trx = db }) {
+async function getMitigationForUser({ mitigationId, user, actingRole, trx = activeConn() }) {
   const row = await mitigationBaseQuery(trx).where("m.id", mitigationId).first();
 
   if (!row) {
@@ -173,7 +173,7 @@ async function getMitigationForUser({ mitigationId, user, actingRole, trx = db }
   return isVisibleMitigation({ mitigation, user, actingRole }) ? mitigation : null;
 }
 
-async function applyMitigationUpdate({ mitigation, transition, userId, note, trx = db }) {
+async function applyMitigationUpdate({ mitigation, transition, userId, note, trx = activeConn() }) {
   if (transition.status !== mitigation.status) {
     await trx("mitigations")
       .where({ id: mitigation.id })

@@ -1,9 +1,10 @@
 const express = require("express");
 const authenticate = require("../../middleware/authenticate");
+const facilityScope = require("../../middleware/facilityScope");
 const { transitionMitigation } = require("../../services/mitigationWorkflowService");
 const { ROLES } = require("../../services/constants");
 const { canAccessFacility } = require("../../services/facilityAccessService");
-const db = require("../../db/knex");
+const { activeConn } = require("../../db/requestScope");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const {
   applyMitigationUpdate,
@@ -15,6 +16,7 @@ const { DomainError } = require("../../services/domainError");
 const router = express.Router();
 
 router.use(authenticate);
+router.use(facilityScope);
 
 router.get("/mine", async (req, res, next) => {
   try {
@@ -60,7 +62,7 @@ router.post("/:mitigationId/log", async (req, res, next) => {
       })
     });
 
-    const progressLog = await db.transaction(async (trx) => {
+    const progressLog = await activeConn().transaction(async (trx) => {
       const log = await applyMitigationUpdate({
         mitigation,
         transition: result,

@@ -42,9 +42,9 @@ Key client auth files:
 - Every data route must enforce tenant isolation two ways: `authenticate`, **plus** either `requireFacilityAccess` middleware **or** a repo-scoped getter that returns only in-scope rows (out-of-scope → `null`/`[]` → 404/empty). Use the middleware when the request payload names the facility/operator (the P3-write shape); use the repo-scoped getter for by-id routes where the facility is a property of the loaded resource. Which routes use which is recorded in `docs/decisions/2026-07-03-repo-scoped-facility-access.md` and mechanically enforced by `server/tests/middlewareCoverage.test.js`. Adding a route that touches assessment, mitigation, audit, or asset data without one of these two guards — or adding a payload-facility route to the test's allowlist instead of guarding it — is a defect.
 - Cross-tenant data leakage is a P0 security bug. When you touch a repository query, add an integration test that proves Tenant A cannot read Tenant B's data.
 
-### 2. Demo personas are dev-only
+### 2. Demo personas are flag-gated
 
-- `demoSession`, `getDemoPersona`, `canDemoSwitchToRole`, `switchDemoRole`, and any demo persona data in `client/src/auth/session.js` and `client/src/auth/AuthContext.jsx` must be gated behind `import.meta.env.DEV` before they reach production.
+- `demoSession`, `getDemoPersona`, `canDemoSwitchToRole`, `switchDemoRole`, and any demo persona data in `client/src/auth/session.js` and `client/src/auth/AuthContext.jsx` must be gated behind the demo flag — `isDemoEnabled()` (`client/src/auth/demoFlag.js`), which is true only when the build-time env `VITE_ENABLE_DEMO === "true"`. This is deliberately an explicit env flag, **not** `import.meta.env.DEV`: the demo build (`vorge-demo-roles`) ships with the flag on, while the real prod client (`vorge-app`) sets `VITE_ENABLE_DEMO=false`, and a dev testing real auth can turn it off locally.
 - **Gate them, do not delete.** Demo flow is still needed for dev environments and product demos.
 
 ### 3. Test coverage threshold

@@ -1,3 +1,60 @@
+2026-07-03 — P2 (cont.): RLS app wiring + AGENTS invariant 2 reconcile
+  Closes the app half of deliverable 4: every assessments/mitigations request now
+  runs its DB work inside a txn pinned to the acting role's facility context, so
+  Postgres RLS enforces isolation beneath the repo-layer scoping.
+  Added:
+    - src/db/requestScope.js: AsyncLocalStorage-based activeConn() (returns the
+      per-request scoped trx or the base pool) + runInFacilityScope(ids, work,
+      conn=db) — opens a txn, SELECT set_config('app.current_facility_ids', ids,
+      true), runs work in ALS so every await inside sees the scoped conn. Commits
+      on resolve / rolls back on throw.
+    - src/middleware/facilityScope.js: resolveFacilityIds (direct facilities +
+      operator-wide roles expanded via a facilities lookup — RLS keys on
+      facility_id only, so HQ/Admin operator scope must be expanded) then wraps
+      the request in runInFacilityScope, committing on res finish.
+  Changed:
+    - facilityScopeFor MOVED assessmentRepository → facilityAccessService (so the
+      middleware imports it without pulling a mocked repo; +4 unit tests for its
+      HQ/Admin/dedup/empty branches to hold the 95% services gate).
+    - assessment/mitigation/audit repos default trx = activeConn() (was = db), so
+      reads/mutations auto-use the scoped txn; explicit-trx callers unaffected.
+    - assessments + mitigations routers: router.use(facilityScope) after
+      authenticate; content mutations use activeConn().transaction (savepoint on
+      the request conn — inherits context, rolls back independently on conflict).
+    - getAssessmentBundleById: Promise.all → sequential awaits (a single txn
+      connection can't run concurrent queries; was tripping pg's deprecation).
+    - tests/routes.test.js db mock: trx now carries .raw/.transaction/.fn.now.
+  Added test:
+    - tests/integration/rlsWiring.test.js (5 cases, as the NON-OWNER role):
+      WIRED read inside runInFacilityScope returns the scoped facility's rows;
+      UNWIRED same read (no context) returns [] (RLS default-deny — the safety
+      net proving isolation holds even if repo filtering were bypassed); operator
+      expansion; WIRED HQ sees only its operator's facilities; rollback on throw.
+  Red-check: neutered set_config to an empty context → the two WIRED tests FAILED
+    (RLS denied), UNWIRED/expansion/rollback still passed → reverted.
+  Also reconciled AGENTS.md invariant 2: code is correct (isDemoEnabled() gates on
+    VITE_ENABLE_DEMO === "true", deliberately not import.meta.env.DEV); aligned
+    the doc to the code (heading "flag-gated" + mechanism). No decision record
+    (per the new no-records-unless-asked rule).
+  SAFE TO LAND / INERT UNTIL ROLE SWITCH: base pool still connects as owner →
+    owner bypasses RLS → behavior unchanged; existing owner-role integration
+    tests (tenantIsolation) still green through the new middleware. Enforcement
+    turns on when DATABASE_URL points at the non-owner role (Supabase checkpoint).
+  Tests: 226 server unit (was 222, +4) + 144 client + 38 integration (was 33, +5)
+    green via `TEST_DATABASE_URL=... make test`. Services branch gate held (96%).
+  === P2 REMAINING ===
+  Only the Supabase dashboard checkpoint (create non-owner app role + grants,
+  point DATABASE_URL at it) — then P2 is done. Deliverables 0–4 complete in code.
+
+================================================================
+
+2026-07-03 — Planning doc maintenance rules (no plan rewrites)
+  AGENTS.md + CLAUDE.md: four-file upkeep table (roadmap tick-only, SESSION_LOG append,
+  production-status status rows, Current focus sync). Explicit: do not restructure
+  roadmap/production-status/strategic-roadmap unless user asks; no decision records
+  unless asked. CLAUDE.md Current focus synced to P2-in-progress / P0-complete.
+  Pre-commit hook nudge now includes docs/roadmap.md.
+
 2026-07-03 — Disable AI co-author on commits
   Claude Code attribution off (`attribution.commit`/`pr` empty in .claude/settings.json).
   Agent rules in CLAUDE.md + AGENTS.md: no Co-Authored-By trailers on commits or PRs.

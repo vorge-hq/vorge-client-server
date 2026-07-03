@@ -1,6 +1,5 @@
-const db = require("../db/knex");
-const { canAccessFacility } = require("../services/facilityAccessService");
-const { ROLES } = require("../services/constants");
+const { activeConn } = require("../db/requestScope");
+const { canAccessFacility, facilityScopeFor } = require("../services/facilityAccessService");
 
 const SECTION_NAMES = Object.freeze([
   "Executive Summary",
@@ -107,7 +106,7 @@ function mapMitigation(row) {
   };
 }
 
-function assessmentBaseQuery(trx = db) {
+function assessmentBaseQuery(trx = activeConn()) {
   return trx("assessments as a")
     .join("facilities as f", "a.facility_id", "f.id")
     .join("operators as o", "a.operator_id", "o.id")
@@ -127,30 +126,8 @@ function isAssessmentVisibleToUser({ assessment, user, actingRole }) {
   });
 }
 
-// SQL-level facility/operator scope for the acting role, mirroring
-// canAccessFacility exactly (so list results equal a per-row canAccessFacility
-// filter) but pushed into the query — no fetch-all-then-filter-in-JS.
-function facilityScopeFor({ user, actingRole }) {
-  const assignments = user.roleAssignments || [];
-  const facilityIds = assignments
-    .filter((a) => a.role === actingRole && a.facilityId)
-    .map((a) => a.facilityId);
 
-  const operatorIds = [];
-  if (actingRole === ROLES.HQ_EXECUTIVE) {
-    for (const a of assignments) {
-      if (a.role === ROLES.HQ_EXECUTIVE && a.operatorId) operatorIds.push(a.operatorId);
-    }
-  }
-  if (actingRole === ROLES.ADMIN) {
-    for (const a of assignments) {
-      if (a.role === ROLES.ADMIN && a.crossFacility === true && a.operatorId) operatorIds.push(a.operatorId);
-    }
-  }
-  return { facilityIds: [...new Set(facilityIds)], operatorIds: [...new Set(operatorIds)] };
-}
-
-async function listAssessmentsForUser({ user, actingRole, trx = db }) {
+async function listAssessmentsForUser({ user, actingRole, trx = activeConn() }) {
   const { facilityIds, operatorIds } = facilityScopeFor({ user, actingRole });
 
   // No accessible facility or operator → no rows (default-deny), without a query.
@@ -168,7 +145,7 @@ async function listAssessmentsForUser({ user, actingRole, trx = db }) {
   return rows.map(mapAssessment);
 }
 
-async function getAssessmentForUser({ assessmentId, user, actingRole, trx = db }) {
+async function getAssessmentForUser({ assessmentId, user, actingRole, trx = activeConn() }) {
   const row = await assessmentBaseQuery(trx).where("a.id", assessmentId).first();
   const assessment = mapAssessment(row || {});
 
@@ -179,7 +156,7 @@ async function getAssessmentForUser({ assessmentId, user, actingRole, trx = db }
   return assessment;
 }
 
-async function getAssessmentBundleForUser({ assessmentId, user, actingRole, trx = db }) {
+async function getAssessmentBundleForUser({ assessmentId, user, actingRole, trx = activeConn() }) {
   const assessment = await getAssessmentForUser({ assessmentId, user, actingRole, trx });
 
   if (!assessment) {
@@ -189,14 +166,17 @@ async function getAssessmentBundleForUser({ assessmentId, user, actingRole, trx 
   return getAssessmentBundleById({ assessment, trx });
 }
 
-async function getAssessmentBundleById({ assessment, trx = db }) {
-  const [assets, threats, links, evaluations, mitigations] = await Promise.all([
-    trx("assets").where({ assessment_id: assessment.id }).orderBy("created_at", "asc"),
-    trx("threats").where({ assessment_id: assessment.id }).orderBy("created_at", "asc"),
-    trx("asset_threat_links").where({ assessment_id: assessment.id }).orderBy("created_at", "asc"),
-    trx("evaluations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc"),
-    trx("mitigations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc")
-  ]);
+async function getAssessmentBundleById({ assessment, trx = activeConn() }) {
+  // Sequential, not Promise.all: trx is now (under the facilityScope middleware)
+  // a single transaction connection, and a connection can only run one query at
+  // a time — issuing these concurrently trips pg's "client is already executing
+  // a query" deprecation and would break on pg@9. Five indexed point-lookups run
+  // fast serially.
+  const assets = await trx("assets").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
+  const threats = await trx("threats").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
+  const links = await trx("asset_threat_links").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
+  const evaluations = await trx("evaluations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
+  const mitigations = await trx("mitigations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
 
   return {
     assessment,
@@ -208,7 +188,7 @@ async function getAssessmentBundleById({ assessment, trx = db }) {
   };
 }
 
-async function updateAssessmentState({ assessmentId, fromState, toState, trx = db }) {
+async function updateAssessmentState({ assessmentId, fromState, toState, trx = activeConn() }) {
   const updatedRows = await trx("assessments")
     .where({ id: assessmentId, state: fromState })
     .update({
@@ -226,7 +206,7 @@ async function updateAssessmentState({ assessmentId, fromState, toState, trx = d
   return mapAssessment(row);
 }
 
-async function createVersionSnapshot({ assessmentId, trx = db }) {
+async function createVersionSnapshot({ assessmentId, trx = activeConn() }) {
   const row = await assessmentBaseQuery(trx).where("a.id", assessmentId).first();
 
   if (!row) {

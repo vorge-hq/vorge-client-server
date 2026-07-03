@@ -1,9 +1,10 @@
 const express = require("express");
 const authenticate = require("../../middleware/authenticate");
+const facilityScope = require("../../middleware/facilityScope");
 const { transitionAssessment, listAllowedWorkflowActions } = require("../../services/assessmentStateMachine");
 const { ASSESSMENT_STATES } = require("../../services/constants");
 const { getAssessmentPermissions } = require("../../services/permissionService");
-const db = require("../../db/knex");
+const { activeConn } = require("../../db/requestScope");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const {
   createVersionSnapshot,
@@ -17,6 +18,7 @@ const { DomainError } = require("../../services/domainError");
 const router = express.Router();
 
 router.use(authenticate);
+router.use(facilityScope);
 
 router.get("/", async (req, res, next) => {
   try {
@@ -84,7 +86,7 @@ router.post("/:assessmentId/workflow", async (req, res, next) => {
       reason: req.body.reason
     });
 
-    const updatedAssessment = await db.transaction(async (trx) => {
+    const updatedAssessment = await activeConn().transaction(async (trx) => {
       const updated = await updateAssessmentState({
         assessmentId: assessment.id,
         fromState: result.from,

@@ -7,7 +7,7 @@ const {
   canViewAudit,
   getAssessmentPermissions
 } = require("../src/services/permissionService");
-const { canAccessFacility, filterFacilityScopedRecords, hasFacilityRole } = require("../src/services/facilityAccessService");
+const { canAccessFacility, filterFacilityScopedRecords, hasFacilityRole, facilityScopeFor } = require("../src/services/facilityAccessService");
 const { transitionMitigation } = require("../src/services/mitigationWorkflowService");
 const { calculateRiskRating, getBand } = require("../src/services/riskMatrixService");
 const { appendAuditEntry, createAuditEntry, hashAuditEntry } = require("../src/services/auditService");
@@ -234,6 +234,45 @@ describe("facilityAccessService", () => {
         ]
       }).map((record) => record.id)
     ).toEqual(["a"]);
+  });
+
+  describe("facilityScopeFor", () => {
+    const scopeUser = {
+      roleAssignments: [
+        { role: ROLES.AUTHOR, facilityId: "facility-a", operatorId: "operator-1" },
+        { role: ROLES.AUTHOR, facilityId: "facility-a", operatorId: "operator-1" }, // dup → deduped
+        { role: ROLES.HQ_EXECUTIVE, facilityId: "facility-a", operatorId: "operator-1" },
+        { role: ROLES.ADMIN, facilityId: "facility-a", operatorId: "operator-1", crossFacility: true },
+        { role: ROLES.ADMIN, facilityId: "facility-x", operatorId: "operator-9", crossFacility: false }
+      ]
+    };
+
+    test("facility-scoped role → its assigned facilities, deduped, no operators", () => {
+      expect(facilityScopeFor({ user: scopeUser, actingRole: ROLES.AUTHOR })).toEqual({
+        facilityIds: ["facility-a"],
+        operatorIds: []
+      });
+    });
+
+    test("HQ Executive → its operator(s)", () => {
+      expect(facilityScopeFor({ user: scopeUser, actingRole: ROLES.HQ_EXECUTIVE })).toEqual({
+        facilityIds: ["facility-a"],
+        operatorIds: ["operator-1"]
+      });
+    });
+
+    test("cross-facility Admin → its operator(s); non-cross-facility Admin contributes no operator", () => {
+      // operator-9's admin row has crossFacility:false → excluded from operatorIds.
+      expect(facilityScopeFor({ user: scopeUser, actingRole: ROLES.ADMIN })).toEqual({
+        facilityIds: ["facility-a", "facility-x"],
+        operatorIds: ["operator-1"]
+      });
+    });
+
+    test("no assignments / no user → empty scope (default-deny)", () => {
+      expect(facilityScopeFor({ user: {}, actingRole: ROLES.AUTHOR })).toEqual({ facilityIds: [], operatorIds: [] });
+      expect(facilityScopeFor({ user: null, actingRole: ROLES.HQ_EXECUTIVE })).toEqual({ facilityIds: [], operatorIds: [] });
+    });
   });
 });
 

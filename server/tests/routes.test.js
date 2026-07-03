@@ -10,9 +10,19 @@ const request = require("supertest");
 const env = require("../src/config/env");
 const { ASSESSMENT_STATES, MITIGATION_STATUSES, ROLES } = require("../src/services/constants");
 
-jest.mock("../src/db/knex", () => ({
-  transaction: jest.fn(async (callback) => callback("trx"))
-}));
+jest.mock("../src/db/knex", () => {
+  // The facilityScope middleware wraps each assessments/mitigations request in a
+  // transaction and runs SET LOCAL via trx.raw; content mutations then open an
+  // inner (savepoint) transaction on that trx. The mock trx therefore needs both
+  // .raw and a nested .transaction, plus .fn.now for repo update helpers.
+  const trx = { raw: jest.fn(async () => {}), fn: { now: () => new Date() } };
+  trx.transaction = jest.fn(async (callback) => callback(trx));
+  return {
+    transaction: jest.fn(async (callback) => callback(trx)),
+    raw: jest.fn(async () => {}),
+    fn: { now: () => new Date() }
+  };
+});
 
 jest.mock("../src/repositories/auditRepository", () => ({
   appendAuditLog: jest.fn(async () => ({ hash: "hash" }))

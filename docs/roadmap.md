@@ -2,7 +2,7 @@
 
 > **Current phase: P0 — Infra grounding (in progress since 2026-07-03).** Locked decisions: Supabase = managed Postgres only (keep custom JWT/bcrypt/MFA auth); server = Render web service from `server/Dockerfile` (single instance — in-memory rate-limit/MFA caches); real client = NEW Vercel project (`VITE_ENABLE_DEMO=false`), demo project `vorge-demo-roles` untouched; AI = Vercel AI Gateway + AI SDK behind an app-layer module (§9 deviation SIGNED OFF 2026-07-03; write/section API contract extension SIGNED OFF 2026-07-03 — see `docs/decisions/2026-07-03-*`). Do not push past a phase without user review.
 
-**How this file relates to the others:** `docs/production-status.md` is the product-state map; this file is the production-push execution checklist. Tick boxes here (and append `SESSION_LOG.md`) on every meaningful change and before any commit touching `client/src/`, `server/src/`, or `server/migrations/`. Phase mapping to the old AGENTS.md numbering: old Phase 1 = P1 (done), old Phase 2 = P2, old Phase 3 ≈ P0 + P5.
+**How this file relates to the others:** `docs/production-status.md` is the product-state map; `docs/strategic-roadmap.md` is the evidence-backed retrospective/synthesis (audited 2026-06-04); this file is the production-push execution checklist. Tick boxes here (and append `SESSION_LOG.md`) on every meaningful change and before any commit touching `client/src/`, `server/src/`, or `server/migrations/`. Phase mapping to the old AGENTS.md numbering: old Phase 1 = P1 (done), old Phase 2 = P2, old Phase 3 ≈ P0 + P5.
 
 **Standing rules for every phase:** `make test` before every commit; 95% server-service coverage gate stays; never commit `.env` (check `git status`); fresh prod secrets via `openssl rand -base64 32`; no sign-ups/deploys/spend by the agent — dashboard steps are handed to the user (see `docs/infrastructure.md`); `docs/businesslogic.md` and `docs/api-contract.md` are not edited — deviations go in `docs/decisions/`.
 
@@ -43,6 +43,8 @@ DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud
 - [ ] Real Supabase RLS policies on all assessment-scoped tables (RLS is ENABLEd since the initial migration but zero policies exist). Design constraints: app connects as a single DB role → policies keyed on `set_config`/`SET LOCAL` per transaction; app role must be a NON-owner (table owners bypass RLS unless `FORCE ROW LEVEL SECURITY`); `SET LOCAL` works with Supabase transaction pooling only inside explicit transactions.
 - [ ] Cross-tenant integration tests: Tenant A requesting Tenant B data returns 403/404 on every data route (penetration-testable per businesslogic §17.4).
 - [ ] Operator-portfolio scoping for HQ Executive (§17.5) covered by tests.
+- [ ] Fix mitigations route hardcoding `hasFacilityAccess: true` (2026-06-04 audit finding, `docs/strategic-roadmap.md`) — real scoping + test.
+- [ ] Reconcile AGENTS.md invariant 2 wording with reality: demo gating is driven by `VITE_ENABLE_DEMO`, not `import.meta.env.DEV` (2026-06-04 audit finding) — align the doc or the code, record the choice.
 
 ## P3 — Write/section API (P0-priority gap — the missing core)
 

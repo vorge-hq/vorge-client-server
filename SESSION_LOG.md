@@ -96,6 +96,48 @@
 
 ================================================================
 
+2026-06-04 — Strategic roadmap created (docs/roadmap.md)
+  [Editor's note, 2026-07-03 merge: the file below now lives at
+   docs/strategic-roadmap.md — docs/roadmap.md was re-created that day
+   as the production-push execution checklist. Findings folded into
+   roadmap P2. Entry otherwise preserved verbatim.]
+  Repo-wide retrospective audit synthesized into one living strategic
+    roadmap. Read-only audit of client + server + migrations + tests
+    against the canonical docs; no behavior changes.
+  Shipped: docs/roadmap.md — 10 sections (exec snapshot, v1 DoD,
+    themed retrospective, current-state matrix with evidence paths,
+    Now/Next/Later/Deferred horizons, engineering enablers, mermaid
+    dependency graph, open questions, feature-inventory appendix,
+    maintenance instructions).
+  Key audit findings (grounded in code, not docs):
+    - P0 tenant isolation: requireFacilityAccess middleware EXISTS but
+      is wired to NO data route (assessments/mitigations use only
+      authenticate); scoping is JS filtering in repos
+      (listAssessmentsForUser fetches ALL rows then .filter()s);
+      mitigations route hardcodes hasFacilityAccess:true; RLS ENABLEd
+      on 7 tables with ZERO policies (no-op under the postgres owner
+      role); cross-tenant tests cover the AUTH domain only — data
+      routes mock the repos so the filter is never exercised e2e.
+    - Architecture truth: client is a fixtures prototype (only auth
+      hits the API); server is real but partial (auth full + DB-backed;
+      assessment/mitigation read+workflow DB-backed; NO content CRUD,
+      audit-read, admin CRUD, exports, or AI service module).
+    - Exports absent (no docx/pdf lib; alert() stubs). AI = AD-1 only
+      plus stubs/heuristics. Dark mode ~52% (no prefers-color-scheme).
+    - Demo gating uses VITE_ENABLE_DEMO, not import.meta.env.DEV as
+      AGENTS.md invariant #2 states — flagged to reconcile.
+  Also updated docs/production-status.md: added "See also:
+    docs/roadmap.md" row to the Planning layers table; resolved the
+    Exports row (To confirm -> Not started, evidence-backed); bumped
+    Last updated to 2026-06-04.
+  Tests: make test green (exit 0) — 192 server (13 suites; coverage
+    99.82% stmts / 95.85% branch / 100% funcs+lines, 95% gate passes)
+    + 144 client (10 files, 80% gate) = 336 passing.
+  Next: finish dark mode; Phase 2 (route-level requireFacilityAccess,
+    SQL repo scoping, cross-tenant data-route 403/404 tests).
+
+================================================================
+
 2026-06-02 — Rebrand: Vorge (full code + assets + docs)
   Trademark/identity conflict with a UK company → renamed Vantage to
     Vorge across the entire codebase. Same product, same lockup style;

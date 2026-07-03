@@ -39,7 +39,7 @@ Key client auth files:
 ### 1. Multi-tenant isolation is P0
 
 - Every query in `server/src/repositories/` must accept and apply scoping. At minimum `facilityId`; in the future also `tenantId` / `userId` depending on the route.
-- Every data route must use both `authenticate` and `requireFacilityAccess` middleware. Adding a route that touches assessment, mitigation, audit, or asset data without these is a defect.
+- Every data route must enforce tenant isolation two ways: `authenticate`, **plus** either `requireFacilityAccess` middleware **or** a repo-scoped getter that returns only in-scope rows (out-of-scope → `null`/`[]` → 404/empty). Use the middleware when the request payload names the facility/operator (the P3-write shape); use the repo-scoped getter for by-id routes where the facility is a property of the loaded resource. Which routes use which is recorded in `docs/decisions/2026-07-03-repo-scoped-facility-access.md` and mechanically enforced by `server/tests/middlewareCoverage.test.js`. Adding a route that touches assessment, mitigation, audit, or asset data without one of these two guards — or adding a payload-facility route to the test's allowlist instead of guarding it — is a defect.
 - Cross-tenant data leakage is a P0 security bug. When you touch a repository query, add an integration test that proves Tenant A cannot read Tenant B's data.
 
 ### 2. Demo personas are dev-only

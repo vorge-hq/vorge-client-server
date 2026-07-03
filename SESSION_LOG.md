@@ -1,3 +1,45 @@
+2026-07-03 — P2 (cont.): route-guard introspection test (test-specs §P2 deliverable 1)
+  The "no unguarded route can be merged" regression guard.
+  Added:
+    - tests/middlewareCoverage.test.js (18 cases, UNIT loop — needs no DB, so it
+      gates every `npm test`/commit, not just when TEST_DATABASE_URL is set).
+      Walks app._router.stack; per data route asserts `authenticate` present
+      (router-level or per-route) AND (`requireFacilityAccessMiddleware` present
+      OR the method+path is in an in-test REPO_SCOPED_ALLOWLIST with a named
+      scoping getter). Structural guards: any /api mount not classified as
+      data/non-data fails; any stale allowlist entry (route removed, exemption
+      left behind) fails.
+  Decision (the wiring question the handoff flagged): requireFacilityAccess is
+    wired into ZERO routes because by-id routes carry no facilityId in the
+    payload — the middleware has nothing to check pre-load. Accepted a TWO-guard
+    model: middleware for payload-facility routes (P3 writes), repo-scoped getter
+    (getXForUser → null → 404) for by-id routes. Recorded in
+    docs/decisions/2026-07-03-repo-scoped-facility-access.md; AGENTS.md invariant
+    1 reworded to accept both; requireFacilityAccess's returned fn NAMED
+    (requireFacilityAccessMiddleware) for stack-walk detectability.
+  Red-check (ground rule 1): dropped an allowlist exemption → that route's
+    facility assertion FAILED; injected a fake allowlist key → stale-entry guard
+    FAILED; unclassified a real mount → classification guard FAILED. All reverted.
+  Tests: 222 server unit (was 204, +18) + 144 client + 26 integration green via
+    `TEST_DATABASE_URL=... make test`. Service coverage gate held (97%+).
+  === HANDOFF: P2 REMAINING (next session) ===
+  Items 1 (route matrix) + 2 (introspection test) DONE. Still TODO in P2, in order:
+    3. RLS policies (defense-in-depth, biggest piece): needs a NON-OWNER app
+       DB role (Supabase connects as owner/postgres → RLS bypassed). (a) migration
+       creating policies keyed on a per-txn setting (SET LOCAL app.current_facility_ids
+       / current_operator_id), (b) app wraps requests in a txn that SETs that
+       context, (c) Supabase dashboard step to create+grant the non-owner role +
+       point DATABASE_URL user at it → CHECKPOINT WITH USER. Test as the non-owner
+       role via the harness (test-specs §P2 deliverable 4: no-context→0 rows,
+       cross-tenant UPDATE→0 rows, sequential SET LOCAL on same pooled conn no leak).
+    4. Reconcile AGENTS.md invariant 2 wording (demo gating driven by
+       VITE_ENABLE_DEMO, not import.meta.env.DEV) — align doc or code, record.
+  Local test DB up: docker vantage-db (pgvector), database vorge_test. Re-run:
+    TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vorge_test \
+    npm --prefix server run test:integration
+
+================================================================
+
 2026-07-03 — P2 (cont.): cross-tenant ROUTE matrix (test-specs §P2 deliverable 2)
   Built the penetration proof at the HTTP edge — supertest driving the live
     middleware+route stack against REAL Postgres (the P2 harness).

@@ -1,7 +1,10 @@
 const { canAccessFacility } = require("../services/facilityAccessService");
 
 function requireFacilityAccess(getScope = (req) => req.body) {
-  return (req, res, next) => {
+  // Named (not anonymous) so the P2 route-guard introspection test
+  // (tests/middlewareCoverage.test.js) can detect this guard when it walks
+  // app._router.stack. Do not rename without updating that test's constant.
+  return function requireFacilityAccessMiddleware(req, res, next) {
     const scope = getScope(req);
     const allowed = canAccessFacility({
       user: req.user,

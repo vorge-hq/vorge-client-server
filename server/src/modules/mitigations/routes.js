@@ -2,6 +2,7 @@ const express = require("express");
 const authenticate = require("../../middleware/authenticate");
 const { transitionMitigation } = require("../../services/mitigationWorkflowService");
 const { ROLES } = require("../../services/constants");
+const { canAccessFacility } = require("../../services/facilityAccessService");
 const db = require("../../db/knex");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const {
@@ -46,7 +47,17 @@ router.post("/:mitigationId/log", async (req, res, next) => {
       role: req.actingRole,
       assessmentState: mitigation.assessmentState,
       isAssigned: req.user.id === mitigation.ownerUserId,
-      hasFacilityAccess: true
+      // Derive from the loaded mitigation's facility rather than hardcoding
+      // true. getMitigationForUser already scopes by facility, so this is
+      // belt-and-braces — but it removes the fragile coupling flagged in the
+      // 2026-06-04 audit (a future change to the repo can't silently grant
+      // access here).
+      hasFacilityAccess: canAccessFacility({
+        user: req.user,
+        actingRole: req.actingRole,
+        facilityId: mitigation.facilityId,
+        operatorId: mitigation.operatorId
+      })
     });
 
     const progressLog = await db.transaction(async (trx) => {

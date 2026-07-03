@@ -1,3 +1,45 @@
+2026-07-03 — P2 (cont.): SQL-scoped assessment list + mitigations hardcode fix
+  - assessmentRepository.listAssessmentsForUser: new facilityScopeFor(user,
+    actingRole) builds facility_id/operator_id WHERE from the acting role's
+    assignments (Author→own facilities; HQ→operator; cross-facility Admin→
+    operator). Default-deny: empty scope returns [] with no query. Replaces
+    fetch-all-then-filter-in-JS. Verified identical results to the old filter
+    (integration tenantIsolation.repo.test.js still green).
+  - mitigations/routes.js: replaced hardcoded hasFacilityAccess:true with
+    canAccessFacility(...) on the loaded mitigation (2026-06-04 audit item).
+  Tests: 204 server unit + 144 client + 9 integration green.
+  === HANDOFF: P2 REMAINING (next session) ===
+  Still TODO in P2, in order (see docs/test-specs.md §P2 + docs/roadmap.md):
+    1. Cross-tenant ROUTE matrix (supertest + real DB): the penetration
+       proof. Harness ready; need an auth helper that mints a real session
+       (sessionService.issueSession {mfaSatisfied:true} → jwt.sign
+       {email,actingRole,sid} sub=userId with env.jwtSecret) then supertest
+       with Authorization: Bearer + X-Acting-Role. Assert cross-tenant GET
+       :id → 404, POST workflow/log cross-tenant → 404, wrong-role → 403,
+       unauthenticated → 401, list returns only own-tenant rows.
+    2. Route-guard introspection test: walk app._router.stack; assert every
+       data route has authenticate + (requireFacilityAccess OR a documented
+       repo-scoped-getter allowlist entry). NOTE decision needed: assessment/
+       mitigation :id routes enforce facility at the REPO layer (getXForUser
+       → null → 404), NOT via requireFacilityAccess middleware (facilityId
+       isn't in the request pre-load). Plan: refine AGENTS.md invariant 1
+       wording + write a docs/decisions record for the repo-scoped-getter
+       equivalent; name requireFacilityAccess's returned fn for detectability.
+    3. RLS policies (defense-in-depth, biggest piece): needs a NON-OWNER app
+       DB role (Supabase currently connects as owner/postgres → RLS bypassed).
+       Requires (a) a migration creating policies keyed on a per-txn setting
+       (SET LOCAL app.current_facility_ids / current_operator_id), (b) the app
+       wrapping requests in a txn that SETs that context, (c) a Supabase
+       dashboard step to create+grant the non-owner role and point the app's
+       DATABASE_URL user at it. Likely needs a user dashboard action → plan to
+       checkpoint before/after. Test as the non-owner role via the harness.
+    4. HQ operator-portfolio scoping tests (§17.5) in the route matrix.
+  Local test DB is up: docker pgvector db, database vorge_test. Re-run P2
+    tests: TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vorge_test \
+    npm --prefix server run test:integration
+
+================================================================
+
 2026-07-03 — P2 START: integration harness + two-operator fixture + first isolation test
   Built the P2 foundation (docs/test-specs.md §P2 deliverable 0) against a
     REAL local Postgres (docker pgvector db, database vorge_test).

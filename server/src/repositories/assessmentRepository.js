@@ -1,5 +1,6 @@
 const db = require("../db/knex");
 const { canAccessFacility } = require("../services/facilityAccessService");
+const { ROLES } = require("../services/constants");
 
 const SECTION_NAMES = Object.freeze([
   "Executive Summary",
@@ -126,11 +127,45 @@ function isAssessmentVisibleToUser({ assessment, user, actingRole }) {
   });
 }
 
+// SQL-level facility/operator scope for the acting role, mirroring
+// canAccessFacility exactly (so list results equal a per-row canAccessFacility
+// filter) but pushed into the query — no fetch-all-then-filter-in-JS.
+function facilityScopeFor({ user, actingRole }) {
+  const assignments = user.roleAssignments || [];
+  const facilityIds = assignments
+    .filter((a) => a.role === actingRole && a.facilityId)
+    .map((a) => a.facilityId);
+
+  const operatorIds = [];
+  if (actingRole === ROLES.HQ_EXECUTIVE) {
+    for (const a of assignments) {
+      if (a.role === ROLES.HQ_EXECUTIVE && a.operatorId) operatorIds.push(a.operatorId);
+    }
+  }
+  if (actingRole === ROLES.ADMIN) {
+    for (const a of assignments) {
+      if (a.role === ROLES.ADMIN && a.crossFacility === true && a.operatorId) operatorIds.push(a.operatorId);
+    }
+  }
+  return { facilityIds: [...new Set(facilityIds)], operatorIds: [...new Set(operatorIds)] };
+}
+
 async function listAssessmentsForUser({ user, actingRole, trx = db }) {
-  const rows = await assessmentBaseQuery(trx).orderBy("a.updated_at", "desc");
-  return rows
-    .map(mapAssessment)
-    .filter((assessment) => isAssessmentVisibleToUser({ assessment, user, actingRole }));
+  const { facilityIds, operatorIds } = facilityScopeFor({ user, actingRole });
+
+  // No accessible facility or operator → no rows (default-deny), without a query.
+  if (facilityIds.length === 0 && operatorIds.length === 0) {
+    return [];
+  }
+
+  const rows = await assessmentBaseQuery(trx)
+    .where((builder) => {
+      if (facilityIds.length > 0) builder.orWhereIn("a.facility_id", facilityIds);
+      if (operatorIds.length > 0) builder.orWhereIn("a.operator_id", operatorIds);
+    })
+    .orderBy("a.updated_at", "desc");
+
+  return rows.map(mapAssessment);
 }
 
 async function getAssessmentForUser({ assessmentId, user, actingRole, trx = db }) {

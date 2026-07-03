@@ -1,3 +1,59 @@
+2026-07-03 — Disable AI co-author on commits
+  Claude Code attribution off (`attribution.commit`/`pr` empty in .claude/settings.json).
+  Agent rules in CLAUDE.md + AGENTS.md: no Co-Authored-By trailers on commits or PRs.
+
+2026-07-03 — P2 (cont.): RLS policies as the non-owner app role (test-specs §P2 deliverable 4, DB layer)
+  Defense-in-depth beneath repo-scoping + route guards. DB-layer scope only this
+  session (per user decision); the invasive per-request txn-context wiring is the
+  documented next step.
+  Added:
+    - migrations/202607030002_rls_policies.js: uniform tenant-isolation policy on
+      all 10 facility-scoped DATA tables (assessments, assets, threats,
+      asset_threat_links, evaluations, mitigations, audit_log_entries,
+      mitigation_progress_logs, versions, library_entries). ENABLEs RLS on the 3
+      that weren't already. Predicate: facility_id = ANY(string_to_array(
+      NULLIF(current_setting('app.current_facility_ids', true),''),',')::uuid[])
+      for USING + WITH CHECK. Unset context → NULL → default-DENY. Idempotent
+      (DROP POLICY IF EXISTS then CREATE; PG<15 has no CREATE POLICY IF NOT EXISTS)
+      + down. NO FORCE ROW LEVEL SECURITY: the owner must bypass so migrations/seed
+      can insert without context. Auth/lookup tables (users, role_assignments,
+      operators, facilities) intentionally get NO policy — authenticate loads the
+      user BEFORE any facility context exists.
+    - tests/integration/global-setup.js: idempotently provisions a NON-OWNER
+      LOGIN role vorge_app_rls (no BYPASSRLS) + DML grants — the local stand-in
+      for the Supabase app role. Exports APP_ROLE/APP_PASSWORD.
+    - tests/integration/rls.test.js (7 cases): connects AS the non-owner role.
+      Context set → only that facility's rows; multi-facility context → both,
+      zero Op-B; child table scoped identically; NO context → 0 rows (default-
+      deny); cross-tenant UPDATE by id → 0 rows affected + owner-verified
+      unchanged; cross-tenant INSERT → rejected by RLS (asserts /row-level
+      security/ so it can't pass for an FK/NOT-NULL reason); pooling (pool max:1)
+      two sequential different-context txns on the SAME connection do not leak.
+  Red-check (ground rule 1): weakened the assessments policy to USING(true) on
+    the test DB → 6/7 FAILED (the mitigations-only child test correctly still
+    passed) → restored the policy.
+  SAFE TO LAND NOW / INERT UNTIL ROLE SWITCH: the app still connects as owner
+    (postgres) on staging → owner bypasses RLS → zero behavior change until the
+    user points DATABASE_URL at the non-owner role (the checkpoint below).
+  Tests: 222 server unit + 144 client + 33 integration (was 26, +7) green via
+    `TEST_DATABASE_URL=... make test`.
+  === CHECKPOINT FOR USER (Supabase dashboard) ===
+    Create a NON-OWNER app role on Supabase + GRANT it DML on the public tables
+    (NOT owner, NOT BYPASSRLS), then point the app's DATABASE_URL user at it.
+    Until then RLS is enforced only in tests. SQL handed separately.
+  === HANDOFF: P2 REMAINING (next session) ===
+  Items 1 (route matrix), 2 (introspection), 4-DB (RLS policies+tests) DONE.
+  Still TODO in P2:
+    - RLS app wiring: wrap every request (reads too) in a txn that runs
+      set_config('app.current_facility_ids', <resolved ids>, true) and thread the
+      request-scoped trx through the repos (db singleton → request trx). Reuse
+      facilityScopeFor to resolve the id list. Only meaningful once the non-owner
+      role is live (checkpoint above).
+    - Reconcile AGENTS.md invariant 2 wording (demo gating driven by
+      VITE_ENABLE_DEMO, not import.meta.env.DEV) — align doc or code, record.
+
+================================================================
+
 2026-07-03 — P2 (cont.): route-guard introspection test (test-specs §P2 deliverable 1)
   The "no unguarded route can be merged" regression guard.
   Added:

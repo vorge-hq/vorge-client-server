@@ -32,9 +32,21 @@
     DATABASE_URL + prod boot-guard secrets exported; migrate needs
     MIGRATE_DATABASE_URL; SSL automatic under NODE_ENV=production).
   Tests: 201 server (was 192, +9), 144 client, all green (make test).
+  Committed: 4e7f932 (P0 code), after planning commit 9b57bf4.
+  Addendum (same day, user directive): future phases will be executed by
+    weaker models, so every phase now has a BINDING acceptance-test spec —
+    NEW docs/test-specs.md (ground rules incl. red→green + two test layers;
+    P2 integration harness + route-guard introspection + cross-tenant
+    matrix + SQL-scoping + RLS-as-non-owner tests; P3 six-case minimum per
+    endpoint + true-race lock_version + atomic audit + client 409 UX; P3.5
+    docx golden-content; P4 mocked-gateway ceilings/audit/scoping + the
+    aiImportBoundary scan test enforcing §9's no-direct-provider rule
+    mechanically; P5 email loop/retention/Redis-swap/PII-scrub). Roadmap
+    phases got DoD pointer lines; AGENTS.md invariant 3 now binds phase
+    completion to test-specs (no ticking without green spec'd tests).
   Next: USER performs dashboard steps per docs/infrastructure.md §§1,4–7
     (Supabase project + pgvector, migrate+seed, Render service, new
-    Vercel project), agent stops for P0 review. Commit at user's call.
+    Vercel project); P0 exits on the §7 smoke. Then P2 (harness first).
 
 ================================================================
 

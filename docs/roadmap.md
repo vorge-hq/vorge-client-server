@@ -6,6 +6,8 @@
 
 **Standing rules for every phase:** `make test` before every commit; 95% server-service coverage gate stays; never commit `.env` (check `git status`); fresh prod secrets via `openssl rand -base64 32`; no sign-ups/deploys/spend by the agent — dashboard steps are handed to the user (see `docs/infrastructure.md`); `docs/businesslogic.md` and `docs/api-contract.md` are not edited — deviations go in `docs/decisions/`.
 
+**Definition of done — tests are the gate:** every phase has a binding acceptance-test spec in **`docs/test-specs.md`**. A checklist item below may only be ticked when its spec'd tests exist, run inside `make test`, and pass. Read the spec's ground rules before writing any phase code.
+
 ---
 
 ## P0 — Infra grounding ⬅ CURRENT
@@ -33,6 +35,9 @@ Login → JWT → refresh (rotating httpOnly cookie + family revocation), sessio
 
 ## P2 — Tenant isolation (P0 security — must land before real customer data)
 
+DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud without `TEST_DATABASE_URL`), route-guard introspection test, cross-tenant matrix, repo SQL-scoping assertions, RLS tests as the non-owner app role.
+
+- [ ] Build the integration-test harness + two-operator fixture FIRST (test-specs §P2 deliverable 0) — everything else in this phase proves itself against it.
 - [ ] Apply `authenticate` + `requireFacilityAccess` to every data route (middleware currently wired into ZERO routes; scoping today lives only in repo-level `canAccessFacility` filters).
 - [ ] Audit every `server/src/repositories/` query for `facilityId` scoping — note `listAssessmentsForUser` currently fetches ALL rows then filters in JS; push scoping into SQL.
 - [ ] Real Supabase RLS policies on all assessment-scoped tables (RLS is ENABLEd since the initial migration but zero policies exist). Design constraints: app connects as a single DB role → policies keyed on `set_config`/`SET LOCAL` per transaction; app role must be a NON-owner (table owners bypass RLS unless `FORCE ROW LEVEL SECURITY`); `SET LOCAL` works with Supabase transaction pooling only inside explicit transactions.
@@ -50,17 +55,18 @@ There are NO write endpoints today (assessments API = GET /, GET /:id, POST /:id
 - [ ] Flip client prod mode off fixtures onto live calls (`api/client.js` already handles auth/refresh; wire feature data fetching + saves).
 - [ ] Withdraw/recall + Lead Author reassignment endpoints (§5.5–5.6) — approved into P3 scope 2026-07-03 (same guards as other writes; resolves the AGENTS.md recall-race concern via `lock_version`).
 - [ ] Mitigation-assignment endpoints (§7 owner management) — approved into P3 scope 2026-07-03.
-- [ ] Integration tests per route incl. cross-tenant + stale-lock cases.
+- [ ] DoD: `docs/test-specs.md` §P3 — per-endpoint six-case minimum, true-race lock_version test (concurrent, not sequential), state×role guard matrices, atomic audit-write test, section-text round-trip, client 409-reload RTL test, cross-tenant matrix extended to every mutation.
 
 ## P3.5 — Word/PDF export (pulled forward from P5 — approved 2026-07-03)
 
 - [ ] Standard SRA template export, Word + PDF (§16); completes the end-to-end "replaces Word" story for sales demos. Recommend `docx` npm for Word + print-CSS/headless for PDF; export writes an audit entry; export under 30s (§18.6).
+- [ ] DoD: `docs/test-specs.md` §P3.5 — golden-content docx assertions (headings/front-matter/mitigations, NOT byte-compare), PDF smoke, role matrix + export audit row, <30s guard.
 
 ## P4 — AI module + features (ROI order)
 
 Foundation first: app-layer AI service module wrapping Vercel AI Gateway via the AI SDK — owns per-facility cost ceilings (soft 80% alert / hard suspend), audit-log writes (all §9.7 fields), per-facility prompt scoping, retries, rate limits. Feature code never imports a provider directly (§9's architectural rule preserved; provider/config mechanism deviates — see decision record).
 
-- [ ] AI service module + audit plumbing + cost ceiling tables/config.
+- [ ] AI service module + audit plumbing + cost ceiling tables/config. DoD: `docs/test-specs.md` §P4 — mocked-gateway ceiling/audit/scoping/no-fallback/retry tests, Mitigation-Owner 403 matrix, and the `aiImportBoundary` scan test that mechanically enforces §9's no-direct-provider-imports rule.
 - [ ] 1. Semantic library search (pgvector; embedding pipeline on library entry create/update; <500ms).
 - [ ] 2. Smart tagging (structured output, controlled vocabulary, async post-save).
 - [ ] 3. Drafted Executive Summary / Conclusion (Sections 1 & 8; original retained in audit log).
@@ -69,6 +75,8 @@ Foundation first: app-layer AI service module wrapping Vercel AI Gateway via the
 - [ ] 6. Natural-language search — BESPOKE, build last, only when commissioned (§9.5: zero v1 hours).
 
 ## P5 — Hardening
+
+DoD: `docs/test-specs.md` §P5 — full reset-email loop with mocked transport, retention-job seed/delete/survive/audited test, Redis swap passing existing tests unchanged, PII-scrub assertion on tracked errors.
 
 - [ ] Wire stubbed email delivery (password reset, notifications). (Word/PDF export moved to P3.5, 2026-07-03.)
 - [ ] Monitoring / error tracking (Render logs + an error tracker; recommend Sentry).

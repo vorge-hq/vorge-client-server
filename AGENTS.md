@@ -51,6 +51,7 @@ Key client auth files:
 
 - Jest config in `server/package.json` enforces 95% coverage on `server/src/services/**/*.js` across branches, functions, lines, statements.
 - Any new service file requires accompanying tests in the same change. Do not lower the threshold to make a build pass.
+- Roadmap phase work is additionally bound by `docs/test-specs.md` — the per-phase acceptance tests there are the definition of done. Do not tick a `docs/roadmap.md` item whose spec'd tests don't exist and pass inside `make test`. Do not weaken, skip, or allowlist your way around those tests to make a phase "complete".
 
 ### 4. Migrations are explicit
 

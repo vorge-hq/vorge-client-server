@@ -27,8 +27,8 @@ Manual staging smoke (user, `docs/infrastructure.md` §7) — record results in 
 
 ## P2 — Tenant isolation
 
-**Deliverable 0 — the integration harness (build first):**
-- `server/tests/integration/setup.js`: connects via `TEST_DATABASE_URL`, runs `knex migrate:latest`, truncates all tables between test files. Add npm script `test:integration` and wire it into `scripts/test.sh` so `make test` runs it. If `TEST_DATABASE_URL` is unset, the suite must **fail loudly** (not skip silently) with instructions to start the docker db.
+**Deliverable 0 — the integration harness (build first): ✅ LANDED 2026-07-03.**
+As-built (refined from the original spec): `server/jest.integration.config.js` (separate from the unit config; the default `npm test` ignores `tests/integration/` via `testPathIgnorePatterns`), `tests/integration/{requireTestDb,env-setup,global-setup,fixtures}.js`. `env-setup` maps `TEST_DATABASE_URL`→`DATABASE_URL` (no SSL, NODE_ENV=test) before app modules load; `global-setup` runs `knex migrate:latest`; each test file truncates + reseeds in `beforeAll`. npm `test:integration` **fails loudly** if `TEST_DATABASE_URL` is unset (verified). Wiring refinement (recorded, deviates from "make test must fail loud"): `scripts/test.sh` runs integration only when `TEST_DATABASE_URL` is set and prints a **prominent WARNING banner** (not a silent skip) when it isn't — this keeps the fast DB-free unit loop usable for a solo dev while making a non-run impossible to miss. Phase DoD still requires `test:integration` green before shipping P2.
 - Canonical fixture (`server/tests/integration/fixtures.js`): **2 operators** (Op-A, Op-B) × 2 facilities each; per facility: 1 Author, 1 Reviewer; per operator: 1 HQ Executive, 1 Approver, 1 Mitigation Owner, 1 cross-facility Admin; 1 assessment per facility with ≥1 asset/threat/link/evaluation/mitigation. Deterministic UUIDs like `seed.js`.
 
 **Deliverable 1 — route-guard introspection test** (`middlewareCoverage.test.js`):

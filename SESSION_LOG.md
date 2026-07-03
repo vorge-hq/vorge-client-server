@@ -1,3 +1,41 @@
+2026-07-03 — P2 START: integration harness + two-operator fixture + first isolation test
+  Built the P2 foundation (docs/test-specs.md §P2 deliverable 0) against a
+    REAL local Postgres (docker pgvector db, database vorge_test).
+  Added:
+    - server/jest.integration.config.js (separate from unit config).
+      package.json: testPathIgnorePatterns adds /tests/integration/ so the
+      default `npm test` stays DB-free + fast; new `test:integration` script.
+    - tests/integration/requireTestDb.js (fail-loud if TEST_DATABASE_URL
+      unset — verified it errors, never silently skips), env-setup.js (maps
+      TEST_DATABASE_URL→DATABASE_URL, no SSL, NODE_ENV=test, before modules
+      load), global-setup.js (knex migrate:latest on the test db).
+    - tests/integration/fixtures.js: two operators × two facilities;
+      Author+Reviewer per facility; HQ Exec/Approver/Mitigation Owner/
+      cross-facility Admin per operator; one assessment per facility with
+      asset/threat/link/evaluation/mitigation. Deterministic UUIDs.
+      truncateAll + seedFixtures.
+    - tests/integration/tenantIsolation.repo.test.js (9 cases): proves
+      repo-layer isolation on real Postgres — Author sees only own facility;
+      HQ sees own operator's facilities only; cross-facility Admin sees own
+      operator only; getAssessmentForUser cross-tenant/sibling → null; scoped
+      bundle returns only the target's rows.
+    - scripts/test.sh: runs integration when TEST_DATABASE_URL set, else a
+      prominent WARNING banner (deviation from spec's "make test fails loud",
+      recorded in test-specs §P2 — keeps the DB-free unit loop usable while
+      making a non-run impossible to miss).
+  Local test DB setup (one-time): docker compose up -d db (pgvector/pgvector
+    :pg16); CREATE DATABASE vorge_test TEMPLATE template0 (template0 avoids a
+    harmless collation-version warning from the volume's old image).
+  Tests: 204 server unit (unchanged) + 144 client + 9 integration, all green
+    via `TEST_DATABASE_URL=... make test`.
+  Next (P2 continued): route-guard introspection test → wire authenticate +
+    requireFacilityAccess on data routes (or documented repo-scoped allowlist)
+    → push listAssessments scoping into SQL → RLS migration + non-owner app
+    role + policies → full cross-tenant route matrix → fix mitigations
+    hasFacilityAccess:true hardcode. Checkpoint for review at phase end.
+
+================================================================
+
 2026-07-03 — P0 COMPLETE: staging cross-site smoke passed
   User finished all infrastructure.md dashboard steps. Verified staging
     end-to-end from the agent (no browser):

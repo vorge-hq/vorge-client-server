@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
     "seed": "node src/db/seed.js"
   },
@@ -33,6 +34,10 @@
   "jest": {
     "testEnvironment": "node",
     "watchman": false,
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/integration/"
+    ],
     "collectCoverageFrom": [
       "src/services/**/*.js"
     ],

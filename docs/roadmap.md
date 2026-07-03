@@ -38,7 +38,8 @@ Login → JWT → refresh (rotating httpOnly cookie + family revocation), sessio
 
 DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud without `TEST_DATABASE_URL`), route-guard introspection test, cross-tenant matrix, repo SQL-scoping assertions, RLS tests as the non-owner app role.
 
-- [ ] Build the integration-test harness + two-operator fixture FIRST (test-specs §P2 deliverable 0) — everything else in this phase proves itself against it.
+- [x] Build the integration-test harness + two-operator fixture (test-specs §P2 deliverable 0) — **DONE 2026-07-03**: `jest.integration.config.js` + `tests/integration/*`, fail-loud on missing `TEST_DATABASE_URL`, `npm run test:integration`. First test `tenantIsolation.repo.test.js` (9 cases) proves repo-layer isolation against real Postgres (Author/HQ/Admin scoping; cross-tenant get→null; scoped bundle). Local test DB: `vorge_test` on the docker pgvector db.
+- [ ] Route-guard introspection test (test-specs §P2 deliverable 1): walk the Express router, assert every data route has `authenticate` + `requireFacilityAccess` (or documented repo-scoped allowlist entry).
 - [ ] Apply `authenticate` + `requireFacilityAccess` to every data route (middleware currently wired into ZERO routes; scoping today lives only in repo-level `canAccessFacility` filters).
 - [ ] Audit every `server/src/repositories/` query for `facilityId` scoping — note `listAssessmentsForUser` currently fetches ALL rows then filters in JS; push scoping into SQL.
 - [ ] Real Supabase RLS policies on all assessment-scoped tables (RLS is ENABLEd since the initial migration but zero policies exist). Design constraints: app connects as a single DB role → policies keyed on `set_config`/`SET LOCAL` per transaction; app role must be a NON-owner (table owners bypass RLS unless `FORCE ROW LEVEL SECURITY`); `SET LOCAL` works with Supabase transaction pooling only inside explicit transactions.

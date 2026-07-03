@@ -1,3 +1,55 @@
+2026-07-03 — P2 (cont.): cross-tenant ROUTE matrix (test-specs §P2 deliverable 2)
+  Built the penetration proof at the HTTP edge — supertest driving the live
+    middleware+route stack against REAL Postgres (the P2 harness).
+  Added:
+    - tests/integration/session.js: auth helper. login(userKey, actingRole)
+      loads the seeded user, mints a REAL session via sessionService.issueSession
+      {mfaSatisfied:true}, then jwt.sign {email,actingRole,sid} subject=userId
+      with env.jwtSecret — byte-for-byte the login route's signSessionToken.
+      withAuth() attaches Authorization: Bearer + X-Acting-Role (and can force
+      an unassigned role to prove ROLE_NOT_ASSIGNED).
+    - tests/integration/tenantIsolation.test.js (17 cases): Op-A user targeting
+      Op-B resources → GET :id 404 (ASSESSMENT_NOT_FOUND, no existence leak),
+      sibling-facility-same-operator 404, list returns own-tenant rows only,
+      POST workflow + POST mitigations/:id/log cross-tenant → 404 AND the target
+      DB row asserted UNCHANGED (state/lock_version/status/progress-log count).
+      Wrong-role 403 (ROLE_NOT_ALLOWED on workflow/admin/mine + ROLE_NOT_ASSIGNED
+      on an unheld acting role); unauthenticated 401 on GET/GET:id/POST. HQ Exec
+      §17.5 portfolio: Op-A HQ sees all Op-A facilities, ZERO Op-B (+ Op-B mirror).
+      Covers every data route that exists today; mutation matrix EXTENDS when P3
+      write endpoints land (recorded in test-specs §P2).
+  Red-check (ground rule 1): flipped the cross-tenant GET expectation to 200 →
+    the test FAILED (route really returns 404) → reverted. (Could not neuter the
+    repo guard directly — the harness classifier blocks weakening prod access
+    control, which is the correct posture; the assertion-flip proves liveness.)
+  Tests: 204 server unit (unchanged) + 144 client + 26 integration (was 9, +17)
+    green via `TEST_DATABASE_URL=... make test`.
+  === HANDOFF: P2 REMAINING (next session) ===
+  Item 1 (cross-tenant route matrix) DONE this session. Still TODO in P2, in order:
+    2. Route-guard introspection test (middlewareCoverage.test.js): walk
+       app._router.stack; assert every data route has authenticate +
+       (requireFacilityAccess OR a documented repo-scoped-getter allowlist
+       entry). NOTE decision needed: assessment/mitigation :id routes enforce
+       facility at the REPO layer (getXForUser → null → 404), NOT via
+       requireFacilityAccess middleware (facilityId isn't in the request
+       pre-load). Plan: refine AGENTS.md invariant 1 wording + write a
+       docs/decisions record for the repo-scoped-getter equivalent; name
+       requireFacilityAccess's returned fn for detectability.
+    3. RLS policies (defense-in-depth, biggest piece): needs a NON-OWNER app
+       DB role (Supabase currently connects as owner/postgres → RLS bypassed).
+       (a) migration creating policies keyed on a per-txn setting (SET LOCAL
+       app.current_facility_ids / current_operator_id), (b) app wraps requests
+       in a txn that SETs that context, (c) Supabase dashboard step to
+       create+grant the non-owner role + point DATABASE_URL user at it →
+       checkpoint with user. Test as the non-owner role via the harness.
+    4. Reconcile AGENTS.md invariant 2 wording (demo gating driven by
+       VITE_ENABLE_DEMO, not import.meta.env.DEV) — align doc or code, record.
+  Local test DB up: docker vantage-db (pgvector), database vorge_test. Re-run:
+    TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vorge_test \
+    npm --prefix server run test:integration
+
+================================================================
+
 2026-07-03 — P2 (cont.): SQL-scoped assessment list + mitigations hardcode fix
   - assessmentRepository.listAssessmentsForUser: new facilityScopeFor(user,
     actingRole) builds facility_id/operator_id WHERE from the acting role's

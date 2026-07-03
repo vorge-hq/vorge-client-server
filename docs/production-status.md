@@ -2,7 +2,9 @@
 
 Living checklist and map for getting Vorge to production. **`SESSION_LOG.md` is the diary** (append-only, chronological, what-happened). **This file is the map** (current state, what's left, work order). Keep this file current when status changes; never duplicate the diary here.
 
-Last updated: 2026-06-02 · Branch: `main` · Tree: clean. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
+Last updated: 2026-07-03 · Branch: `main`. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
+
+> **2026-07-03:** The production push now runs on **`docs/roadmap.md` (P0–P5)** — that file is the execution checklist to tick; this file stays the product-state map. Locked: Supabase (managed Postgres only), Render (Docker web service), new non-demo Vercel project, Vercel AI Gateway + AI SDK (§9 deviation + write-API contract extension both signed off 2026-07-03 — `docs/decisions/2026-07-03-*`). P0 in progress.
 
 ---
 

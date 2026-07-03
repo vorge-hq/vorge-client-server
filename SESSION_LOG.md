@@ -1,3 +1,49 @@
+2026-07-03 — Production-push planning docs (P0–P5 roadmap, infra runbook, decisions)
+  Planning-only session (no code). Locked decisions recorded: Supabase =
+    managed Postgres only (custom JWT/bcrypt/MFA auth KEPT — no Supabase
+    Auth); server = Render web service from server/Dockerfile (single
+    instance; in-memory rate-limit/MFA caches); real client = NEW Vercel
+    project (VITE_ENABLE_DEMO=false), vorge-demo-roles untouched; AI =
+    Vercel AI Gateway + AI SDK behind an app-layer module.
+  Files created:
+    docs/roadmap.md — P0 infra / P1 auth-done / P2 tenant isolation /
+      P3 write-section API / P4 AI / P5 hardening + dark-mode side-quest,
+      PLUS "Suggested improvements & new features" review (per-area
+      exists/partial/missing + prioritized suggestions, each tagged
+      SCHEDULED / BACKLOG / NEEDS DECISION).
+    docs/infrastructure.md — click-by-click runbook: Supabase project +
+      pgvector + pooled(6543)/direct connection split, Render setup,
+      second Vercel project, full env-var tables, migrate/seed steps.
+    docs/decisions/2026-07-03-supabase-postgres-keep-custom-auth.md (LOCKED),
+    docs/decisions/2026-07-03-ai-gateway-ai-sdk.md (§9 deviation —
+      PENDING SIGN-OFF; businesslogic.md NOT edited),
+    docs/decisions/2026-07-03-write-section-api.md (api-contract
+      extension — PENDING SIGN-OFF; api-contract.md NOT edited).
+  Files edited: AGENTS.md + CLAUDE.md (doc-update rule now includes
+    ticking docs/roadmap.md on every meaningful change + before commits;
+    current-focus → P0), docs/production-status.md (pointer to roadmap).
+  Key findings baked into P0/P2 plans:
+    - refresh + MFA-trust cookies hardcoded sameSite:"strict" → will
+      silently break cross-site (Vercel↔Render); COOKIE_SAME_SITE env
+      fix is a P0 item.
+    - requireFacilityAccess middleware wired into ZERO routes; scoping
+      lives only in repo-level canAccessFacility JS filters (listAssessments
+      fetches ALL rows then filters in JS) — P2.
+    - RLS ENABLEd since initial migration, zero policies; app DB role
+      must be non-owner + SET LOCAL pattern for pooled conns — P2.
+    - No write endpoints at all; no column for Section 1/2/8 text — P3.
+  Tests: not run (docs only).
+  Same-day approval: user signed off BOTH decisions (§9 AI deviation +
+    write-section API), plus P3 scope additions (withdraw/recall +
+    reassignment, mitigation assignment) and Word/PDF export pulled
+    forward to P3.5. Records + roadmap updated to APPROVED/SCHEDULED.
+  Next: commit planning docs, then P0 execution (knex SSL +
+    MIGRATE_DATABASE_URL, pgvector migration, COOKIE_SAME_SITE fix,
+    .env.example diff for human review) — agent code + user dashboard
+    steps per docs/infrastructure.md. Stop for review at end of P0.
+
+================================================================
+
 2026-06-02 — Rebrand: Vorge (full code + assets + docs)
   Trademark/identity conflict with a UK company → renamed Vantage to
     Vorge across the entire codebase. Same product, same lockup style;

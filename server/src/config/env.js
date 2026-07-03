@@ -24,6 +24,16 @@ const env = {
       ? process.env.COOKIE_SECURE === "true"
       : nodeEnv === "production",
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+  // "strict" (default) requires client and API on the same site. Cross-site
+  // deployments (Vercel client ↔ Render API) must set COOKIE_SAME_SITE=none,
+  // which browsers only accept together with Secure.
+  cookieSameSite: (process.env.COOKIE_SAME_SITE || "strict").toLowerCase(),
+  // Supabase (and most managed Postgres) require TLS. Defaults on in
+  // production, off elsewhere; override with DATABASE_SSL=true/false.
+  databaseSsl:
+    process.env.DATABASE_SSL !== undefined
+      ? process.env.DATABASE_SSL === "true"
+      : nodeEnv === "production",
   refreshCookieName: "vorge_refresh",
   // Vantage→Vorge rebrand fallback: accept the legacy cookie on read for
   // one release window so in-flight sessions survive the deploy. Writes
@@ -61,6 +71,22 @@ const env = {
     throw new Error("MFA_ENCRYPTION_KEY is not valid base64 (round-trip check failed)");
   }
 })(env.mfaEncryptionKey);
+
+// COOKIE_SAME_SITE must be a value browsers accept, and SameSite=None is only
+// honored on Secure cookies — reject the combination that would silently drop
+// every refresh/MFA-trust cookie.
+(function assertCookieSameSite(value) {
+  if (!["strict", "lax", "none"].includes(value)) {
+    throw new Error(
+      `COOKIE_SAME_SITE must be one of strict|lax|none (got "${value}")`
+    );
+  }
+  if (value === "none" && !env.cookieSecure) {
+    throw new Error(
+      "COOKIE_SAME_SITE=none requires Secure cookies (set COOKIE_SECURE=true or run with NODE_ENV=production)"
+    );
+  }
+})(env.cookieSameSite);
 
 if (env.nodeEnv === "production") {
   if (env.jwtSecret === "replace_me_with_a_strong_secret") {

@@ -12,13 +12,13 @@
 
 Outcome: a real staging environment (Supabase DB + Render API + non-demo Vercel client), not fixtures.
 
-Code/config changes (agent):
-- [ ] Knex production config: SSL for Supabase (`ssl: { rejectUnauthorized: false }` now; CA pinning deferred to P5) and support for a separate migration connection string (pooled `DATABASE_URL` for the app, direct/session `MIGRATE_DATABASE_URL` for `make migrate`).
-- [ ] New migration: `CREATE EXTENSION IF NOT EXISTS vector;` (pgvector — idempotent, additive; embeddings columns come later in P4).
-- [ ] Cookie cross-site fix: refresh + MFA-trust cookies are hardcoded `sameSite: "strict"` (`modules/auth/routes.js`, `services/mfaTrustDeviceService.js`). With client on `*.vercel.app` and API on `*.onrender.com` they will never be sent — refresh and trusted-device MFA silently break. Add env-driven `COOKIE_SAME_SITE` (default `strict` locally, `none` in cross-site prod, requires `Secure`). Record CSRF posture in the decision log.
-- [ ] `CORS_ORIGIN` must support the new Vercel domain (verify single-origin is enough; if preview URLs are wanted, make it a comma-list — recommend: prod domain only, previews deferred).
-- [ ] Env examples: document new vars (`MIGRATE_DATABASE_URL`, `COOKIE_SAME_SITE`) — NOTE `.env.example` edits require human review per AGENTS.md; hand the diff to the user.
-- [ ] Client prod env shape documented (`VITE_ENABLE_DEMO=false`, `VITE_API_BASE_URL=<render-url>`).
+Code/config changes (agent) — **landed 2026-07-03** (201 server / 144 client tests green):
+- [x] Knex SSL + connection split: `knexfile.js` (migrations) prefers `MIGRATE_DATABASE_URL`, SSL in production or with `DATABASE_SSL=true`; app knex (`src/db/knex.js`) SSL via `DATABASE_SSL` (default on in production).
+- [x] Migration `202607030001_enable_pgvector.js` (`CREATE EXTENSION IF NOT EXISTS vector`, warn-and-continue where binary absent); docker-compose db image → `pgvector/pgvector:pg16` (recreate local db container to pick it up).
+- [x] Cookie cross-site fix: `COOKIE_SAME_SITE` env (default `strict`; boot guard rejects invalid values and `none` without Secure) now drives refresh + MFA-trust cookies (4 sites). Chunk-4 "SameSite locked to Strict" superseded — noted in the service docblock + SESSION_LOG. +9 env-guard tests.
+- [x] `CORS_ORIGIN` verified: single exact origin supported and sufficient (prod domain only; preview URLs deferred).
+- [x] Env examples: `.env.example` diff handed to user for human review (AGENTS.md rule — file not edited by agent).
+- [x] Client prod env shape documented in `docs/infrastructure.md` §3/§6.
 
 Manual dashboard steps (user — click-by-click in `docs/infrastructure.md`):
 - [ ] Create Supabase project; capture pooled + direct connection strings; enable `vector` extension.

@@ -12,8 +12,10 @@ function hashToken(plaintext) {
 
 /**
  * Set the trust cookie on the response and persist its hash in the DB.
- * Cookie attributes are locked per chunk-4 spec: HttpOnly, Secure (env-cond),
- * SameSite=Strict, Path=/api/auth, fixed 30-day Max-Age.
+ * Cookie attributes per chunk-4 spec: HttpOnly, Secure (env-cond),
+ * Path=/api/auth, fixed 30-day Max-Age. SameSite was locked to Strict in
+ * chunk 4; P0 (2026-07-03) made it env-driven (COOKIE_SAME_SITE, default
+ * strict) because the cross-site Vercel↔Render deployment requires None.
  */
 async function issueCookie(res, userId, trx) {
   if (!res || !userId) throw new Error("issueCookie: res and userId required");
@@ -29,7 +31,7 @@ async function issueCookie(res, userId, trx) {
   res.cookie(env.mfaTrustCookieName, plaintext, {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: "strict",
+    sameSite: env.cookieSameSite,
     path: env.mfaTrustCookiePath,
     maxAge: env.mfaTrustCookieMaxAgeMs,
     domain: env.cookieDomain
@@ -42,7 +44,7 @@ function clearCookie(res) {
   res.clearCookie(env.mfaTrustCookieName, {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: "strict",
+    sameSite: env.cookieSameSite,
     path: env.mfaTrustCookiePath,
     domain: env.cookieDomain
   });

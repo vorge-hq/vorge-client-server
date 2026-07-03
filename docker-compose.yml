@@ -1,6 +1,9 @@
 services:
   db:
-    image: postgres:16
+    # postgres:16 + the pgvector extension (needed by migration 202607030001;
+    # consumed from P4 semantic search). Data volume is compatible with the
+    # previous postgres:16 image.
+    image: pgvector/pgvector:pg16
     container_name: vantage-db
     restart: unless-stopped
     environment:

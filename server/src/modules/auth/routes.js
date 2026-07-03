@@ -46,7 +46,7 @@ function setRefreshCookie(res, plaintextToken, expiresAt) {
   res.cookie(env.refreshCookieName, plaintextToken, {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: "strict",
+    sameSite: env.cookieSameSite,
     path: env.refreshCookiePath,
     maxAge: maxAgeMs,
     domain: env.cookieDomain
@@ -57,7 +57,7 @@ function clearRefreshCookie(res) {
   res.clearCookie(env.refreshCookieName, {
     httpOnly: true,
     secure: env.cookieSecure,
-    sameSite: "strict",
+    sameSite: env.cookieSameSite,
     path: env.refreshCookiePath,
     domain: env.cookieDomain
   });

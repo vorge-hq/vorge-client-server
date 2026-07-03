@@ -1,3 +1,43 @@
+2026-07-03 — P0 infra grounding: code/config changes (Supabase/Render/cross-site ready)
+  Follows same-day planning session (entry below; planning commit 9b57bf4).
+  Shipped (server + infra config; NOT yet committed — stop-for-review):
+    - server/knexfile.js: migrations prefer MIGRATE_DATABASE_URL (direct/
+      session string for Supabase; the app's transaction-pooler string is
+      unsuitable for migration locks); SSL { rejectUnauthorized: false }
+      when NODE_ENV=production or DATABASE_SSL=true (CA pinning → P5).
+      Knexfile is CLI-only; app/seed connect via src/db/knex.js.
+    - server/src/db/knex.js: SSL via new env.databaseSsl (DATABASE_SSL,
+      defaults ON in production, OFF elsewhere).
+    - server/src/config/env.js: cookieSameSite (COOKIE_SAME_SITE, default
+      "strict", lowercased) with boot guard — rejects non strict|lax|none
+      and rejects none-without-Secure (browsers drop such cookies);
+      databaseSsl as above.
+    - Cookie fix (4 sites): refresh set/clear in modules/auth/routes.js +
+      MFA-trust set/clear in services/mfaTrustDeviceService.js now use
+      env.cookieSameSite instead of hardcoded "strict". NOTE: supersedes
+      chunk-4 lockbox "SameSite=Strict locked" — cross-site Vercel client
+      ↔ Render API requires None; default unchanged (strict) so local/
+      same-site behaviour is identical. Docblock updated in the service.
+    - server/migrations/202607030001_enable_pgvector.js: CREATE EXTENSION
+      IF NOT EXISTS vector; warn-and-continue if the binary is absent
+      (old local containers) — nothing consumes it until P4. down() no-op
+      by design (dropping would destroy P4 vector data).
+    - docker-compose.yml: db image postgres:16 → pgvector/pgvector:pg16
+      (drop-in; same data volume). Recreate the db container to pick up.
+    - NEW server/tests/envCookieSameSite.test.js (+9 tests) covering the
+      COOKIE_SAME_SITE / DATABASE_SSL guards via jest.isolateModules.
+  NOT changed by agent (human-review rule): .env.example — diff handed
+    to user (MIGRATE_DATABASE_URL, COOKIE_SAME_SITE, DATABASE_SSL).
+  docs/infrastructure.md updated to match implementation (seed needs
+    DATABASE_URL + prod boot-guard secrets exported; migrate needs
+    MIGRATE_DATABASE_URL; SSL automatic under NODE_ENV=production).
+  Tests: 201 server (was 192, +9), 144 client, all green (make test).
+  Next: USER performs dashboard steps per docs/infrastructure.md §§1,4–7
+    (Supabase project + pgvector, migrate+seed, Render service, new
+    Vercel project), agent stops for P0 review. Commit at user's call.
+
+================================================================
+
 2026-07-03 — Production-push planning docs (P0–P5 roadmap, infra runbook, decisions)
   Planning-only session (no code). Locked decisions recorded: Supabase =
     managed Postgres only (custom JWT/bcrypt/MFA auth KEPT — no Supabase

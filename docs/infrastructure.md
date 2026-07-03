@@ -33,10 +33,12 @@ Copy both strings (with the password filled in). Keep `?sslmode=require` if pres
 
 Dashboard → **Database → Extensions** → search `vector` → enable (schema `extensions` is fine). The repo will ALSO carry an idempotent `CREATE EXTENSION IF NOT EXISTS vector;` migration so other environments (local Docker with a pgvector-capable image, future prod) converge.
 
-## 2. Server config changes (agent, P0 code work — listed for context)
+## 2. Server config changes (landed in P0, 2026-07-03)
 
-- `server/knexfile.js` production env: `ssl: { rejectUnauthorized: false }` (CA pinning deferred to P5) and honor `MIGRATE_DATABASE_URL` for the migrations/seed connection when set.
-- Cookie fix: `COOKIE_SAME_SITE` env (refresh + MFA-trust cookies are hardcoded `sameSite: "strict"` today; cross-site Vercel→Render requires `none` + `Secure` or refresh/MFA-trust silently break).
+- `server/knexfile.js` (knex CLI/migrations only): prefers `MIGRATE_DATABASE_URL` over `DATABASE_URL`; SSL (`rejectUnauthorized: false`, CA pinning deferred to P5) when `NODE_ENV=production` or `DATABASE_SSL=true`.
+- `server/src/db/knex.js` (app + seed runtime): SSL driven by `DATABASE_SSL` (defaults ON in production, OFF elsewhere).
+- `COOKIE_SAME_SITE` env (default `strict`; boot guard rejects invalid values and `none` without Secure) now drives the refresh + MFA-trust cookies.
+- Migration `202607030001_enable_pgvector.js` (`CREATE EXTENSION IF NOT EXISTS vector`, warn-and-continue where unavailable); local `docker-compose` db image switched to `pgvector/pgvector:pg16`.
 - `.env.example` additions go to the user as a diff for human review (AGENTS.md rule).
 
 ## 3. Environment variables
@@ -58,6 +60,7 @@ Dashboard → **Database → Extensions** → search `vector` → enable (schema
 | `APP_BASE_URL` | `https://<new-client>.vercel.app` | Used in reset links. |
 | `COOKIE_SECURE` | (unset) | Defaults true when NODE_ENV=production. |
 | `COOKIE_SAME_SITE` | `none` | New in P0; required cross-site (Vercel client ↔ Render API). |
+| `DATABASE_SSL` | (unset) | Defaults true when NODE_ENV=production; set `false` only for local. |
 | `MFA_ENFORCEMENT_ENABLED` | `true` (default) | |
 
 Generate the two secrets locally: `openssl rand -base64 32` (run twice — one value each). Do NOT put them in `.env` in the repo working tree if you can avoid it; paste straight into Render.
@@ -75,14 +78,23 @@ Generate the two secrets locally: `openssl rand -base64 32` (run twice — one v
 
 ## 4. Migrate + seed against Supabase (user, local shell)
 
-From repo root, after the P0 knexfile change lands:
+From repo root (knexfile/seed changes landed 2026-07-03):
 
 ```bash
 export NODE_ENV=production
+# Migrations go over the DIRECT (or session-pooler) string:
 export MIGRATE_DATABASE_URL='postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres'
 make migrate     # runs scripts/migrate.sh → knex migrate:latest
+
+# Seed connects through the app's knex (DATABASE_URL); pooled string is fine:
+export DATABASE_URL='postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres'
+# You will also need the app boot guards satisfied for NODE_ENV=production:
+export JWT_SECRET='<any non-placeholder value for this one-off>'
+export MFA_ENCRYPTION_KEY="$(openssl rand -base64 32)"   # one-off; Render gets its own
 cd server && npm run seed   # seeds demo users/facilities/assessments (password VorgeDemo123!)
 ```
+
+SSL is automatic with `NODE_ENV=production` (or force with `DATABASE_SSL=true`).
 
 Notes:
 - Migrations are explicit — nothing runs on app start (AGENTS.md invariant).

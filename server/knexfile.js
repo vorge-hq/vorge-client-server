@@ -1,4 +1,5 @@
-require("dotenv").config({ path: "../.env" });
+// Absolute repo-root .env path (cwd-independent); see src/config/envPath.js.
+require("dotenv").config({ path: require("./src/config/envPath") });
 
 const connection =
   process.env.DATABASE_URL ||

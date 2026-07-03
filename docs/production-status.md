@@ -28,7 +28,7 @@ Four reference frames describe the same product at different altitudes. Three ar
 |---|---|---|
 | Phase 1 — Real authentication | ✅ **Done** | Login → JWT → refresh, demo gating, password reset, TOTP MFA. Chunks 0–4 complete. |
 | Phase 2 — Tenant isolation hardening | ⬜ Not started | `requireFacilityAccess` exists but not enforced on every data route; repo scoping audit + cross-tenant tests outstanding. |
-| Phase 3 — Production hosting | ⬜ Not started | Managed Postgres, server host, secrets mgmt, monitoring, audit retention, prod Vercel envs. |
+| Phase 3 — Production hosting | 🟡 **Staging live (2026-07-03)** | Supabase `vorge-staging` + Render `vorge-api-staging` + Vercel `vorge-app`; cross-site login/refresh/data smoke passed. Remaining P3-era: monitoring, audit retention, backups (roadmap P5). |
 | Dark mode (side-quest) | 🟡 **~52%** | Logged-in AppShell themes correctly. **Auth pages fully tokenized (Chunk A + bg-white surface fix, 2026-05-29)** — text AND surfaces theme-safe; 7/48 files. **LoginPage brand+logo dark treatment landed (2026-05-29):** real logo SVGs wired (white wordmark in dark), lighter-navy heading, brand-amber #F49D0D gold CTA (LoginPage-scoped). Still pending: same brand/logo treatment on the other 6 auth pages; gold-CTA app-wide; theme toggle on login/MFA; `prefers-color-scheme` not honored (dark is localStorage-driven); shared components (Chunk B) + dashboards/workspace/admin; critical-severity text awaiting designer. |
 
 Demo is deployed manually (`vercel --prod`) to `vorge-demo-roles.vercel.app`; git auto-deploy intentionally disconnected.

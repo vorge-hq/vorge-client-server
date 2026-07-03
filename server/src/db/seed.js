@@ -111,9 +111,9 @@ async function seed() {
         name: "Bonny Terminal - 2026 SRA",
         state: ASSESSMENT_STATES.IN_REVIEW,
         lock_version: 4,
-        contributors: [
+        contributors: JSON.stringify([
           { id: "contrib-1", type: "Core", name: "Daniel Mensah", position: "Facility Manager", expertise: "Operations", company: "Operator A" }
-        ]
+        ])
       },
       {
         id: IDS.coral2026,
@@ -123,7 +123,7 @@ async function seed() {
         name: "Pernis Refinery Complex - 2026 SRA",
         state: ASSESSMENT_STATES.DRAFT,
         lock_version: 1,
-        contributors: []
+        contributors: JSON.stringify([])
       },
       {
         id: IDS.bonny2025,
@@ -133,7 +133,7 @@ async function seed() {
         name: "Bonny Terminal - 2025 SRA",
         state: ASSESSMENT_STATES.APPROVED,
         lock_version: 1,
-        contributors: []
+        contributors: JSON.stringify([])
       }
     ]);
 

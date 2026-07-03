@@ -1,3 +1,67 @@
+2026-07-03 — P0 COMPLETE: staging cross-site smoke passed
+  User finished all infrastructure.md dashboard steps. Verified staging
+    end-to-end from the agent (no browser):
+    - Render https://vorge-api-staging.onrender.com /health 200.
+    - Vercel https://vorge-app.vercel.app 200.
+    - Login (Author, no MFA) 200; CORS allow-origin=vercel app +
+      allow-credentials=true; Set-Cookie vorge_refresh HttpOnly; Secure;
+      SameSite=None (the P0 cookie fix, confirmed live).
+    - GET /api/assessments with token+acting-role returns the 3 seeded
+      assessments → Render→Supabase transaction pooler path works.
+    - POST /api/auth/refresh with the cookie issues a new token →
+      cross-site idle-refresh works.
+  Not exercised: MFA enroll/verify browser flow (optional eyeball; all
+    cross-origin plumbing it depends on is verified). P0 marked complete
+    in roadmap + production-status.
+  Interim posture noted: staging uses the Vercel URL; vorge.io per-client
+    portal routing deferred (memory: vorge-io-portal-routing).
+  Next: commit pending fixes (seed contributors JSONB + the two dotenv
+    path bugs, with a test) then start P2 (tenant isolation) — harness first.
+
+================================================================
+
+2026-07-03 — P0 staging: migrate + seed against Supabase (vorge-staging)
+  Ran migrations and seed against the real Supabase project from the
+    developer machine (user had saved root .env, gitignored).
+  Migrate: 7 migrations applied (initial schema + 5 auth-chunk migrations
+    + 202607030001_enable_pgvector). pgvector extension confirmed enabled;
+    22 public tables. Seed: 1 operator / 2 facilities / 6 users / 11 role
+    assignments / 3 assessments / 2 assets / 2 threats / 2 mitigations.
+  Two blockers fixed en route:
+    - DNS: MIGRATE_DATABASE_URL pointed at the DIRECT host
+      (db.<ref>.supabase.co) which has no A record here (IPv6-only) →
+      ENOTFOUND. Switched MIGRATE_DATABASE_URL to the SESSION POOLER
+      (pooler host, port 5432; IPv4). Runbook already anticipated this.
+      Done in .env only (gitignored); backup in scratchpad.
+    - Seed data bug (the known chunk-4 deferred item "assessments
+      .contributors JSONB"): JS arrays passed to a jsonb column are
+      serialized by node-pg as a Postgres array literal ({...}), which
+      Postgres rejects as invalid JSON (22P02). Fixed by JSON.stringify()
+      on all 3 contributors values in src/db/seed.js. Verified stored as
+      real JSON arrays via jsonb_array_length. **UNCOMMITTED** — flagged
+      for review (not committed; user hasn't asked to commit this pass).
+  Latent bugs found (NOT fixed this pass — need their own change + test):
+    - src/config/env.js loads dotenv with path "../../.env" (relative to
+      cwd, not the file) → from server/ that resolves ABOVE the repo root
+      and loads nothing; app/seed via `npm run` fell back to localhost DB.
+      Worked around by preloading dotenv (node -r dotenv/config
+      dotenv_config_path=../.env). Invisible in Docker/Render because env
+      vars are injected directly. Recommend fixing the path + a test.
+    - knexfile.js uses "../.env" (correct only because knex CLI runs with
+      cwd=server/). Both paths are cwd-fragile; worth normalizing.
+    - Root .env has duplicate NODE_ENV and DATABASE_URL keys (dev at top,
+      staging appended at bottom); dotenv resolves last-wins so effective
+      values are correct, but it is fragile — recommend de-duping.
+  Secrets: local .env JWT_SECRET (was still the placeholder) + missing
+    MFA_ENCRYPTION_KEY set to fresh random 32B values so the production
+    boot guard passes for seed (local-only, never printed/committed).
+    Separate fresh secrets generated + printed to the user for Render.
+  Next (user): create Render (Docker, single instance, /health, envs incl.
+    COOKIE_SAME_SITE=none + DATABASE_URL=transaction pooler:6543) and the
+    new Vercel client project; then the §7 staging smoke.
+
+================================================================
+
 2026-07-03 — P0 infra grounding: code/config changes (Supabase/Render/cross-site ready)
   Follows same-day planning session (entry below; planning commit 9b57bf4).
   Shipped (server + infra config; NOT yet committed — stop-for-review):

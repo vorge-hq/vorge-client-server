@@ -1,4 +1,9 @@
-require("dotenv").config({ path: "../../.env" });
+// Load the repo-root .env from an ABSOLUTE path (cwd-independent). Skipped
+// under test so the suite stays hermetic (never picks up a real/staging .env).
+const envPath = require("./envPath");
+if (process.env.NODE_ENV !== "test" && process.env.JEST_WORKER_ID === undefined) {
+  require("dotenv").config({ path: envPath });
+}
 
 const nodeEnv = process.env.NODE_ENV || "development";
 

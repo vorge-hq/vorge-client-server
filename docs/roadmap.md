@@ -1,6 +1,6 @@
 # Production Roadmap — Living Checklist
 
-> **Current phase: P0 — Infra grounding (in progress since 2026-07-03).** Locked decisions: Supabase = managed Postgres only (keep custom JWT/bcrypt/MFA auth); server = Render web service from `server/Dockerfile` (single instance — in-memory rate-limit/MFA caches); real client = NEW Vercel project (`VITE_ENABLE_DEMO=false`), demo project `vorge-demo-roles` untouched; AI = Vercel AI Gateway + AI SDK behind an app-layer module (§9 deviation SIGNED OFF 2026-07-03; write/section API contract extension SIGNED OFF 2026-07-03 — see `docs/decisions/2026-07-03-*`). Do not push past a phase without user review.
+> **Current phase: P2 — Tenant isolation (next). P0 infra grounding COMPLETE 2026-07-03** (Supabase + Render `vorge-api-staging` + Vercel `vorge-app`, cross-site smoke passed). Locked decisions: Supabase = managed Postgres only (keep custom JWT/bcrypt/MFA auth); server = Render web service from `server/Dockerfile` (single instance — in-memory rate-limit/MFA caches); real client = NEW Vercel project (`VITE_ENABLE_DEMO=false`), demo project `vorge-demo-roles` untouched; AI = Vercel AI Gateway + AI SDK behind an app-layer module (§9 deviation SIGNED OFF 2026-07-03; write/section API contract extension SIGNED OFF 2026-07-03 — see `docs/decisions/2026-07-03-*`). Do not push past a phase without user review.
 
 **How this file relates to the others:** `docs/production-status.md` is the product-state map; `docs/strategic-roadmap.md` is the evidence-backed retrospective/synthesis (audited 2026-06-04); this file is the production-push execution checklist. Tick boxes here (and append `SESSION_LOG.md`) on every meaningful change and before any commit touching `client/src/`, `server/src/`, or `server/migrations/`. Phase mapping to the old AGENTS.md numbering: old Phase 1 = P1 (done), old Phase 2 = P2, old Phase 3 ≈ P0 + P5.
 
@@ -10,7 +10,7 @@
 
 ---
 
-## P0 — Infra grounding ⬅ CURRENT
+## P0 — Infra grounding ✅ COMPLETE (2026-07-03)
 
 Outcome: a real staging environment (Supabase DB + Render API + non-demo Vercel client), not fixtures.
 
@@ -22,18 +22,19 @@ Code/config changes (agent) — **landed 2026-07-03** (201 server / 144 client t
 - [x] Env examples: `.env.example` diff handed to user for human review (AGENTS.md rule — file not edited by agent).
 - [x] Client prod env shape documented in `docs/infrastructure.md` §3/§6.
 
-Manual dashboard steps (user — click-by-click in `docs/infrastructure.md`):
-- [ ] Create Supabase project; capture pooled + direct connection strings; enable `vector` extension.
-- [ ] `make migrate` then `make seed` against Supabase (run locally by user with prod env).
-- [ ] Create Render web service from `server/Dockerfile`; set env vars; single instance; verify `/health`.
-- [ ] Create NEW Vercel project (root `client/`, Vite) with `VITE_ENABLE_DEMO=false`, `VITE_API_BASE_URL`; deploy.
-- [ ] Smoke: real login → JWT → refresh → MFA enroll/verify against staging.
+Manual dashboard steps (user — click-by-click in `docs/infrastructure.md`) — **DONE 2026-07-03**:
+- [x] Supabase project `vorge-staging`; migrate (session pooler :5432) + seed; `vector` enabled; 22 tables.
+- [x] Render web service `vorge-api-staging.onrender.com` (Docker, single instance, `/health` 200, `COOKIE_SAME_SITE=none`, DATABASE_URL = transaction pooler :6543).
+- [x] Vercel client `vorge-app.vercel.app` (`VITE_ENABLE_DEMO=false`, `VITE_API_BASE_URL` → Render).
+- [x] Smoke PASSED: login 200 + CORS(allow-origin+credentials) + refresh cookie `HttpOnly; Secure; SameSite=None` + `GET /api/assessments` returns 3 seeded rows (Render→Supabase pooler) + cookie-refresh issues a new token. Optional remaining: MFA enroll/verify browser eyeball (non-blocking; API plumbing verified).
+
+**P0 COMPLETE 2026-07-03.** Interim posture: staging on Vercel URL (custom domains / vorge.io per-client portal routing deferred — see memory `vorge-io-portal-routing`).
 
 ## P1 — Auth ✅ done (record only)
 
 Login → JWT → refresh (rotating httpOnly cookie + family revocation), session revocation/logout, password reset (email delivery stubbed — wired in P5), TOTP MFA + enforcement + trusted devices, demo personas env-gated. Chunks 0–4; records in `SESSION_LOG.md`, git tags, `docs/decisions/chunk-4-mfa.md`.
 
-## P2 — Tenant isolation (P0 security — must land before real customer data)
+## P2 — Tenant isolation (P0 security — must land before real customer data) ⬅ NEXT
 
 DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud without `TEST_DATABASE_URL`), route-guard introspection test, cross-tenant matrix, repo SQL-scoping assertions, RLS tests as the non-owner app role.
 

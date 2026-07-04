@@ -18,6 +18,7 @@ import {
   AIDraftModal,
   AuditLogPanel,
   DecisionModal,
+  ExportModal,
   FieldModeModal,
   LibraryModal,
   NewAssessmentModal,
@@ -110,6 +111,7 @@ export function AssessmentWorkspacePage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [fieldModeOpen, setFieldModeOpen] = useState(false);
   const [newAssessmentOpen, setNewAssessmentOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const assessmentId = params.assessmentId;
   const sectionId = Number(params.sectionId || 1);
@@ -268,6 +270,21 @@ export function AssessmentWorkspacePage() {
     workspace.showResultToast(result, "Recall declined");
   }
 
+  // Document export (§16): prod downloads the rendered file; demo has no real
+  // document, so it explains rather than firing a request. The modal closes on
+  // ok/demo and stays open (with an inline error) on failure.
+  async function handleExport(format) {
+    const result = await workspace.exportDocument(format, session.actingRole);
+    if (result?.demo) {
+      workspace.showToast("Document export is available in the live app.", { tone: "info" });
+    } else if (result?.error) {
+      workspace.showToast(result.error, { tone: "error" });
+    } else if (result?.ok) {
+      workspace.showToast(`Exporting ${format.toUpperCase()} — check your downloads.`);
+    }
+    return result;
+  }
+
   const modalOpeners = {
     openAIDraft: () => setAiDraftOpen(true),
     openLibrary: () => setLibraryOpen(true),
@@ -277,7 +294,8 @@ export function AssessmentWorkspacePage() {
       setAuditOpen(true);
     },
     openFieldMode: () => setFieldModeOpen(true),
-    openNewAssessment: () => setNewAssessmentOpen(true)
+    openNewAssessment: () => setNewAssessmentOpen(true),
+    openExport: () => setExportOpen(true)
   };
 
   return (
@@ -289,6 +307,7 @@ export function AssessmentWorkspacePage() {
         onOpenAudit={modalOpeners.openAudit}
         onOpenLibrary={modalOpeners.openLibrary}
         onOpenVersions={modalOpeners.openVersions}
+        onOpenExport={modalOpeners.openExport}
         onOpenAuditFor={openAuditPanelForSection}
         onRecallApprove={handleRecallApprove}
         onRecallDecline={handleRecallDecline}
@@ -411,6 +430,14 @@ export function AssessmentWorkspacePage() {
           }}
           initialFilter={auditFilter?.filter || "all"}
           initialSectionId={auditFilter?.sectionId ?? null}
+        />
+      ) : null}
+
+      {exportOpen ? (
+        <ExportModal
+          assessment={assessment}
+          onExport={handleExport}
+          onClose={() => setExportOpen(false)}
         />
       ) : null}
 

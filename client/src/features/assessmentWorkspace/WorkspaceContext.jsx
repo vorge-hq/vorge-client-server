@@ -26,8 +26,10 @@ import {
   deleteThreat as apiDeleteThreat,
   putLink as apiPutLink,
   updateEvaluation as apiUpdateEvaluation,
-  putContributors as apiPutContributors
+  putContributors as apiPutContributors,
+  exportAssessment as apiExportAssessment
 } from "../../api/assessmentApi";
+import { triggerBrowserDownload } from "../../api/download";
 import {
   toClientAssessment,
   applySectionTexts,
@@ -837,6 +839,24 @@ export function WorkspaceProvider({ children }) {
     []
   );
 
+  /* P3.5 — document export (§16). PROD downloads the rendered .docx/.pdf for the
+     active assessment (server enforces role + frozen-snapshot + watermark + audit)
+     and streams it to the browser. DEMO fires NO network — fixtures have no real
+     document to render — and signals { demo: true } so the caller can explain. */
+  const exportDocument = useCallback(async (format, actingRole) => {
+    if (isDemoEnabled()) {
+      return { ok: false, demo: true };
+    }
+    const assessmentId = stateRef.current.activeAssessmentId;
+    try {
+      const { blob, filename } = await apiExportAssessment({ assessmentId, format, actingRole });
+      triggerBrowserDownload(blob, filename);
+      return { ok: true };
+    } catch (error) {
+      return { error: error?.message || "Could not export this document." };
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -864,6 +884,7 @@ export function WorkspaceProvider({ children }) {
       saveContributors,
       saveSectionText,
       hydrateAssessmentBundle,
+      exportDocument,
       WORKFLOW_ACTIONS
     }),
     [
@@ -891,7 +912,8 @@ export function WorkspaceProvider({ children }) {
       updateEvaluation,
       upsertEvaluation,
       persistEvaluation,
-      saveContributors
+      saveContributors,
+      exportDocument
     ]
   );
 

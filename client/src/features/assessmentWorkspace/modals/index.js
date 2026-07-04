@@ -6,4 +6,5 @@ export { NewAssessmentModal } from "./NewAssessmentModal";
 export { LibraryModal } from "./LibraryModal";
 export { VersionsModal } from "./VersionsModal";
 export { FieldModeModal } from "./FieldModeModal";
+export { ExportModal } from "./ExportModal";
 export { AuditLogPanel } from "./AuditLogPanel";

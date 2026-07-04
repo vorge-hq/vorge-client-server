@@ -6,7 +6,7 @@
 // These are only called in PROD mode (VITE_ENABLE_DEMO !== "true"); demo mode
 // stays on client/src/data fixtures and fires no request. The demo/prod branch
 // lives in the WorkspaceContext seam, not here.
-import { apiRequest } from "./client";
+import { apiRequest, apiDownload } from "./client";
 
 function mutate(path, method, body, actingRole) {
   return apiRequest(path, { method, actingRole, body: JSON.stringify(body) });
@@ -75,6 +75,22 @@ export function reassignLeadAuthor({ assessmentId, leadAuthorUserId, reason, loc
 // --- Mitigation owner assignment (§7) ---------------------------------------
 export function assignMitigationOwner({ assessmentId, mitigationId, ownerUserId, ownerRoleLabel, lockVersion, actingRole }) {
   return mutate(`/api/assessments/${assessmentId}/mitigations/${mitigationId}/owner`, "PUT", { lockVersion, ownerUserId, ownerRoleLabel }, actingRole);
+}
+
+// --- Document export (§16) — binary download, not JSON ----------------------
+// The formats the standard SRA template supports. Order = the order shown in the
+// export chooser.
+export const EXPORT_FORMATS = [
+  { id: "docx", label: "Word (.docx)" },
+  { id: "pdf", label: "PDF" }
+];
+
+// Resolves to { blob, filename }; the caller streams it to the browser. PROD
+// only — the WorkspaceContext seam skips this entirely in demo mode.
+export function exportAssessment({ assessmentId, format, actingRole }) {
+  return apiDownload(`/api/assessments/${assessmentId}/export?format=${encodeURIComponent(format)}`, {
+    actingRole
+  });
 }
 
 // The exact user-facing copy for a lost optimistic-concurrency race. Exported so

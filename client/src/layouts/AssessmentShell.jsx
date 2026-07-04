@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Activity, BookOpen, Check, FileSearch, Layers, Lock, X } from "lucide-react";
+import { Activity, BookOpen, Check, Download, FileSearch, Layers, Lock, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { Banner } from "../components/Banner";
 import { StateChip } from "../components/Chip";
@@ -122,6 +122,7 @@ export function AssessmentShell({
   onOpenAudit,
   onOpenLibrary,
   onOpenVersions,
+  onOpenExport,
   onOpenAuditFor,
   onRecallApprove,
   onRecallDecline,
@@ -300,6 +301,7 @@ export function AssessmentShell({
               <ToolButton Icon={BookOpen} label="Library suggestions" onClick={onOpenLibrary} />
               <ToolButton Icon={FileSearch} label="Audit log" onClick={onOpenAudit} />
               <ToolButton Icon={Layers} label="Assessment history" onClick={onOpenVersions} />
+              <ToolButton Icon={Download} label="Export document" onClick={onOpenExport} />
             </div>
           </div>
 

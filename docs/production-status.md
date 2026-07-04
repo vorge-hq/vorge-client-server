@@ -86,7 +86,7 @@ Per `docs/plan.md` + build plans. Status is indicative — verify against code b
 | Audit logging | Immutable, append-only, hash-chain fields | 🟡 Built; retention policy = Phase 3 |
 | Mitigation workflow | Post-approval Mitigation Owner track | 🟡 Built |
 | Field mode | Offline/field foundations | 🟡 v1 foundations |
-| Exports | Word / PDF | 🟡 **Server DONE (P3.5, 2026-07-04)** — `GET /api/assessments/:id/export?format=docx\|pdf`; Word via `docx`, PDF via `pdfkit`; front-matter (approvals/version control) + Approved frozen snapshot + `export` audit row + §16 role matrix (Mitigation Owner 403); watermark on non-Approved. 15 §P3.5 integration tests green (golden-content docx via mammoth, PDF smoke via pdf-parse, <30s guard). Remaining: client Export button (workspace) — follow-on. |
+| Exports | Word / PDF | ✅ **P3.5 COMPLETE (2026-07-04)** — server `GET /api/assessments/:id/export?format=docx\|pdf` (Word via `docx`, PDF via `pdfkit`; front-matter + Approved frozen snapshot + `export` audit + §16 role matrix; watermark on non-Approved; 15 integration tests) **and** client Export button (workspace Tools → `ExportModal`; prod downloads the blob, demo fires no fetch; RTL suite). Custom corporate templates deferred to Phase 3 (§16.5). |
 | Admin config | Users, facilities, dropdowns | 🟡 Built |
 | AI features (6) | AI service module | 🟡 AD-1 anomaly acknowledgement (Section 3 assets) shipped 2026-05-29 (client-only, advisory). AD-2–AD-4 + other AI features not started; backend rule engine deferred. |
 

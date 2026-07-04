@@ -87,6 +87,52 @@ function refreshAccessToken() {
   return refreshPromise;
 }
 
+// Binary download sibling of apiRequest: same auth header + credentials + single
+// 401 refresh-retry, but reads a Blob and the server filename off
+// Content-Disposition instead of parsing JSON. Used for document export (§16),
+// where the response body is a .docx/.pdf, not JSON.
+export async function apiDownload(path, { token, actingRole, _isRetry } = {}) {
+  const headers = {};
+  const storedToken = token ?? readStoredToken();
+  if (storedToken) {
+    headers.Authorization = `Bearer ${storedToken}`;
+  }
+  if (actingRole) {
+    headers["X-Acting-Role"] = actingRole;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers, credentials: "include" });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const errorCode = payload?.error?.code;
+    if (
+      response.status === 401 &&
+      errorCode === "INVALID_TOKEN" &&
+      !_isRetry &&
+      !isDemoEnabled() &&
+      readStoredToken()
+    ) {
+      try {
+        const newToken = await refreshAccessToken();
+        return apiDownload(path, { token: newToken, actingRole, _isRetry: true });
+      } catch (refreshError) {
+        clearStoredSession();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        throw refreshError;
+      }
+    }
+    throw new ApiError(payload.error, response.status);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers?.get?.("Content-Disposition") || "";
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  return { blob, filename: match ? match[1] : "export" };
+}
+
 export async function apiRequest(path, { token, actingRole, _isRetry, ...options } = {}) {
   const headers = {
     "Content-Type": "application/json",

@@ -1,3 +1,29 @@
+2026-07-04 — P3.5 client: Export button (§16) — P3.5 now COMPLETE
+  Wired the workspace Export control onto the P3.5 server endpoint.
+  - api/client.js: apiDownload (blob sibling of apiRequest — same auth header +
+    credentials + single 401 refresh-retry; reads Blob + Content-Disposition
+    filename instead of JSON).
+  - api/assessmentApi.js: exportAssessment({assessmentId,format,actingRole}) +
+    EXPORT_FORMATS. api/download.js: triggerBrowserDownload (object-URL anchor
+    click, isolated for mocking).
+  - WorkspaceContext.exportDocument(format, actingRole): prod↔demo seam — PROD
+    downloads via exportAssessment→triggerBrowserDownload for the active
+    assessment; DEMO fires NO network (fixtures have no rendered doc) and returns
+    { demo:true }. Exposed on the context value.
+  - UI: ExportModal (Word/PDF chooser + non-final watermark note + busy/inline
+    error; closes on ok/demo) added to the modals barrel; "Export document"
+    ToolButton in AssessmentShell Tools rail (available in any state, §16.2);
+    AssessmentWorkspacePage owns exportOpen + handleExport (toasts per outcome).
+  Key files: client/src/api/{client.js,assessmentApi.js,download.js},
+    client/src/features/assessmentWorkspace/WorkspaceContext.jsx,
+    client/src/features/assessmentWorkspace/modals/{ExportModal.jsx,index.js},
+    client/src/layouts/AssessmentShell.jsx,
+    client/src/pages/assessments/AssessmentWorkspacePage.jsx,
+    client/src/features/assessmentWorkspace/modals/ExportModal.test.jsx.
+  Tests: make test → 261 server unit / 184 client / 124 integration green.
+    New RTL suite ExportModal.test.jsx (6): prod docx/pdf fire GET /export?format,
+    watermark note by state, 403 inline error, demo no-fetch. P3.5 COMPLETE.
+
 2026-07-04 — P3.5 server: Word/PDF document export (§16)
   Server-side of P3.5 landed (client Export button deferred as a follow-on).
   Endpoint: GET /api/assessments/:id/export?format=docx|pdf on the assessments

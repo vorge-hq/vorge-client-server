@@ -1,3 +1,13 @@
+2026-07-03 — Staging smoke GREEN after redeploy: P2 verified LIVE
+  Post-redeploy of the audit fix (8cfc5f9), full staging smoke passed against
+  vorge-api-staging.onrender.com: /health 200; POST /api/auth/login 200 (token,
+  Author, real user Adaeze Okeke); GET /api/assessments 200 → 3 scoped rows
+  (Bonny Terminal ×2, Pernis Refinery Complex) served via the non-owner vorge_app
+  role under RLS. Non-empty scoped data end-to-end confirms non-owner role +
+  facilityScope context + RLS all working. P2 (tenant isolation) verified live.
+
+================================================================
+
 2026-07-03 — P2 hotfix: staging login 500 — audit writes denied by RLS (appendAuditLog self-scopes)
   Staging smoke caught a P0 regression from the RLS work: POST /api/auth/login
   returned 500 under the non-owner `vorge_app` role. Root cause (confirmed by a

@@ -27,7 +27,7 @@ const FACILITY_ACCESS = "requireFacilityAccessMiddleware";
 // Mounts we know about. Anything mounted under /api that is NOT in one of these
 // two sets makes the test fail — an unclassified module must be deliberately
 // categorised as "data" (needs the guards) or "non-data" (documented why not).
-const DATA_MODULES = ["/api/assessments", "/api/mitigations", "/api/admin"];
+const DATA_MODULES = ["/api/assessments", "/api/mitigations", "/api/admin", "/api/library"];
 const NON_DATA_MOUNTS = {
   // Auth is intentionally public at the edge: login/refresh/forgot-password
   // MUST be reachable unauthenticated, and the authenticated auth routes apply

@@ -6,12 +6,32 @@
 const crypto = require("crypto");
 const request = require("supertest");
 const mammoth = require("mammoth");
-const pdfParse = require("pdf-parse");
+const { execFileSync } = require("child_process");
 const app = require("../../src/app");
 const db = require("../../src/db/knex");
 const { ROLES, ASSESSMENT_STATES } = require("../../src/services/constants");
 const { ASSESSMENTS, CHILD, FACILITIES, USERS, truncateAll, seedFixtures } = require("./fixtures");
 const { login, withAuth } = require("./session");
+
+// Parse a PDF buffer in a FRESH node process. pdf-parse@1.x's bundled pdf.js
+// throws UnknownErrorException during its webpack module-eval when the jest VM's
+// heap is in certain states — any moderately-sized change to src/app's module
+// graph (e.g. mounting a new router) can trip it, even though the produced PDF
+// is byte-valid (the %PDF- magic check below always passes). Evaluating pdf.js
+// in a pristine registry per call makes the smoke check robust to jest heap
+// layout WITHOUT weakening the assertion (page count + extractable text still
+// verified on the real exported bytes).
+function parsePdfClean(buffer) {
+  const out = execFileSync(
+    process.execPath,
+    [
+      "-e",
+      "const p=require('pdf-parse');const c=[];process.stdin.on('data',d=>c.push(d));process.stdin.on('end',()=>p(Buffer.concat(c)).then(r=>process.stdout.write(JSON.stringify({numpages:r.numpages,text:r.text}))).catch(e=>{console.error(e);process.exit(1)}));"
+    ],
+    { input: buffer, maxBuffer: 64 * 1024 * 1024 }
+  );
+  return JSON.parse(out.toString());
+}
 
 const A2 = ASSESSMENTS.A2; // Draft, authored by authorA2 — the editable fixture
 const SECTION_HEADINGS = [
@@ -126,7 +146,7 @@ describe("PDF smoke", () => {
     expect(res.headers["content-type"]).toContain("application/pdf");
     expect(res.body.slice(0, 5).toString()).toBe("%PDF-");
 
-    const parsed = await pdfParse(res.body);
+    const parsed = parsePdfClean(res.body);
     expect(parsed.numpages).toBeGreaterThan(0);
     expect(parsed.text).toContain("Facility A2");
   });

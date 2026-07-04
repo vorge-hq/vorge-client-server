@@ -7,6 +7,7 @@ const authRoutes = require("./modules/auth/routes");
 const assessmentRoutes = require("./modules/assessments/routes");
 const mitigationRoutes = require("./modules/mitigations/routes");
 const adminRoutes = require("./modules/admin/routes");
+const libraryRoutes = require("./modules/library/routes");
 const { DomainError } = require("./services/domainError");
 
 const app = express();
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/assessments", assessmentRoutes);
 app.use("/api/mitigations", mitigationRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/library", libraryRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: "NOT_FOUND", message: `No route for ${req.method} ${req.path}` } });

@@ -20,8 +20,20 @@ const MITIGATION_STATUSES = Object.freeze({
   DONE: "Done"
 });
 
+// The five enterprise library types (§12 / businesslogic entity table). Every
+// library_entries.type must be one of these; the create/update Zod schema keys
+// off this list so an out-of-vocabulary type is a 400, never a stored row.
+const LIBRARY_TYPES = Object.freeze([
+  "Scenarios",
+  "Mitigations",
+  "Vulnerabilities",
+  "Controls",
+  "Consequences"
+]);
+
 module.exports = {
   ROLES,
   ASSESSMENT_STATES,
-  MITIGATION_STATUSES
+  MITIGATION_STATUSES,
+  LIBRARY_TYPES
 };

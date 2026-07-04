@@ -65,6 +65,38 @@ const IDS = Object.freeze({
   secPernis8: "00000000-0000-4000-8000-000000001308"
 });
 
+// §19-default library content (five types per §12). Seeded per facility so the
+// semantic-search feature (O3) and the Admin library surface have real content.
+// 14xx = Bonny, 15xx = Pernis. Idempotent via upsert-on-id.
+function libraryEntry(id, facilityId, type, title, body) {
+  return { id, facility_id: facilityId, type, title, body, metadata: JSON.stringify({}) };
+}
+
+const LIBRARY_ENTRIES = [
+  // Scenarios
+  libraryEntry("00000000-0000-4000-8000-000000001401", IDS.bonny, "Scenarios", "Unauthorised vessel approach", "An unidentified vessel approaches the marine loading terminal during product transfer, threatening berth security and crew safety."),
+  libraryEntry("00000000-0000-4000-8000-000000001402", IDS.bonny, "Scenarios", "Vendor remote-access compromise", "A trusted maintenance vendor's remote-access credentials are compromised and used to reach control-room workstations."),
+  // Mitigations
+  libraryEntry("00000000-0000-4000-8000-000000001411", IDS.bonny, "Mitigations", "Per-vendor MFA accounts", "Replace shared vendor logins with per-vendor accounts protected by multi-factor authentication and time-bound access approval."),
+  libraryEntry("00000000-0000-4000-8000-000000001412", IDS.bonny, "Mitigations", "Upgrade radar coverage", "Extend marine radar coverage and revise escort scheduling to close surveillance gaps during shift handover."),
+  // Vulnerabilities
+  libraryEntry("00000000-0000-4000-8000-000000001421", IDS.bonny, "Vulnerabilities", "Shared vendor credentials", "Maintenance vendors share a single privileged credential, removing individual accountability and enabling lateral movement."),
+  libraryEntry("00000000-0000-4000-8000-000000001422", IDS.bonny, "Vulnerabilities", "Surveillance gap at handover", "Marine perimeter surveillance has reduced coverage during the 06:00 and 18:00 shift handovers."),
+  // Controls
+  libraryEntry("00000000-0000-4000-8000-000000001431", IDS.bonny, "Controls", "Segmented OT network", "Operational-technology network segmented from corporate IT with monitored, approval-gated crossings."),
+  // Consequences
+  libraryEntry("00000000-0000-4000-8000-000000001441", IDS.bonny, "Consequences", "Loss of process control", "Prolonged loss of distributed process control and emergency-shutdown capability across the terminal."),
+
+  // Pernis Refinery
+  libraryEntry("00000000-0000-4000-8000-000000001501", IDS.coral, "Scenarios", "CDU control-cabinet intrusion", "A coordinated intrusion targets the crude distillation unit control cabinets, aiming to disrupt refinery-wide operations."),
+  libraryEntry("00000000-0000-4000-8000-000000001502", IDS.coral, "Scenarios", "Tank-farm product pilferage", "Unauthorised tanker loading at the tank farm results in pilferage of stored product over an extended period."),
+  libraryEntry("00000000-0000-4000-8000-000000001511", IDS.coral, "Mitigations", "North-perimeter intrusion detection", "Install intrusion detection and a secondary barrier on the north perimeter of the crude distillation unit."),
+  libraryEntry("00000000-0000-4000-8000-000000001512", IDS.coral, "Mitigations", "Automated seal reconciliation", "Automate seal reconciliation and add thermal cameras to close blind spots between tank-farm bunds."),
+  libraryEntry("00000000-0000-4000-8000-000000001521", IDS.coral, "Vulnerabilities", "Single-layer north perimeter", "The north boundary relies on a single-layer perimeter fence with limited intrusion detection."),
+  libraryEntry("00000000-0000-4000-8000-000000001531", IDS.coral, "Controls", "Marine exclusion zone", "A declared marine exclusion zone with port-authority liaison governs vessel access to the export jetty."),
+  libraryEntry("00000000-0000-4000-8000-000000001541", IDS.coral, "Consequences", "Refinery-wide outage", "Damage to the distillation train causing a refinery-wide production outage and extended restart.")
+];
+
 // §2 Facility Information is a structured form persisted as JSON in the section-2
 // content_text (2026-07-04 decision). Field set must match the client form.
 const BONNY_FACILITY_INFO = {
@@ -641,6 +673,8 @@ async function seed() {
       { id: IDS.secPernis2, facility_id: IDS.coral, assessment_id: IDS.coral2026, section_number: 2, content_text: JSON.stringify(PERNIS_FACILITY_INFO) },
       { id: IDS.secPernis8, facility_id: IDS.coral, assessment_id: IDS.coral2026, section_number: 8, content_text: PERNIS_CONCLUSION }
     ]);
+
+    await upsert(trx, "library_entries", LIBRARY_ENTRIES);
   });
 
   console.log("Seeded Vorge demo data.");

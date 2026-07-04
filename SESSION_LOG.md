@@ -1,3 +1,99 @@
+2026-07-04 — feat(server): P4 O1 — Library management CRUD + seeding
+  First Opus build session of the P4 playbook (docs/plans/p4-execution-plan.md, O1).
+  No AI in this block — prereq so semantic search (O3) has content to search.
+  - NEW /api/library module: CRUD on the existing library_entries table for the
+    five §12 types (Scenarios/Mitigations/Vulnerabilities/Controls/Consequences).
+    authenticate + facilityScope (RLS) at router level; reads open to any facility
+    role, writes Admin-only (authorizeRole(ADMIN)); facilityId required per route
+    (query on reads, body on writes) and checked by requireFacilityAccess. No new
+    migration — table + facility_isolation RLS already existed (initial + P2).
+  - libraryRepository.js (map/list/get/create/update/delete, facility-filtered,
+    [before,after] diffs) + modules/library/schemas.js (Zod, LIBRARY_TYPES enum in
+    services/constants.js). Every mutation writes ONE hyphen-vocabulary audit row
+    (library-entry-created|updated|deleted) atomically with the change via
+    appendAuditLog inside the request's RLS-scoped transaction.
+  - Seed: §19-default library content per facility (Bonny 14xx / Pernis 15xx),
+    idempotent via upsert-on-id.
+  - middlewareCoverage.test.js: /api/library added to DATA_MODULES (guarded by
+    requireFacilityAccess — no allowlist entries needed).
+  - Integration suite library.test.js: CRUD lifecycle + audit rows, Admin-only-write
+    / any-role-read matrix, cross-tenant (out-of-scope facility → 403; foreign entry
+    id under in-scope facilityId → 404 no-leak), validation (missing facilityId /
+    out-of-vocab type → 400). Server-only — no client library UI exists to wire (per
+    plan: client library management is out of P4 scope).
+  - Self /code-review (high) before commit: fixed one real finding — the facility
+    access check now resolves the requested facility's operator_id so
+    canAccessFacility's operator-wide branch works for operator-level HQ Executive /
+    cross-facility Admin (was latent: current data has only per-facility role rows).
+    Added fixture `hqOpOnlyA` + a regression test. Two other findings (key-order
+    metadata diff, no-op update audit row) left as-is — deliberately consistent with
+    the assetRepository/contentWriteGuard reference conventions.
+  - DEVIATION (test-infra, flagged): export.test.js PDF smoke test hardened. pdf-parse@1.x's
+    bundled pdf.js throws UnknownErrorException during its webpack module-eval depending
+    on the jest VM heap; mounting the new /api/library router perturbs that heap and tripped
+    it (the exported PDF is byte-valid — %PDF- magic assertion still passes). Fix parses the
+    PDF in a fresh node subprocess (pristine module registry) — assertion strength unchanged
+    (page count + "Facility A2" text still verified on real bytes). No product code involved.
+  Key files: server/src/modules/library/{routes,schemas}.js,
+    server/src/repositories/libraryRepository.js, server/src/services/constants.js,
+    server/src/app.js, server/src/db/seed.js, server/tests/middlewareCoverage.test.js,
+    server/tests/integration/library.test.js, server/tests/integration/export.test.js.
+  make test GREEN: 272 unit / 23 client files / 143 integration.
+
+2026-07-04 — docs(P4/P4.5): Fable spec session — execution playbook + §P4.5 test specs
+  Fable session F1 of the agreed Fable↔Opus split (Fable = decisions/specs/2 review
+  gates; Opus = all build work, since P4's test specs are binding + mechanical).
+  Front-loaded ALL remaining design before the July-7 Fable window closes. No code.
+  - NEW docs/plans/p4-execution-plan.md — binding Opus playbook: session order
+    O1(library CRUD)→O2(AI foundation)→[F2 gate]→O3–O7(features 1–5)→O8(PLATFORM_OWNER
+    + provisioning)→[F3 gate]→O9(console UI + entitlement toggle). Architecture bound:
+    server/src/ai/ is the ONLY dir allowed to import the AI SDK (aiImportBoundary test
+    written first in O2); runAiCall contract (entitlement → ceiling → rate-limit →
+    gateway w/ exactly-one-retry → always-audit); dedicated ai_call_log table (not
+    audit_log_entries — queryable §9.7 fields for budget SUMs) + ai_budgets (computed
+    suspension, fire-once soft alert) + facility_entitlements; embeddings bound to
+    text-embedding-3-small/1536 via gateway; escalation rule (deviations go to the
+    playbook's Open questions, never improvised).
+  - docs/test-specs.md: NEW §P4.5 — role-gating matrix, allowlist-as-second-gate, MFA,
+    isolation NON-WEAKENING suite (existing RLS/cross-tenant tests pass unchanged),
+    one-transaction provisioning atomicity (spy-throw → nothing persists), §19 seed
+    assertions, link-only support access, entitlement toggle + read-time effect.
+  - Decisions resolved (user, 2026-07-04): P4.5 support access = LINK-ONLY (audited
+    self-assign of a normal role; no impersonation/dual-identity session — matches
+    §17.6 "role flag, not special user type"); entitlements = owner-only v1 (keys
+    anomaly_detection/consistency_flagging/offline_mode; base features always-on).
+  - docs/roadmap.md: P4 intro → playbook pointer; entitlements line NEEDS DECISION →
+    DECIDED; P4.5 placeholder → real scope write-up (header NEEDS DECISION → SPECCED).
+  - CLAUDE.md Current focus rewritten: next action = Opus build session O1.
+  Key files: docs/plans/p4-execution-plan.md, docs/test-specs.md, docs/roadmap.md,
+  CLAUDE.md, docs/production-status.md. make test not run (docs only).
+
+2026-07-04 — docs(roadmap): de-dup phase numbering (Platform Console / entitlements)
+  Roadmap had Platform Console listed twice — as the P4.5 phase AND as a backlog item
+  under "not in any current phase" (self-contradictory). Removed the backlog dup;
+  Console lives only as the P4.5 phase. Slotted the per-facility add-on entitlements
+  work into phases per the agreed split: data model + read-time gating → P4 checklist
+  item; owner toggle + audit → P4.5 checklist item (was a dangling backlog sub-bullet).
+  Also fixed a P3.5 collision: the proposed "P3.5 — Admin write API" reused the
+  completed export phase's number → renamed "Admin write API (number TBD)". Phase spine
+  now linear, each half-phase used once: P0→P1→P2→P3→P3.5→P4→P4.5→P5. Docs only, no code.
+  Key file: docs/roadmap.md.
+
+2026-07-04 — ops(seed): make the test tenant real in prod Supabase
+  Ran the demo seed against the prod Supabase DB (no code change). Seeding the prod
+  tenant is a DATA/DEPLOY task, distinct from the earlier DATABASE_URL wiring fix —
+  connection strings were already correct; the prod DB just had no demo rows. Ran via
+  the 5432 session pooler (MIGRATE_DATABASE_URL) since the 6543 transaction pooler
+  chokes on the seed's transactions:
+    cd server && DATABASE_URL="$(grep '^MIGRATE_DATABASE_URL=' ../.env | cut -d= -f2- | tr -d '"')" npm run seed
+  Idempotent (fixed UUIDs, onConflict('id').merge(), scoped content reset — no
+  cross-tenant TRUNCATE), safe to re-run. Verified live: 1 operator (Northstar),
+  6 users (*.@operator-a.example), 3 assessments (Bonny 2026 In Review, Pernis
+  Refinery Draft, Bonny 2025 Approved), 6 assets / 6 threats / 6 evaluations /
+  5 mitigations. Redeploys DONE (user, via dashboards): Render (server) + Vercel
+  (client) — Export button + dashboard hydration fix now live in prod. "Make the
+  test tenant real" complete end to end.
+
 2026-07-04 — docs(roadmap): add Platform Console phase (P4.5)
   Captured a new owner-facing "Platform Console" idea in the roadmaps (no code).
   Owner/consultant surface SEPARATE from customer Admin: new-tenant provisioning

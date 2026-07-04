@@ -88,6 +88,6 @@ Per `docs/plan.md` + build plans. Status is indicative — verify against code b
 | Field mode | Offline/field foundations | 🟡 v1 foundations |
 | Exports | Word / PDF | ✅ **P3.5 COMPLETE (2026-07-04)** — server `GET /api/assessments/:id/export?format=docx\|pdf` (Word via `docx`, PDF via `pdfkit`; front-matter + Approved frozen snapshot + `export` audit + §16 role matrix; watermark on non-Approved; 15 integration tests) **and** client Export button (workspace Tools → `ExportModal`; prod downloads the blob, demo fires no fetch; RTL suite). Custom corporate templates deferred to Phase 3 (§16.5). |
 | Admin config | Users, facilities, dropdowns | 🟡 Built |
-| AI features (6) | AI service module | 🟡 AD-1 anomaly acknowledgement (Section 3 assets) shipped 2026-05-29 (client-only, advisory). AD-2–AD-4 + other AI features not started; backend rule engine deferred. |
+| AI features (6) | AI service module | 🟡 **P4 build STARTED 2026-07-04** — playbook `docs/plans/p4-execution-plan.md` (O1–O9 + 2 review gates) + DoD `docs/test-specs.md` §P4/§P4.5. **O1 Library CRUD ✅ DONE** (`/api/library` module, five §12 types, Admin-only writes, hyphen audit rows, §19 seed; `library.test.js`) — prereq for semantic search. NEXT: O2 (AI foundation) → **F2 Fable gate**. AD-1 anomaly ack shipped 2026-05-29 (client-only); AD-2+ server engine = O6. |
 
 Legend: ✅ done · 🟡 partial / needs verification · ⬜ not started.

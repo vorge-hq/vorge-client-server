@@ -107,6 +107,38 @@ For EVERY new endpoint (assets, threats, links, evaluations, contributors, secti
 
 **Per feature:** semantic search (embedding written on library create/update; results filtered to requester's facility — seed identical entries in two facilities, assert only one returns; similarity ordering deterministic with mocked embeddings) · smart tagging (out-of-vocabulary tags DISCARDED — mock the model returning 2 valid + 2 invalid, assert exactly 2 persist; audit records suggested AND confirmed separately) · drafted summary (role/state gating per §9.1 incl. 403 for non-Authors; AI original retained in audit next to edited final) · anomaly engine (each deterministic rule: one positive + one negative case; acknowledgement suppresses per-Author only) · consistency flagging (synthetic portfolio with a known 2σ outlier → flagged; non-outlier → not; operator-portfolio boundary respected).
 
+## P4.5 — Platform Console
+
+Decisions bound 2026-07-04: support access = **link-only** (audited self-assignment of a normal role; no impersonation/dual-identity session); entitlement toggle = **owner-only v1**. Plan: `docs/plans/p4-execution-plan.md` (O8/O9).
+
+**Role gating & allowlist (integration):**
+- Matrix: every operator role (Author, Reviewer, Approver, HQ Executive, Admin, Mitigation Owner) × each `/api/platform/*` route → **403**; Platform Owner (allowlisted) → 200. Unauthenticated → 401.
+- Allowlist is a second independent gate: a user holding a Platform Owner role assignment whose email is NOT in `PLATFORM_OWNER_EMAILS` → 403 (a stray role row is inert). Allowlist parsing tolerates whitespace and case.
+- MFA: Platform Owner is in `MFA_REQUIRED_ROLES` — assert via the existing mfaPolicy unit surface (role → required) plus one login-path integration case mirroring the Admin enforcement tests.
+- `middlewareCoverage.test.js` extended: `/api/platform` classified as a PLATFORM mount requiring `authenticate` + `requirePlatformOwner` on every route; the existing DATA_MODULES rules unchanged (no new allowlist entries for platform routes).
+
+**Isolation non-weakening (integration — the critical suite):**
+- The existing cross-tenant route matrix and RLS suites (`rls.test.js`, `rlsWiring.test.js`, cross-tenant matrix) pass **UNCHANGED** with the platform router mounted.
+- An operator-role session calling any `/api/platform/*` route gets 403 and zero cross-tenant data in the body.
+- After a Platform Owner request completes, a subsequent normal-route request on the same process still enforces facility scoping (platform queries must not leak an unscoped GUC/connection state).
+
+**Provisioning (integration):**
+- Happy path: `POST /api/platform/operators` creates operator → facility → initial Admin user → role assignments → §19 seed defaults (assert: 8 threat classifications, 5×5 matrix, risk bands, seeded libraries present for the new facility) in ONE transaction; response returns the created ids.
+- Atomicity: force a mid-transaction failure (spy-throw on a late repository call, e.g. role assignment) → NOTHING persists (operator, facility, user all absent) and a 500 with traceId returns.
+- `copyLibrariesFromOperatorId`: library entries copied to the new facility; source operator untouched.
+- One platform audit row per provision (`platform-operator-provisioned`) with the owner's userId + traceId; none on a failed provision beyond the transaction rollback.
+
+**Support access — link-only (integration):**
+- Grant: `POST .../support-access` creates a NORMAL role assignment for the owner in the target facility + audit row `platform-support-access-granted`; the owner then passes existing role guards when acting under that role, and tenant audit rows record their real user id.
+- Revoke: `DELETE` removes the assignment + `platform-support-access-revoked`; subsequent tenant-scoped calls under that role → 403/404.
+- No impersonation surface exists: assert no route accepts an "act as user X" parameter.
+
+**Entitlement toggle & read-time gating (integration):**
+- `PUT /api/platform/facilities/:id/entitlements` upserts + writes `entitlement-toggled` audit row (old→new in diff/metadata); operator roles → 403 (matrix above).
+- Read-time effect: with `anomaly_detection` disabled for facility A, the anomaly endpoint → 403 `FEATURE_NOT_ENABLED` and the mocked gateway records ZERO calls; enable → same request succeeds. Facility B unaffected.
+- Base features (semantic search, tagging, drafted summary) work with NO entitlement rows present.
+- Capabilities read surface reflects the toggle (active vs enquire-to-enable) per facility.
+
 ## P5 — Hardening
 
 - Email: mocked transport; reset email → correct recipient, link contains `APP_BASE_URL` + a token that the reset endpoint then accepts (full loop in one test); send failure → surfaced, audit row.

@@ -32,6 +32,10 @@ const USERS = {
   approverA: { id: id(206), email: "approver.a@a.example", assignments: [{ role: ROLES.APPROVER, facility: "A1" }] },
   mitA: { id: id(207), email: "mit.a@a.example", assignments: [{ role: ROLES.MITIGATION_OWNER, facility: "A1" }] },
   adminA: { id: id(208), email: "admin.a@a.example", operator: "A", assignments: [{ role: ROLES.ADMIN, facility: "A1", crossFacility: true }, { role: ROLES.ADMIN, facility: "A2", crossFacility: true }] },
+  // Operator-only HQ Executive: access granted at the operator level with NO
+  // direct per-facility role row (facility_id null). Exercises canAccessFacility's
+  // operator-wide branch — the path library reads must not wrongly 403.
+  hqOpOnlyA: { id: id(209), email: "hq.oponly.a@a.example", operator: "A", assignments: [{ role: ROLES.HQ_EXECUTIVE }] },
 
   authorB1: { id: id(211), email: "author.b1@b.example", assignments: [{ role: ROLES.AUTHOR, facility: "B1" }] },
   reviewerB1: { id: id(212), email: "reviewer.b1@b.example", assignments: [{ role: ROLES.REVIEWER, facility: "B1" }] },

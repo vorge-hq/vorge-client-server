@@ -177,6 +177,7 @@ Each item: **outcome** · why · dependency · size (S/M/L) · priority.
 12. **Locks (field/config/facility)**, **version compare UI**, **notifications triggers/delivery**, **field-mode real PWA/offline**. **M each · P2.**
 13. **Admin CRUD** (users/facilities/dropdowns), **per-facility MFA policy editor** ("M4-proper"). **M–L · P2.**
 14. **Per-dashboard tap targets** (Reviewer/Approver/HQ/MO), **deep-link validation to matrix cell**, **section-completion derivation model**. **S–M · P2.**
+15. **Platform Console (owner/consultant)** — *outcome:* an owner-facing console SEPARATE from customer Admin: new-tenant provisioning (operator → facility → first Admin, seeded from BL §19 defaults), a cross-client portfolio dashboard, and audited support access. New `PLATFORM_OWNER` role + `/platform/*` namespace; must not weaken tenant isolation. Scheduled as **P4.5** in `docs/roadmap.md` (after the AI module). Precursor: the staging onboarding kit/script. Open decision: impersonate-into-client vs link-only support. Dep: #4 (isolation) + server persistence. **L · P2 — NEEDS DECISION.** *(Placeholder — to be written out properly.)*
 
 ### Deferred (parked — see `docs/considered-and-deferred.md`)
 

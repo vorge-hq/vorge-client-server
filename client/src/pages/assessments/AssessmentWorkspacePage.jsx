@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { isDemoEnabled } from "../../auth/demoFlag";
 import { ROLES } from "../../auth/session";
 import { AssessmentShell } from "../../layouts/AssessmentShell";
 import {
@@ -115,6 +116,31 @@ export function AssessmentWorkspacePage() {
 
   const assessment = workspace.assessmentsById[assessmentId];
 
+  // Prod reads: hydrate this assessment (fields + section text) from the live
+  // API on mount. Demo mode is a no-op (fixtures already present). While the
+  // fetch is in flight we hold on the loading state instead of redirecting.
+  const demo = isDemoEnabled();
+  const [prodStatus, setProdStatus] = useState(demo ? "ready" : "loading");
+  useEffect(() => {
+    if (demo) return undefined;
+    let cancelled = false;
+    setProdStatus("loading");
+    workspace
+      .hydrateAssessmentBundle(assessmentId, session.actingRole)
+      .then((ok) => {
+        if (!cancelled) setProdStatus(ok ? "ready" : "notfound");
+      })
+      .catch(() => {
+        if (!cancelled) setProdStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // hydrateAssessmentBundle is stable (useCallback []); omitting `workspace`
+    // avoids re-running on every unrelated state change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo, assessmentId, session.actingRole]);
+
   useEffect(() => {
     if (!assessment) return;
     if (
@@ -148,6 +174,12 @@ export function AssessmentWorkspacePage() {
     session.user.name,
     workspace
   ]);
+
+  if (!demo && prodStatus === "loading" && !assessment) {
+    return (
+      <div className="p-8 text-center text-sm text-zinc-500">Loading assessment…</div>
+    );
+  }
 
   if (!assessment) {
     return <Navigate to="/assessments" replace />;

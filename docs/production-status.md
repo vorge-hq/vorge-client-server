@@ -27,7 +27,7 @@ Four reference frames describe the same product at different altitudes. Three ar
 | Track | Status | Notes |
 |---|---|---|
 | Phase 1 — Real authentication | ✅ **Done** | Login → JWT → refresh, demo gating, password reset, TOTP MFA. Chunks 0–4 complete. |
-| Phase 2 — Tenant isolation hardening | 🟡 **In progress (2026-07-03)** | Integration harness + repo isolation + SQL-scoped list landed. **Cross-tenant ROUTE matrix green** (supertest + real DB: cross-tenant GET/list/workflow/mitigation-log → 404, wrong-role → 403, unauth → 401, HQ §17.5 portfolio). **Route-guard introspection test green** (`middlewareCoverage.test.js`, unit loop) + `requireFacilityAccess` wiring decision made (two-guard model: middleware for payload-facility routes, repo-scoped getter for by-id routes — `docs/decisions/2026-07-03-repo-scoped-facility-access.md`; AGENTS.md invariant 1 reworded). **RLS policies + app wiring + non-owner-role proof green** (`rls.test.js` + `rlsWiring.test.js`: uniform per-txn `app.current_facility_ids` policy on all 10 data tables; every request pinned to its facility context via `runInFacilityScope`/`activeConn`; default-deny; owner-bypass by design; inert until the app connects as a non-owner role). Invariant 2 (demo gating) reconciled. Outstanding: only the Supabase non-owner-role dashboard checkpoint (then P2 closes). |
+| Phase 2 — Tenant isolation hardening | ✅ **Done (2026-07-03)** | Integration harness + repo isolation + SQL-scoped list; **cross-tenant ROUTE matrix** (404/403/401, HQ §17.5 portfolio); **route-guard introspection test** + two-guard decision (middleware for payload-facility routes, repo-scoped getter for by-id — `docs/decisions/2026-07-03-repo-scoped-facility-access.md`); **RLS policies + app wiring + non-owner-role proof** (`rls.test.js` + `rlsWiring.test.js`: per-txn `app.current_facility_ids` policy on all 10 data tables; every request pinned via `runInFacilityScope`/`activeConn`; default-deny). Invariant 2 (demo gating) reconciled. **RLS LIVE on staging**: migration run on Supabase, non-owner role `vorge_app` + grants created, Render `DATABASE_URL` repointed at `vorge_app` (transaction pooler), browser smoke passed. |
 | Phase 3 — Production hosting | 🟡 **Staging live (2026-07-03)** | Supabase `vorge-staging` + Render `vorge-api-staging` + Vercel `vorge-app`; cross-site login/refresh/data smoke passed. Remaining P3-era: monitoring, audit retention, backups (roadmap P5). |
 | Dark mode (side-quest) | 🟡 **~52%** | Logged-in AppShell themes correctly. **Auth pages fully tokenized (Chunk A + bg-white surface fix, 2026-05-29)** — text AND surfaces theme-safe; 7/48 files. **LoginPage brand+logo dark treatment landed (2026-05-29):** real logo SVGs wired (white wordmark in dark), lighter-navy heading, brand-amber #F49D0D gold CTA (LoginPage-scoped). Still pending: same brand/logo treatment on the other 6 auth pages; gold-CTA app-wide; theme toggle on login/MFA; `prefers-color-scheme` not honored (dark is localStorage-driven); shared components (Chunk B) + dashboards/workspace/admin; critical-severity text awaiting designer. |
 
@@ -66,7 +66,7 @@ Demo is deployed manually (`vercel --prod`) to `vorge-demo-roles.vercel.app`; gi
 ## Recommended work order
 
 1. **Finish dark mode** — auth pages off `zinc-*` + `prefers-color-scheme` + theme toggle on login/MFA. Visible, demo-facing, low risk. Most prominent gap.
-2. **Phase 2 — tenant isolation** (P0 security): make `requireFacilityAccess` non-optional on all data routes, audit every `server/src/repositories/` query for `facilityId` scoping, add cross-tenant 403/404 integration tests.
+2. **Phase 2 — tenant isolation** (P0 security): ✅ **Done 2026-07-03** — repo/route guards + RLS policies + app wiring; RLS live on staging (non-owner `vorge_app` role). Next: P3 write/section API (paused for user go-ahead).
 3. **Phase 3 — production hosting**: managed Postgres, server host, secrets, monitoring, audit retention, prod envs.
 
 Rationale: dark mode is shallow and demo-facing (quick win); Phase 2 is the highest-severity correctness work; Phase 3 is the deploy-infra capstone once the app is correct.
@@ -82,7 +82,7 @@ Per `docs/plan.md` + build plans. Status is indicative — verify against code b
 | Authentication | Email/pw, JWT, refresh, reset, TOTP MFA | ✅ Done (Phase 1) |
 | Roles & role-switching | 6 roles, audited acting-role switch | ✅ Core built |
 | Assessment lifecycle | Draft → In Review → Awaiting Approval → Approved, server state machine | 🟡 Built; server enforcement to confirm in Phase 2 |
-| Facility / tenant isolation | `facility_id` scoping + RLS foundations | 🟡 Schema in place; enforcement = Phase 2 |
+| Facility / tenant isolation | `facility_id` scoping + repo/route guards + RLS | ✅ Enforced (P2 done 2026-07-03); RLS live on staging via non-owner `vorge_app` role |
 | Audit logging | Immutable, append-only, hash-chain fields | 🟡 Built; retention policy = Phase 3 |
 | Mitigation workflow | Post-approval Mitigation Owner track | 🟡 Built |
 | Field mode | Offline/field foundations | 🟡 v1 foundations |

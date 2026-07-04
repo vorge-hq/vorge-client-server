@@ -88,13 +88,27 @@ For single-side iteration:
 - Server: `cd server && npm run dev` (node --watch), `npm test`, `npm run migrate`, `npm run seed`.
 - Client: `cd client && npm run dev`, `npm test`.
 
+## Planning doc maintenance
+
+Keep plans current; **do not rewrite them.** `docs/roadmap.md` and `docs/production-status.md` are deliberate artifacts — agents tick boxes, append the diary, and update status rows; they do not restructure phases or rewrite plan prose unless the user explicitly asks.
+
+| File | Agent may… | Agent must not… |
+|---|---|---|
+| `docs/roadmap.md` | Tick completed items; add backlog lines under **Suggested improvements** | Reorder phases, rewrite area reviews, or change scope without user approval |
+| `SESSION_LOG.md` | Append session entries | Duplicate the production-status map |
+| `docs/production-status.md` | Update **Status now**, **Last updated**, blockers | Rewrite recommended order or full v1 snapshot without user approval |
+| `CLAUDE.md` → **Current focus** | Sync when direction or phase status changes | — |
+
+Decision records (`docs/decisions/*`), `docs/strategic-roadmap.md`, and canonical docs (`businesslogic.md`, `api-contract.md`) are out of scope unless the user explicitly requests them.
+
 ## Before committing
 
 1. Run `make test`. The Claude Code PreToolUse hook in `.claude/hooks/pre-commit.js` will block commits if it fails, but running it yourself first saves a hook cycle.
 2. Confirm `.env` is not in the staged set: `git status`.
 3. Prefer small, focused commits. Reviewing a 30-file commit is hard.
-4. If the commit touches `client/src`, `server/src`, or `server/migrations`, append `SESSION_LOG.md`, tick/update `docs/roadmap.md`, and update `docs/production-status.md` in the same commit.
-5. Doc-update rule is not commit-only: on EVERY meaningful change (finished task, phase progress, decision taken), append `SESSION_LOG.md` and tick `docs/roadmap.md` before the final reply — the user will not prompt for this.
+4. If the commit touches `client/src`, `server/src`, or `server/migrations`, append `SESSION_LOG.md`, tick matching items in `docs/roadmap.md`, and update `docs/production-status.md` in the same commit. Sync `CLAUDE.md` **Current focus** if phase or direction changed.
+5. Doc-update rule is not commit-only: on EVERY meaningful change (finished task, phase progress, new idea, direction change), update the planning files above before the final reply — the user will not prompt for this. Tick roadmap items only when `docs/test-specs.md` acceptance tests pass.
+6. **No AI co-author attribution.** Never append `Co-Authored-By:` lines (or similar) to commit messages or PR descriptions. Commits are attributed to the human author only.
 
 ## Known design concerns (queued for senior dev review)
 

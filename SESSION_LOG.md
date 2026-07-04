@@ -1,3 +1,23 @@
+2026-07-03 — P2 CLOSED: Supabase dashboard checkpoint complete, RLS live on staging
+  User completed the manual checkpoint that flips RLS from tests-only to enforced:
+    - Ran migration 202607030002_rls_policies on Supabase staging.
+    - Created non-owner role `vorge_app` + grants in the Supabase SQL editor
+      (NOT owner, NOT BYPASSRLS — so the policies apply to it).
+    - Repointed Render `vorge-api-staging` DATABASE_URL at `vorge_app` (transaction
+      pooler). (Secret lives only in Render/.env — never committed.)
+    - Smoke passed: /health + browser login and data on vorge-app.vercel.app.
+  Effect: the base pool now connects as a non-owner role, so the per-request
+    facility context (runInFacilityScope/activeConn, shipped earlier today) is
+    now load-bearing — RLS enforces tenant isolation on staging, beneath the
+    repo/route guards. P2 deliverables 0–4 complete in code AND live.
+  Docs: roadmap P2 section marked ✅ COMPLETE + checkpoint ticked + stale duplicate
+    mitigations-hardcode item reconciled; production-status Phase 2 → ✅ Done (RLS
+    live via vorge_app); CLAUDE.md Current focus → P2 done, P3 next (PAUSED for go).
+  No code changed this entry — planning-doc + config commit only. Next: P3
+    write/section API, on user go-ahead.
+
+================================================================
+
 2026-07-03 — P2 (cont.): RLS app wiring + AGENTS invariant 2 reconcile
   Closes the app half of deliverable 4: every assessments/mitigations request now
   runs its DB work inside a txn pinned to the acting role's facility context, so

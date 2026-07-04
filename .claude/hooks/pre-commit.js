@@ -42,11 +42,14 @@ try {
         f.startsWith('server/migrations')
     );
     const updatesDocs = staged.some(
-      (f) => f === 'SESSION_LOG.md' || f === 'docs/production-status.md'
+      (f) =>
+        f === 'SESSION_LOG.md' ||
+        f === 'docs/production-status.md' ||
+        f === 'docs/roadmap.md'
     );
     if (touchesCode && !updatesDocs) {
       process.stderr.write(
-        '[pre-commit hook] WARNING: Consider updating SESSION_LOG.md and docs/production-status.md\n'
+        '[pre-commit hook] WARNING: Consider updating SESSION_LOG.md, docs/roadmap.md, and docs/production-status.md\n'
       );
     }
   } catch {

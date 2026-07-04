@@ -55,6 +55,8 @@ DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud
 
 There are NO write endpoints today (assessments API = GET /, GET /:id, POST /:id/workflow). All demo editing is client-side fixtures; a real Author cannot save anything. Contract extension approved 2026-07-03 (`docs/decisions/2026-07-03-write-section-api.md`; api-contract.md itself edited only on explicit instruction when P3 lands).
 
+**In progress (2026-07-03):** foundation slice (a)+(b)+(c) landed & green — section-text migration (`assessment_sections`, decision recorded), the shared write-guard (`contentWriteGuard.runContentMutation`: six-case guards + optimistic concurrency + atomic audit, all tested once here), and **Assets** as the reference CRUD endpoint with the full §P3 suite (six-case, true lock_version race, state×role matrices, atomic audit, cross-tenant). Boxes below stay unticked until the pattern is replicated to every entity. Remaining: (d) threats/links/evaluations/contributors, (e) section-text endpoints, (f) withdraw/recall + reassignment + mitigation-assignment, (g) client flip. Paused for review before fanning out (per `docs/p3-kickoff.md`).
+
 - [ ] CRUD endpoints: assets, threats, asset-threat links, evaluations, contributors (+ section-1/8 text content — schema gap: no column holds Executive Summary/Conclusion text; needs a migration).
 - [ ] Optimistic concurrency via existing `lock_version` on every mutation (409 on stale).
 - [ ] State/role guards: writes only by Author on non-Approved (per state machine); every route through `requireFacilityAccess`.

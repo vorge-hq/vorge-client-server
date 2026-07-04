@@ -4,7 +4,7 @@ Living checklist and map for getting Vorge to production. **`SESSION_LOG.md` is 
 
 Last updated: 2026-07-03 · Branch: `main`. Brand: **Vorge** (rebranded from Vantage on 2026-06-02 — see SESSION_LOG).
 
-> **2026-07-03:** The production push now runs on **`docs/roadmap.md` (P0–P5)** — that file is the execution checklist to tick; this file stays the product-state map. The 2026-06-04 strategic retrospective (originally authored at `docs/roadmap.md`) now lives at **`docs/strategic-roadmap.md`**. Locked: Supabase (managed Postgres only), Render (Docker web service), new non-demo Vercel project, Vercel AI Gateway + AI SDK (§9 deviation + write-API contract extension both signed off 2026-07-03 — `docs/decisions/2026-07-03-*`). P0 in progress.
+> **2026-07-03:** The production push now runs on **`docs/roadmap.md` (P0–P5)** — that file is the execution checklist to tick; this file stays the product-state map. The 2026-06-04 strategic retrospective (originally authored at `docs/roadmap.md`) now lives at **`docs/strategic-roadmap.md`**. Locked: Supabase (managed Postgres only), Render (Docker web service), new non-demo Vercel project, Vercel AI Gateway + AI SDK (§9 deviation + write-API contract extension both signed off 2026-07-03 — `docs/decisions/2026-07-03-*`). P0 in progress. **2026-07-03 (later):** roadmap-P3 (write/section API) started — foundation slice landed: `assessment_sections` migration, shared content write-guard, and Assets reference CRUD with full §P3 test suite (see SESSION_LOG + `docs/roadmap.md` P3). Paused for review before replicating to the other entities.
 
 ---
 

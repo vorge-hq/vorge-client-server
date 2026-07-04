@@ -242,5 +242,9 @@ module.exports = {
   getAssessmentForUser,
   listAssessmentsForUser,
   mapAssessment,
+  mapAsset,
+  mapThreat,
+  mapLink,
+  mapEvaluation,
   updateAssessmentState
 };

@@ -137,6 +137,41 @@ describe("POST /api/mitigations/:id/log — cross-tenant mutation blocked + DB u
   });
 });
 
+describe("P3 content mutations — cross-tenant blocked + target row unchanged", () => {
+  // Op-A Author targeting an Op-B assessment's assets. The 404 fires at load
+  // (getAssessmentForUser → null) BEFORE any role/state/lock check, so a valid
+  // lockVersion body still 404s. Each case asserts the Op-B data is untouched.
+  test("POST asset onto an Op-B assessment -> 404, no asset added to B1", async () => {
+    const countBefore = (await db("assets").where({ assessment_id: ASSESSMENTS.B1.id })).length;
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).post(`/api/assessments/${ASSESSMENTS.B1.id}/assets`), session)
+      .send({ lockVersion: 1, name: "cross-tenant asset" });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("assets").where({ assessment_id: ASSESSMENTS.B1.id })).length).toBe(countBefore);
+  });
+
+  test("PATCH an Op-B asset -> 404, B1 asset unchanged", async () => {
+    const before = await db("assets").where({ id: CHILD.B1.asset }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).patch(`/api/assessments/${ASSESSMENTS.B1.id}/assets/${CHILD.B1.asset}`), session)
+      .send({ lockVersion: 1, name: "hijacked" });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    const after = await db("assets").where({ id: CHILD.B1.asset }).first();
+    expect(after.name).toBe(before.name);
+  });
+
+  test("DELETE an Op-B asset -> 404, B1 asset still present", async () => {
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).delete(`/api/assessments/${ASSESSMENTS.B1.id}/assets/${CHILD.B1.asset}`), session)
+      .send({ lockVersion: 1 });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect(await db("assets").where({ id: CHILD.B1.asset }).first()).toBeTruthy();
+  });
+});
+
 describe("Wrong role -> 403 (within own tenant)", () => {
   test("Reviewer cannot submit_for_review (403 ROLE_NOT_ALLOWED), even on an in-scope assessment", async () => {
     // reviewerA2 can READ A2 (own facility) but the state machine forbids the

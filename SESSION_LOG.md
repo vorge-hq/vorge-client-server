@@ -1,3 +1,27 @@
+2026-07-04 — fix(client): prod dashboards empty (hydrate list from API)
+  Found during P3.5 browser smoke: in prod every role dashboard showed 0
+  assessments while /assessments (list page) showed them. Cause: dashboards
+  render from the in-memory `assessmentsById` store, which is fixture-seeded;
+  in prod those fixtures carry demo facility/author ids that never match the
+  real session, so `filterAssessmentsForRole` narrowed to empty. The P3 (g)
+  flip wired the list page + workspace to the API but never the dashboards.
+  Fix (two parts):
+  - WorkspaceContext.hydrateAssessmentsList(actingRole): prod fetches
+    GET /api/assessments, maps via toClientAssessment + getInitialAssessmentState,
+    and REPLACES assessmentsById with the real rows (demo = no-op). Triggered
+    once in AppShell on mount / acting-role change.
+  - filterAssessmentsForRole gains a { serverScoped } option: in prod the server
+    already role+facility-scoped the rows (and the list API carries no
+    reviewer/approver ids), so skip the per-user narrowing and keep only the
+    facility guard — mirrors the AssessmentsListPage 2026-07-03 decision. Author/
+    Reviewer/Approver dashboards pass serverScoped:!isDemoEnabled().
+  Key files: client/src/features/assessmentWorkspace/WorkspaceContext.jsx,
+    .../assessmentModel.js, client/src/layouts/AppShell.jsx,
+    client/src/pages/dashboards/{Author,Reviewer,Approver}Dashboard.jsx,
+    .../dashboardHydration.test.jsx.
+  Tests: 188 client green (+4: hydrate replaces store prod / no-fetch demo;
+  serverScoped keeps in-facility rows vs default narrowing). Server untouched.
+
 2026-07-04 — P3.5 client: Export button (§16) — P3.5 now COMPLETE
   Wired the workspace Export control onto the P3.5 server endpoint.
   - api/client.js: apiDownload (blob sibling of apiRequest — same auth header +

@@ -15,6 +15,7 @@ import { evaluationHasAnyData } from "./assessmentModel";
 import { isDemoEnabled } from "../../auth/demoFlag";
 import {
   putSection,
+  listAssessments,
   getAssessmentBundle,
   isConflict,
   CONFLICT_RELOAD_MESSAGE,
@@ -764,6 +765,38 @@ export function WorkspaceProvider({ children }) {
      replace the top-level assets/threats/links/matrix/evaluations slices — the
      opened assessment owns them. DEMO mode is a no-op (fixtures already present).
      Returns true when hydrated, false on 404 (so the page can redirect). */
+  /* Prod dashboard hydration: the dashboards render from the in-memory
+     `assessmentsById` store, which is fixture-seeded. In prod those fixtures
+     carry demo facility/author ids that never match the real session, so every
+     dashboard filters to empty. This fetches the server-scoped list once (on
+     entry to the app shell) and REPLACES the store with the real assessments so
+     every dashboard reflects live data. DEMO keeps its fixtures (no fetch). */
+  const hydrateAssessmentsList = useCallback(async (actingRole) => {
+    if (isDemoEnabled()) return true;
+    try {
+      const { assessments = [] } = await listAssessments(actingRole);
+      const mapped = assessments.map((server) => {
+        const client = toClientAssessment(server);
+        return { ...client, ...getInitialAssessmentState(client) };
+      });
+      setState((current) => {
+        const assessmentsById = {};
+        mapped.forEach((a) => {
+          assessmentsById[a.id] = { ...(current.assessmentsById[a.id] || {}), ...a };
+        });
+        // Keep the active id if it survived the replace; otherwise point it at
+        // the first real assessment so "Active SRA" surfaces resolve.
+        const activeAssessmentId = assessmentsById[current.activeAssessmentId]
+          ? current.activeAssessmentId
+          : mapped[0]?.id ?? current.activeAssessmentId;
+        return { ...current, assessmentsById, activeAssessmentId };
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const hydrateAssessmentBundle = useCallback(async (assessmentId, actingRole) => {
     if (isDemoEnabled()) return true;
     try {
@@ -884,6 +917,7 @@ export function WorkspaceProvider({ children }) {
       saveContributors,
       saveSectionText,
       hydrateAssessmentBundle,
+      hydrateAssessmentsList,
       exportDocument,
       WORKFLOW_ACTIONS
     }),
@@ -892,6 +926,7 @@ export function WorkspaceProvider({ children }) {
       showToast,
       saveSectionText,
       hydrateAssessmentBundle,
+      hydrateAssessmentsList,
       showResultToast,
       dismissToast,
       applyWorkflowTransition,

@@ -281,10 +281,16 @@ export function getCommentPermission({ actingRole, state } = {}) {
    ============================================================ */
 export function filterAssessmentsForRole(
   { actingRole, userId, accessibleFacilityIds = [] } = {},
-  assessments = []
+  assessments = [],
+  { serverScoped = false } = {}
 ) {
   return assessments.filter((a) => {
     if (!accessibleFacilityIds.includes(a.facilityId)) return false;
+    // Prod: the server already returned exactly what this acting role may act on
+    // (facility + role scoped), and the list API does not carry per-assessment
+    // reviewer/approver ids — so skip the client-side per-user narrowing and keep
+    // only the facility guard (decision 2026-07-03, mirrored from AssessmentsListPage).
+    if (serverScoped) return true;
     if (actingRole === ROLES.AUTHOR) return a.leadAuthorUserId === userId;
     if (actingRole === ROLES.REVIEWER) return a.reviewerUserId === userId;
     if (actingRole === ROLES.APPROVER) return a.approverUserId === userId;

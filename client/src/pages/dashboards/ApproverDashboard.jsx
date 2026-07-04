@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLES } from "../../auth/session";
 import { FACILITIES } from "../../data/operators";
+import { isDemoEnabled } from "../../auth/demoFlag";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { AuditLogPanel } from "../../features/assessmentWorkspace/modals";
 import {
@@ -65,7 +66,8 @@ export function ApproverDashboard() {
           userId: session.user.id,
           accessibleFacilityIds
         },
-        Object.values(workspace.assessmentsById)
+        Object.values(workspace.assessmentsById),
+        { serverScoped: !isDemoEnabled() }
       ),
     [workspace.assessmentsById, session.user.id, accessibleFacilityIds]
   );

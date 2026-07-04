@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -272,6 +272,15 @@ export function AppShell() {
   const location = useLocation();
   const navigation = getNavigationForRole(session.actingRole);
   const unreadCount = countUnread(workspace.notifications, session.actingRole);
+
+  // Prod: populate the in-memory assessment store from the live API once on
+  // entry (and on acting-role change) so the dashboards render real data, not
+  // the empty-in-prod fixture set. Demo is a no-op inside hydrateAssessmentsList.
+  useEffect(() => {
+    workspace.hydrateAssessmentsList(session.actingRole);
+    // hydrateAssessmentsList is stable (useCallback []); re-run only on role change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.actingRole]);
 
   function handleSwitchRole(role) {
     if (isDemoEnabled() && session.demo && switchDemoRole) {

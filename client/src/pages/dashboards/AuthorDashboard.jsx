@@ -134,7 +134,8 @@ export function AuthorDashboard() {
           userId: session.user.id,
           accessibleFacilityIds
         },
-        Object.values(workspace.assessmentsById)
+        Object.values(workspace.assessmentsById),
+        { serverScoped: !isDemoEnabled() }
       ),
     [workspace.assessmentsById, session.user.id, accessibleFacilityIds]
   );

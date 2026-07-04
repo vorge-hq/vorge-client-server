@@ -231,6 +231,8 @@ async function seed() {
       await trx(table).whereIn("assessment_id", SEED_ASSESSMENT_IDS).del();
     }
 
+    // details bag matches the client adapter (toClientAsset): description,
+    // dependencies, consequences — so Section 3 renders every field.
     await upsert(trx, "assets", [
       {
         id: IDS.controlRoom,
@@ -239,16 +241,24 @@ async function seed() {
         name: "Central Control Room",
         asset_type: "Control Room",
         criticality: "Very High",
-        details: { description: "DCS and emergency control point" }
+        details: {
+          description: "Distributed control system (DCS) and emergency shutdown control point for the terminal.",
+          dependencies: "Primary/backup power, site network, HVAC, fire detection",
+          consequences: "Loss of process control and emergency-shutdown capability across the terminal."
+        }
       },
       {
         id: IDS.marineTerminal,
         facility_id: IDS.bonny,
         assessment_id: IDS.bonny2026,
         name: "Marine Loading Terminal",
-        asset_type: "Marine",
+        asset_type: "Marine Loading Terminal",
         criticality: "High",
-        details: { description: "Product transfer berth and hose-handling pad" }
+        details: {
+          description: "Product transfer berth, loading arms and hose-handling pad.",
+          dependencies: "Jetty structure, firewater system, mooring, metering",
+          consequences: "Halt to product export and potential marine spill."
+        }
       },
       {
         id: IDS.pernisCdu,
@@ -257,7 +267,11 @@ async function seed() {
         name: "Crude Distillation Unit",
         asset_type: "Process Unit",
         criticality: "Very High",
-        details: { description: "Primary atmospheric distillation train and control cabinets" }
+        details: {
+          description: "Primary atmospheric distillation train and associated control cabinets.",
+          dependencies: "Crude feedstock supply, utilities, control system, cooling water",
+          consequences: "Refinery-wide production outage and extended restart."
+        }
       },
       {
         id: IDS.pernisTankFarm,
@@ -266,7 +280,11 @@ async function seed() {
         name: "Central Tank Farm",
         asset_type: "Storage Tank Farm",
         criticality: "High",
-        details: { description: "Bulk crude and product storage across multiple bunds" }
+        details: {
+          description: "Bulk crude and finished-product storage across multiple bunded areas.",
+          dependencies: "Transfer pipelines, firewater, bunding, level instrumentation",
+          consequences: "Product loss, fire and environmental release."
+        }
       },
       {
         id: IDS.pernisJetty,
@@ -275,7 +293,11 @@ async function seed() {
         name: "Product Export Jetty",
         asset_type: "Marine Loading Terminal",
         criticality: "High",
-        details: { description: "Marine export berth on the Nieuwe Maas" }
+        details: {
+          description: "Marine export berth on the Nieuwe Maas with loading arms.",
+          dependencies: "Loading arms, mooring, tug availability, metering",
+          consequences: "Export disruption and demurrage costs."
+        }
       },
       {
         id: IDS.bonny2025Marine,
@@ -284,10 +306,17 @@ async function seed() {
         name: "Marine Loading Terminal",
         asset_type: "Marine Loading Terminal",
         criticality: "High",
-        details: { description: "Product transfer berth and hose-handling pad (2025 cycle)" }
+        details: {
+          description: "Product transfer berth and hose-handling pad (2025 cycle).",
+          dependencies: "Jetty structure, firewater system, mooring",
+          consequences: "Halt to product export operations."
+        }
       }
     ]);
 
+    // details bag matches toClientThreat: short, classification, history,
+    // facilityHistory, capabilityIntent, rating — so Section 4 renders in full.
+    // (the demo UI keys off `rating`, not the likelihood int column.)
     await upsert(trx, "threats", [
       {
         id: IDS.cyberThreat,
@@ -295,7 +324,14 @@ async function seed() {
         assessment_id: IDS.bonny2026,
         name: "Cybercrime & Data Breaches",
         likelihood: 4,
-        details: { rating: "High" }
+        details: {
+          short: "Cybercrime & Data Breaches",
+          classification: "Cyber",
+          history: "Rising sector-wide ransomware and OT-intrusion attempts against energy operators.",
+          facilityHistory: "One phishing incident in 2024, contained without operational impact.",
+          capabilityIntent: "Organised groups with financial and disruptive intent; moderate-to-high capability.",
+          rating: "High"
+        }
       },
       {
         id: IDS.maritimeThreat,
@@ -303,7 +339,14 @@ async function seed() {
         assessment_id: IDS.bonny2026,
         name: "Maritime",
         likelihood: 3,
-        details: { rating: "Medium" }
+        details: {
+          short: "Maritime Security",
+          classification: "Physical",
+          history: "Gulf of Guinea piracy and armed-robbery-at-sea incidents remain elevated.",
+          facilityHistory: "No successful breach; two suspicious vessel approaches logged in 2025.",
+          capabilityIntent: "Opportunistic maritime actors seeking cargo/crew; variable capability.",
+          rating: "Medium"
+        }
       },
       {
         id: IDS.pernisSabotage,
@@ -311,7 +354,14 @@ async function seed() {
         assessment_id: IDS.coral2026,
         name: "Sabotage & Terrorism",
         likelihood: 3,
-        details: { rating: "High" }
+        details: {
+          short: "Sabotage & Terrorism",
+          classification: "Physical",
+          history: "Elevated activist and terrorism threat to European energy infrastructure.",
+          facilityHistory: "No sabotage incidents on record at the complex.",
+          capabilityIntent: "Ideologically-motivated actors with moderate capability and clear intent.",
+          rating: "High"
+        }
       },
       {
         id: IDS.pernisTheft,
@@ -319,7 +369,14 @@ async function seed() {
         assessment_id: IDS.coral2026,
         name: "Theft & Pilferage",
         likelihood: 4,
-        details: { rating: "High" }
+        details: {
+          short: "Theft & Pilferage",
+          classification: "Physical",
+          history: "Product theft common across regional storage and transfer sites.",
+          facilityHistory: "Minor pilferage detected during a 2024 inventory reconciliation.",
+          capabilityIntent: "Opportunistic and organised theft crews; low-to-moderate capability.",
+          rating: "High"
+        }
       },
       {
         id: IDS.pernisUnrest,
@@ -327,7 +384,14 @@ async function seed() {
         assessment_id: IDS.coral2026,
         name: "Civil Unrest & Protest",
         likelihood: 3,
-        details: { rating: "Medium" }
+        details: {
+          short: "Civil Unrest & Protest",
+          classification: "Physical",
+          history: "Frequent climate-activist protests targeting Rotterdam port facilities.",
+          facilityHistory: "Two peaceful protests near the main gate in 2025, no incursion.",
+          capabilityIntent: "Activist groups seeking disruption and publicity; low violence.",
+          rating: "Medium"
+        }
       },
       {
         id: IDS.bonny2025Maritime,
@@ -335,7 +399,14 @@ async function seed() {
         assessment_id: IDS.bonny2025,
         name: "Maritime",
         likelihood: 3,
-        details: { rating: "Medium" }
+        details: {
+          short: "Maritime Security",
+          classification: "Physical",
+          history: "Gulf of Guinea maritime threat during the 2025 cycle.",
+          facilityHistory: "Monitored throughout 2025; no breach.",
+          capabilityIntent: "Opportunistic maritime actors; variable capability.",
+          rating: "Medium"
+        }
       }
     ]);
 
@@ -390,6 +461,11 @@ async function seed() {
       }
     ]);
 
+    // r1/r2 carry the 5x5 axis values the client reads (toClientEvaluation):
+    // { consequence, likelihood } (1-5) plus r1.consequences (scenario outcome).
+    // The risk score/band are DERIVED client-side (consequence x likelihood), so
+    // Sections 5 and 6 and the risk matrix all populate. Bonny facility bands:
+    // Low 1-4, Medium 5-9, High 10-15, Very High 16-25.
     await upsert(trx, "evaluations", [
       {
         id: IDS.evalControlCyber,
@@ -398,11 +474,11 @@ async function seed() {
         asset_id: IDS.controlRoom,
         threat_id: IDS.cyberThreat,
         scenario: "Vendor remote access compromise affects control-room workstations.",
-        controls: "VPN access, vendor approval workflow",
-        vulnerabilities: "Shared vendor credentials and weak backup isolation",
+        controls: "VPN access with vendor approval workflow; segmented OT network",
+        vulnerabilities: "Shared vendor credentials and weak DCS backup isolation",
         proposed_mitigation: "Implement per-vendor accounts with MFA and isolate DCS backups.",
-        r1: { score: 20, band: "Very High" },
-        r2: { score: 8, band: "Medium" }
+        r1: { consequence: 5, likelihood: 4, consequences: "Prolonged loss of process control and a possible unsafe shutdown." },
+        r2: { consequence: 4, likelihood: 2 }
       },
       {
         id: IDS.evalMarineMaritime,
@@ -411,11 +487,11 @@ async function seed() {
         asset_id: IDS.bonny2025Marine,
         threat_id: IDS.bonny2025Maritime,
         scenario: "Unauthorised vessel approach during product transfer.",
-        controls: "Escort scheduling, patrols, CCTV",
-        vulnerabilities: "Coverage gaps at shift handover",
+        controls: "Escort scheduling, shore patrols, CCTV",
+        vulnerabilities: "Surveillance coverage gaps at shift handover",
         proposed_mitigation: "Upgrade radar coverage and revise escort scheduling.",
-        r1: { score: 15, band: "High" },
-        r2: { score: 6, band: "Medium" }
+        r1: { consequence: 5, likelihood: 3, consequences: "Disruption to export and a potential vessel/berth incident." },
+        r2: { consequence: 3, likelihood: 2 }
       },
       {
         id: IDS.evalMarineMaritime2026,
@@ -427,8 +503,8 @@ async function seed() {
         controls: "Escort scheduling, shore patrols, CCTV",
         vulnerabilities: "Radar coverage gaps at shift handover",
         proposed_mitigation: "Upgrade radar coverage and revise escort scheduling for shift handover.",
-        r1: { score: 15, band: "High" },
-        r2: { score: 6, band: "Medium" }
+        r1: { consequence: 5, likelihood: 3, consequences: "Disruption to product transfer and a potential marine incident." },
+        r2: { consequence: 3, likelihood: 2 }
       },
       {
         id: IDS.pernisEvalCduSabotage,
@@ -440,8 +516,8 @@ async function seed() {
         controls: "Perimeter fence, CCTV, access control, guard patrols",
         vulnerabilities: "Single-layer perimeter on the north boundary; limited intrusion detection",
         proposed_mitigation: "Install intrusion detection and a secondary barrier on the north perimeter.",
-        r1: { score: 15, band: "High" },
-        r2: { score: 6, band: "Medium" }
+        r1: { consequence: 5, likelihood: 3, consequences: "Damage to the distillation train and a refinery-wide outage." },
+        r2: { consequence: 3, likelihood: 2 }
       },
       {
         id: IDS.pernisEvalTankTheft,
@@ -453,8 +529,8 @@ async function seed() {
         controls: "Gate access logs, seal management, CCTV",
         vulnerabilities: "Manual seal reconciliation; blind spots between bunds",
         proposed_mitigation: "Automate seal reconciliation and add thermal cameras to bund gaps.",
-        r1: { score: 12, band: "High" },
-        r2: { score: 6, band: "Medium" }
+        r1: { consequence: 4, likelihood: 3, consequences: "Product loss and a possible fire or environmental release." },
+        r2: { consequence: 3, likelihood: 2 }
       },
       {
         id: IDS.pernisEvalJettyUnrest,
@@ -466,8 +542,8 @@ async function seed() {
         controls: "Liaison with port authority, marine exclusion zone",
         vulnerabilities: "Reliance on external port security; no on-water deterrent",
         proposed_mitigation: "Formalise port-authority escalation and add marine patrol support.",
-        r1: { score: 9, band: "Medium" },
-        r2: { score: 4, band: "Low" }
+        r1: { consequence: 3, likelihood: 3, consequences: "Temporary loss of marine export and demurrage costs." },
+        r2: { consequence: 2, likelihood: 2 }
       }
     ]);
 

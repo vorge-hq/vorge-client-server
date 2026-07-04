@@ -12,6 +12,19 @@
   Placeholders only — user will flesh out with fable. Key files: docs/roadmap.md,
   docs/strategic-roadmap.md.
 
+2026-07-04 — chore(seed): match seeded entity shapes to the client adapters
+  Follow-up so §3–§7 + §9 matrix actually RENDER (not just exist). The first
+  pass used the wrong JSONB shapes: evaluations stored r1/r2 as {score,band},
+  but the client (toClientEvaluation) reads r1/r2 as {consequence,likelihood}
+  (1–5 axis values; score/band are derived) — so §5/§6 and the risk matrix were
+  blank. Corrected per docs/decisions/2026-07-04-content-entity-field-mapping.md:
+  - evaluations r1={consequence,likelihood,consequences}, r2={consequence,likelihood}
+  - assets details={description,dependencies,consequences}
+  - threats details={short,classification,history,facilityHistory,capabilityIntent,rating}
+    (demo UI keys off `rating`, not the likelihood int column).
+  §9 References have no server model (demo-only) — not seedable; contributors +
+  risk matrix (derived from the fixed evals) do populate. Re-verified in DB.
+
 2026-07-04 — chore(seed): populate Bonny 2026 + Pernis test assessments
   Enriched server/src/db/seed.js so the two test assessments carry full content
   for exercising every feature end-to-end in prod mode.

@@ -1,3 +1,51 @@
+2026-07-03 — P3 slice (a)+(b)+(c): write-API foundation + Assets reference endpoint
+  First code of P3 (the missing write core). Landed the three de-risking pieces
+  the kickoff sequences first, per docs/p3-kickoff.md.
+  (a) Migration 202607030003_assessment_sections.js — new RLS-scoped
+      assessment_sections table for Section 1/2/8 narrative text (schema gap).
+      Additive + idempotent (hasTable guard + DROP/CREATE policy, same PREDICATE
+      as 202607030002). Table-vs-JSONB decision recorded:
+      docs/decisions/2026-07-03-assessment-sections-table.md (chose the table for
+      RLS consistency + clean lock_version granularity). Endpoints are slice (e).
+  (b) Shared content write-guard: src/modules/assessments/contentWriteGuard.js
+      (runContentMutation). ONE place enforces the six-case ground rules + optimistic
+      concurrency + atomic audit, so every future content endpoint is a thin caller.
+      Guard order: out-of-scope→404, non-Author→403, non-Draft→409, stale/racing
+      lock_version→409 LOCK_VERSION_CONFLICT. lock_version bump + mutation + audit run
+      in one activeConn().transaction (savepoint); bump-first row-locks racers so a true
+      concurrent race yields exactly one 200 + one 409. appendAuditLog imported as a
+      namespace so the atomicity test can spy+reject it.
+  (c) Assets CRUD reference endpoint (POST/PATCH/DELETE /api/assessments/:id/assets)
+      — src/repositories/assetRepository.js (diff = before/after of changed fields
+      only; delete = {deleted:[snapshot,null]}), routes + Zod schemas (schemas.js;
+      lockVersion required → missing=400). action_type vocabulary: asset-created/
+      updated/deleted (lowercase-hyphen per test-specs §P3). Added the 3 routes to
+      REPO_SCOPED_ALLOWLIST in middlewareCoverage.test.js (repo-scoped pattern).
+  Tests (test-specs §P3 DoD for assets): assetsWrite.test.js (happy 201/200/200,
+  400 validation, 401, 403 role MATRIX all 5 non-Author roles, 409 state MATRIX
+  In Review/Awaiting Approval/Approved, ASSET_NOT_FOUND 404), lockVersion.test.js
+  (correct/stale/missing + TRUE Promise.all race → one 200 + one 409), writeAudit.test.js
+  (exactly one row + shape; no row on 409/403; ATOMIC rollback when audit insert
+  forced to fail), tenantIsolation.test.js EXTENDED (cross-tenant POST/PATCH/DELETE
+  → 404, Op-B rows unchanged).
+  Red-checks (ground rule 1): removed each of the 3 guards in turn — lock_version
+  guard off → stale+race fail; role guard off → all 5 role-matrix fail; state
+  guard off → all 3 state-matrix fail. Restored; all green.
+  Counts: server unit 232 pass (16 suites); integration 66 pass (7 suites);
+  services coverage gate (95%, scoped to src/services/**) unaffected — new code lives
+  in modules/repositories, covered by integration + route tests. `make test` green.
+  Next (paused for review before fanning out, per kickoff): (d) replicate to
+  threats/links/evaluations/contributors; (e) section-text endpoints; (f)
+  withdraw/recall + Lead Author reassignment + mitigation-assignment; (g) client flip.
+  Key files: server/migrations/202607030003_assessment_sections.js,
+  server/src/modules/assessments/{contentWriteGuard,schemas,routes}.js,
+  server/src/repositories/{assetRepository,assessmentRepository}.js,
+  server/tests/integration/{assetsWrite,lockVersion,writeAudit,tenantIsolation}.test.js,
+  server/tests/middlewareCoverage.test.js,
+  docs/decisions/2026-07-03-assessment-sections-table.md.
+
+================================================================
+
 2026-07-03 — Staging smoke GREEN after redeploy: P2 verified LIVE
   Post-redeploy of the audit fix (8cfc5f9), full staging smoke passed against
   vorge-api-staging.onrender.com: /health 200; POST /api/auth/login 200 (token,

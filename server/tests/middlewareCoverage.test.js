@@ -53,6 +53,13 @@ const REPO_SCOPED_ALLOWLIST = {
   "GET /api/assessments/": "listAssessmentsForUser — SQL facility/operator scope (facilityScopeFor)",
   "GET /api/assessments/:assessmentId": "getAssessmentBundleForUser — user-scoped getter → null → 404",
   "POST /api/assessments/:assessmentId/workflow": "getAssessmentForUser — user-scoped getter → null → 404",
+  // P3 content writes: URL carries only assessment/entity ids (no facilityId in
+  // the payload), so they use the repo-scoped pattern — runContentMutation loads
+  // via getAssessmentForUser → null → 404 before any write. tenantIsolation.test.js
+  // is the behavioural cross-tenant proof.
+  "POST /api/assessments/:assessmentId/assets": "runContentMutation → getAssessmentForUser → null → 404",
+  "PATCH /api/assessments/:assessmentId/assets/:assetId": "runContentMutation → getAssessmentForUser → null → 404",
+  "DELETE /api/assessments/:assessmentId/assets/:assetId": "runContentMutation → getAssessmentForUser → null → 404",
   "GET /api/mitigations/mine": "listMine — scoped to the acting Mitigation Owner's assignments",
   "POST /api/mitigations/:mitigationId/log": "getMitigationForUser — user-scoped getter → null → 404",
   // Admin config exposes only a static list of surface names (zero facility /

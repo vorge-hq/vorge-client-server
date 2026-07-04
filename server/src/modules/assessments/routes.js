@@ -13,6 +13,14 @@ const {
   listAssessmentsForUser,
   updateAssessmentState
 } = require("../../repositories/assessmentRepository");
+const {
+  createAssetForAssessment,
+  updateAssetInAssessment,
+  deleteAssetFromAssessment
+} = require("../../repositories/assetRepository");
+const { runContentMutation } = require("./contentWriteGuard");
+const { createAssetSchema, updateAssetSchema, deleteAssetSchema } = require("./schemas");
+const validateRequest = require("../../middleware/validateRequest");
 const { DomainError } = require("../../services/domainError");
 
 const router = express.Router();
@@ -127,5 +135,75 @@ router.post("/:assessmentId/workflow", async (req, res, next) => {
     next(error);
   }
 });
+
+// --- Assets (Section 3) — the P3 reference content endpoints ----------------
+// All three flow through runContentMutation, which owns the six-case guards +
+// optimistic concurrency + atomic audit. The route body only supplies the
+// entity-specific `mutate` closure and shapes the response.
+
+router.post(
+  "/:assessmentId/assets",
+  validateRequest(createAssetSchema),
+  async (req, res, next) => {
+    try {
+      const { lockVersion, ...input } = req.validated.body;
+      const { result, lockVersion: newLockVersion } = await runContentMutation({
+        req,
+        assessmentId: req.params.assessmentId,
+        expectedLockVersion: lockVersion,
+        actionType: "asset-created",
+        entityType: "asset",
+        mutate: (trx, { assessment }) => createAssetForAssessment({ assessment, input, trx })
+      });
+      res.status(201).json({ asset: result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:assessmentId/assets/:assetId",
+  validateRequest(updateAssetSchema),
+  async (req, res, next) => {
+    try {
+      const { lockVersion, ...input } = req.validated.body;
+      const { result, lockVersion: newLockVersion } = await runContentMutation({
+        req,
+        assessmentId: req.params.assessmentId,
+        expectedLockVersion: lockVersion,
+        actionType: "asset-updated",
+        entityType: "asset",
+        mutate: (trx, { assessment }) =>
+          updateAssetInAssessment({ assessment, assetId: req.params.assetId, input, trx })
+      });
+      res.json({ asset: result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:assessmentId/assets/:assetId",
+  validateRequest(deleteAssetSchema),
+  async (req, res, next) => {
+    try {
+      const { lockVersion } = req.validated.body;
+      const { result, lockVersion: newLockVersion } = await runContentMutation({
+        req,
+        assessmentId: req.params.assessmentId,
+        expectedLockVersion: lockVersion,
+        actionType: "asset-deleted",
+        entityType: "asset",
+        mutate: (trx, { assessment }) =>
+          deleteAssetFromAssessment({ assessment, assetId: req.params.assetId, trx })
+      });
+      res.json({ ...result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 module.exports = router;

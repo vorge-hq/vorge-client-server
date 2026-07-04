@@ -20,7 +20,13 @@ import {
   CONFLICT_RELOAD_MESSAGE,
   createAsset as apiCreateAsset,
   updateAsset as apiUpdateAsset,
-  deleteAsset as apiDeleteAsset
+  deleteAsset as apiDeleteAsset,
+  createThreat as apiCreateThreat,
+  updateThreat as apiUpdateThreat,
+  deleteThreat as apiDeleteThreat,
+  putLink as apiPutLink,
+  updateEvaluation as apiUpdateEvaluation,
+  putContributors as apiPutContributors
 } from "../../api/assessmentApi";
 import {
   toClientAssessment,
@@ -29,7 +35,9 @@ import {
   toClientThreat,
   toClientEvaluation,
   toClientLinks,
-  toServerAssetPayload
+  toServerAssetPayload,
+  toServerThreatPayload,
+  toServerEvaluationPayload
 } from "../../api/adapters";
 import {
   WORKFLOW_ACTIONS,
@@ -41,6 +49,10 @@ const WorkspaceContext = createContext(null);
 
 // Narrative section number → the assessment field that holds its text.
 const SECTION_FIELD = Object.freeze({ 1: "executiveSummary", 2: "facilityInfo", 8: "conclusion" });
+
+// Server-assigned ids are UUIDs; client-created stub ids are not. Used to tell a
+// persistable (server-backed) row from a client-only stub — see persistEvaluation.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function buildInitialState() {
   const assessmentsById = {};
@@ -408,16 +420,81 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  const addThreat = useCallback(async (threat) => {
+  /* P3 (g) — add a threat. Mirrors addAsset: PROD POSTs, maps the server row
+     back, appends, syncs lockVersion; DEMO appends the fixture. Returns
+     { ok, threat } so the caller can expand the created row by its id. */
+  const addThreat = useCallback(async (threat, actingRole) => {
+    if (!isDemoEnabled()) {
+      const current = stateRef.current;
+      const assessmentId = current.activeAssessmentId;
+      const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+      try {
+        const res = await apiCreateThreat({ assessmentId, lockVersion, actingRole, ...toServerThreatPayload(threat) });
+        const created = toClientThreat(res.threat);
+        setState((cur) => ({
+          ...cur,
+          threats: [...cur.threats, created],
+          assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
+        }));
+        return { ok: true, threat: created };
+      } catch (error) {
+        if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        return { error: error?.message || "Could not add this threat." };
+      }
+    }
     return new Promise((resolve) => {
       setState((current) => {
-        queueMicrotask(() => resolve({ ok: true }));
+        queueMicrotask(() => resolve({ ok: true, threat }));
         return { ...current, threats: [...current.threats, threat] };
       });
     });
   }, []);
 
-  const removeThreat = useCallback(async (threatId) => {
+  /* P3 (g) — persist a threat's fields on blur (updateThreat above keeps local
+     state optimistic per keystroke). PROD PATCHes the current value (+ overrides
+     for the discrete rating toggle); DEMO is a no-op. */
+  const persistThreat = useCallback(async (threatId, actingRole, overrides = {}) => {
+    if (isDemoEnabled()) return { ok: true };
+    const current = stateRef.current;
+    const assessmentId = current.activeAssessmentId;
+    const existing = current.threats.find((t) => t.id === threatId);
+    if (!existing) return { ok: true };
+    const threat = { ...existing, ...overrides };
+    const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+    try {
+      const res = await apiUpdateThreat({ assessmentId, threatId, lockVersion, actingRole, ...toServerThreatPayload(threat) });
+      setState((cur) => ({ ...cur, assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion) }));
+      return { ok: true };
+    } catch (error) {
+      if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      return { error: error?.message || "Could not save this threat." };
+    }
+  }, []);
+
+  /* P3 (g) — remove a threat. PROD DELETEs (the server cascades its links); DEMO
+     also prunes any matrix ticks referencing it. Both sync/return as the others. */
+  const removeThreat = useCallback(async (threatId, actingRole) => {
+    if (!isDemoEnabled()) {
+      const current = stateRef.current;
+      const assessmentId = current.activeAssessmentId;
+      const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+      try {
+        const res = await apiDeleteThreat({ assessmentId, threatId, lockVersion, actingRole });
+        setState((cur) => ({
+          ...cur,
+          threats: cur.threats.filter((threat) => threat.id !== threatId),
+          matrix: Object.fromEntries(
+            Object.entries(cur.matrix).filter(([key]) => !key.endsWith(`|${threatId}`))
+          ),
+          links: cur.links.filter((link) => link.threatId !== threatId),
+          assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
+        }));
+        return { ok: true };
+      } catch (error) {
+        if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        return { error: error?.message || "Could not delete this threat." };
+      }
+    }
     return new Promise((resolve) => {
       setState((current) => {
         const cleanedMatrix = Object.fromEntries(
@@ -479,7 +556,42 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
+  /* P3 (g) — toggle an asset×threat link (Section 5). PROD fires PUT
+     /links/:assetId/:threatId with enabled = !wasTicked and the live lockVersion,
+     then reflects it in matrix + links and syncs the version; a lost race returns
+     { conflict }. The server owns the audit entry, and evaluation rows aren't
+     pruned client-side (the server is authoritative). DEMO keeps the local
+     behaviour below (audit entry + empty-stub-evaluation cleanup). actingRole is
+     taken from the actor the Section-5 UI already passes. */
   const toggleMatrix = useCallback(async (assetId, threatId, actor = null) => {
+    if (!isDemoEnabled()) {
+      const current = stateRef.current;
+      const assessmentId = current.activeAssessmentId;
+      const key = `${assetId}|${threatId}`;
+      const enabled = !current.matrix[key];
+      const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+      try {
+        const res = await apiPutLink({ assessmentId, assetId, threatId, enabled, lockVersion, actingRole: actor?.role });
+        setState((cur) => {
+          const nextMatrix = { ...cur.matrix };
+          if (enabled) nextMatrix[key] = true;
+          else delete nextMatrix[key];
+          const nextLinks = enabled
+            ? [...cur.links.filter((l) => !(l.assetId === assetId && l.threatId === threatId)), { assetId, threatId }]
+            : cur.links.filter((l) => !(l.assetId === assetId && l.threatId === threatId));
+          return {
+            ...cur,
+            matrix: nextMatrix,
+            links: nextLinks,
+            assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
+          };
+        });
+        return { ok: true };
+      } catch (error) {
+        if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        return { error: error?.message || "Could not update this link." };
+      }
+    }
     return new Promise((resolve) => {
       setState((current) => {
         const key = `${assetId}|${threatId}`;
@@ -571,6 +683,68 @@ export function WorkspaceProvider({ children }) {
         return { ...current, evaluations };
       });
     });
+  }, []);
+
+  /* P3 (g) — persist an evaluation's fields on blur (upsertEvaluation above keeps
+     local state optimistic per keystroke). PROD PATCHes the current value (+
+     overrides for discrete risk-block selects); DEMO is a no-op.
+
+     KNOWN SERVER GAP: evaluations have only a PATCH endpoint — there is no create
+     path (enabling a link does NOT seed an evaluation row). So a client-created
+     stub (non-UUID id, made by ticking a fresh cell) has no server row to PATCH;
+     we skip the doomed call and keep it local. Persisting NEW evaluations in prod
+     needs a server create endpoint (or auto-create on link-enable) — tracked as a
+     P3 follow-on. Editing EXISTING (seeded/bundle) evaluations works today. */
+  const persistEvaluation = useCallback(async (evaluationId, actingRole, overrides = {}) => {
+    if (isDemoEnabled()) return { ok: true };
+    if (!UUID_RE.test(evaluationId || "")) return { ok: true, skipped: true };
+    const current = stateRef.current;
+    const assessmentId = current.activeAssessmentId;
+    const existing = current.evaluations.find((e) => e.id === evaluationId);
+    if (!existing) return { ok: true };
+    const evaluation = { ...existing, ...overrides };
+    const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+    try {
+      const res = await apiUpdateEvaluation({ assessmentId, evaluationId, lockVersion, actingRole, ...toServerEvaluationPayload(evaluation) });
+      setState((cur) => ({ ...cur, assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion) }));
+      return { ok: true };
+    } catch (error) {
+      if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      return { error: error?.message || "Could not save this evaluation." };
+    }
+  }, []);
+
+  /* P3 (g) — replace the contributors list (Section 9.A). PROD PUTs the whole
+     list with the live lockVersion, then stores the server-echoed list + new
+     version onto the active assessment; a lost race returns { conflict }. DEMO is
+     a no-op (the card's local state is the truth). */
+  const saveContributors = useCallback(async (contributors, actingRole) => {
+    if (isDemoEnabled()) return { ok: true };
+    const current = stateRef.current;
+    const assessmentId = current.activeAssessmentId;
+    const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+    try {
+      const res = await apiPutContributors({ assessmentId, contributors, lockVersion, actingRole });
+      setState((cur) => {
+        const assessment = cur.assessmentsById[assessmentId];
+        if (!assessment) return cur;
+        return {
+          ...cur,
+          assessmentsById: {
+            ...cur.assessmentsById,
+            [assessmentId]: {
+              ...assessment,
+              contributors: res?.contributors ?? contributors,
+              ...(res?.lockVersion !== undefined ? { lockVersion: res.lockVersion } : {})
+            }
+          }
+        };
+      });
+      return { ok: true };
+    } catch (error) {
+      if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      return { error: error?.message || "Could not save contributors." };
+    }
   }, []);
 
   /* P3 (g) reads — hydrate ONE assessment from the live API in PROD (its
@@ -673,11 +847,14 @@ export function WorkspaceProvider({ children }) {
       acknowledgeAnomaly,
       updateThreat,
       addThreat,
+      persistThreat,
       removeThreat,
       updateMitigation,
       toggleMatrix,
       updateEvaluation,
       upsertEvaluation,
+      persistEvaluation,
+      saveContributors,
       saveSectionText,
       hydrateAssessmentBundle,
       WORKFLOW_ACTIONS
@@ -700,11 +877,14 @@ export function WorkspaceProvider({ children }) {
       acknowledgeAnomaly,
       updateThreat,
       addThreat,
+      persistThreat,
       removeThreat,
       updateMitigation,
       toggleMatrix,
       updateEvaluation,
-      upsertEvaluation
+      upsertEvaluation,
+      persistEvaluation,
+      saveContributors
     ]
   );
 

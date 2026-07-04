@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, FileSearch } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
+import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { similarity } from "../../../data/library";
 import { AssetThreatMatrix, MatrixLegend } from "../AssetThreatMatrix";
@@ -214,7 +215,8 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
   );
 }
 
-function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commentKind }) {
+function EvaluationEditor({ evaluation, asset, threat, onChange, onFieldBlur, canEdit, commentKind }) {
+  const blur = onFieldBlur || (() => {});
   const { libraryScenarios } = useWorkspace();
   const r1 = calcRisk(evaluation.consequenceR1, evaluation.likelihoodR1);
   const r2 = calcRisk(evaluation.consequenceR2, evaluation.likelihoodR2);
@@ -268,6 +270,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
               <textarea
                 value={evaluation.scenario || ""}
                 onChange={(event) => onChange({ scenario: event.target.value })}
+                onBlur={() => blur()}
                 disabled={!canEdit}
                 rows={2}
                 placeholder="Describe the threat scenario..."
@@ -287,7 +290,10 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
                       <button
                         key={entry.id}
                         type="button"
-                        onClick={() => onChange({ scenario: entry.text })}
+                        onClick={() => {
+                          onChange({ scenario: entry.text });
+                          blur({ scenario: entry.text });
+                        }}
                         disabled={!canEdit}
                         className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left hover:bg-surface-base disabled:cursor-default disabled:hover:bg-transparent"
                       >
@@ -307,6 +313,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             <textarea
               value={evaluation.consequences || ""}
               onChange={(event) => onChange({ consequences: event.target.value })}
+              onBlur={() => blur()}
               disabled={!canEdit}
               rows={2}
               className={textareaClass}
@@ -317,6 +324,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             <textarea
               value={evaluation.existingControls || ""}
               onChange={(event) => onChange({ existingControls: event.target.value })}
+              onBlur={() => blur()}
               disabled={!canEdit}
               rows={2}
               className={textareaClass}
@@ -327,6 +335,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             <textarea
               value={evaluation.vulnerabilities || ""}
               onChange={(event) => onChange({ vulnerabilities: event.target.value })}
+              onBlur={() => blur()}
               disabled={!canEdit}
               rows={2}
               className={textareaClass}
@@ -337,6 +346,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             <textarea
               value={evaluation.proposedMitigation || ""}
               onChange={(event) => onChange({ proposedMitigation: event.target.value })}
+              onBlur={() => blur()}
               disabled={!canEdit}
               rows={2}
               className={textareaClass}
@@ -353,7 +363,10 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             label="Pre-mitigation (R1)"
             consequence={evaluation.consequenceR1}
             likelihood={evaluation.likelihoodR1}
-            onChange={(c, l) => onChange({ consequenceR1: c, likelihoodR1: l })}
+            onChange={(c, l) => {
+              onChange({ consequenceR1: c, likelihoodR1: l });
+              blur({ consequenceR1: c, likelihoodR1: l });
+            }}
             rating={r1}
             canEdit={canEdit}
           />
@@ -364,7 +377,10 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, canEdit, commen
             label="Post-mitigation (R2)"
             consequence={evaluation.consequenceR2}
             likelihood={evaluation.likelihoodR2}
-            onChange={(c, l) => onChange({ consequenceR2: c, likelihoodR2: l })}
+            onChange={(c, l) => {
+              onChange({ consequenceR2: c, likelihoodR2: l });
+              blur({ consequenceR2: c, likelihoodR2: l });
+            }}
             rating={r2}
             canEdit={canEdit}
           />
@@ -401,11 +417,19 @@ export function EvaluationSection({ assessment, errors }) {
     evaluations,
     toggleMatrix,
     upsertEvaluation,
+    persistEvaluation,
     showToast
   } = useWorkspace();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeId, setActiveId] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [conflict, setConflict] = useState(null);
+
+  function surface(result) {
+    if (result?.conflict) setConflict(result.error);
+    else if (result?.error) showToast(result.error, { tone: "error" });
+    else setConflict(null);
+  }
 
   const candidates = useMemo(() => {
     const out = [];
@@ -595,6 +619,14 @@ export function EvaluationSection({ assessment, errors }) {
     upsertEvaluation({ ...active, ...patch });
   }
 
+  /* Persist the active evaluation on field blur (prod PATCH; demo no-op). Discrete
+     risk-block changes pass an override so the just-set value is saved even though
+     its setState hasn't flushed to the persist ref yet. */
+  async function handleEditorBlur(overrides) {
+    if (!active) return;
+    surface(await persistEvaluation(active.id, actor.role, overrides));
+  }
+
   const completionChip =
     totals.scoped > 0 ? (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-text-secondary">
@@ -618,6 +650,14 @@ export function EvaluationSection({ assessment, errors }) {
       actions={completionChip}
     >
       <ValidationSummary errors={errors} />
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row">
         <aside className="flex flex-col gap-3 lg:w-[260px] lg:shrink-0">
           <div className="rounded-lg border border-border-default bg-surface-raised p-3">
@@ -708,6 +748,7 @@ export function EvaluationSection({ assessment, errors }) {
               asset={assetById(active.assetId)}
               threat={threatById(active.threatId)}
               onChange={handleEditorChange}
+              onFieldBlur={handleEditorBlur}
               canEdit={canEdit}
               commentKind={commentKind}
             />

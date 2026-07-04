@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FileText, Lock, Plus, Trash2, Upload, Users } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
+import { Banner } from "../../../components/Banner";
 import { Tabs } from "../../../components/Tabs";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
+import { useWorkspace } from "../WorkspaceContext";
 import {
   CONSEQUENCE_AXES,
   CONSEQUENCE_LABELS,
@@ -82,23 +84,51 @@ function ApprovalsTable({ assessment }) {
   );
 }
 
-function ContributorsCard({ readOnly }) {
-  const [team, setTeam] = useState(SEED_TEAM);
+function ContributorsCard({ assessment, readOnly }) {
+  const { saveContributors, showToast } = useWorkspace();
+  const { session } = useAuth();
+  const actingRole = session.actingRole;
+  // Prod hydration puts the stored contributors on the assessment; fall back to
+  // the demo seed when there are none.
+  const seed = Array.isArray(assessment?.contributors) && assessment.contributors.length > 0
+    ? assessment.contributors
+    : SEED_TEAM;
+  const [team, setTeam] = useState(seed);
+  const [conflict, setConflict] = useState(null);
+  // Ref so the blur persist always sends the latest committed rows.
+  const teamRef = useRef(team);
+  teamRef.current = team;
+
+  /* Persist the whole list (PUT replaces it). Prod fires the live call w/
+     lockVersion + 409 handling; demo is a no-op. Called on add/remove and on
+     field blur. */
+  async function persist(next) {
+    const result = await saveContributors(next, actingRole);
+    if (result?.conflict) setConflict(result.error);
+    else if (result?.error) showToast(result.error, { tone: "error" });
+    else setConflict(null);
+  }
 
   function addRow() {
     const id = `tm-${team.length + 1}-${Date.now()}`;
-    setTeam([
-      ...team,
-      { id, type: "Internal", name: "", position: "", expertise: "", company: "" }
-    ]);
+    const next = [...team, { id, type: "Internal", name: "", position: "", expertise: "", company: "" }];
+    setTeam(next);
+    persist(next);
   }
 
   function update(id, field, value) {
     setTeam(team.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   }
 
+  function handleBlur() {
+    if (readOnly) return;
+    persist(teamRef.current);
+  }
+
   function remove(id) {
-    setTeam(team.filter((row) => row.id !== id));
+    const next = team.filter((row) => row.id !== id);
+    setTeam(next);
+    persist(next);
   }
 
   return (
@@ -114,6 +144,16 @@ function ContributorsCard({ readOnly }) {
           </button>
         )}
       </header>
+      {conflict ? (
+        <div className="px-3 pt-3">
+          <Banner tone="error" title="Changes not saved">
+            {conflict}{" "}
+            <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+              Reload
+            </button>
+          </Banner>
+        </div>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="min-w-full text-[12px]">
           <thead className="bg-surface-muted/60 text-[10px] uppercase tracking-wide text-text-muted">
@@ -133,6 +173,7 @@ function ContributorsCard({ readOnly }) {
                   <select
                     value={row.type}
                     onChange={(event) => update(row.id, "type", event.target.value)}
+                    onBlur={handleBlur}
                     disabled={readOnly}
                     className="field-control text-[12px]"
                   >
@@ -145,6 +186,7 @@ function ContributorsCard({ readOnly }) {
                   <input
                     value={row.name}
                     onChange={(event) => update(row.id, "name", event.target.value)}
+                    onBlur={handleBlur}
                     disabled={readOnly}
                     className="field-control text-[12px]"
                   />
@@ -153,6 +195,7 @@ function ContributorsCard({ readOnly }) {
                   <input
                     value={row.position}
                     onChange={(event) => update(row.id, "position", event.target.value)}
+                    onBlur={handleBlur}
                     disabled={readOnly}
                     className="field-control text-[12px]"
                   />
@@ -161,6 +204,7 @@ function ContributorsCard({ readOnly }) {
                   <input
                     value={row.expertise}
                     onChange={(event) => update(row.id, "expertise", event.target.value)}
+                    onBlur={handleBlur}
                     disabled={readOnly}
                     className="field-control text-[12px]"
                   />
@@ -169,6 +213,7 @@ function ContributorsCard({ readOnly }) {
                   <input
                     value={row.company}
                     onChange={(event) => update(row.id, "company", event.target.value)}
+                    onBlur={handleBlur}
                     disabled={readOnly}
                     className="field-control text-[12px]"
                   />
@@ -400,7 +445,7 @@ export function AppendicesSection({ assessment, readOnly, errors }) {
             </p>
             <ApprovalsTable assessment={assessment} />
           </div>
-          <ContributorsCard readOnly={readOnly} />
+          <ContributorsCard assessment={assessment} readOnly={readOnly} />
         </div>
       ) : null}
 

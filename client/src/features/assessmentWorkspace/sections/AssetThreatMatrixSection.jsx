@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
+import { Banner } from "../../../components/Banner";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import {
@@ -43,10 +44,23 @@ function StatusDot({ state }) {
 
 export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
-  const { assets, threats, matrix, evaluations, toggleMatrix } = useWorkspace();
+  const { assets, threats, matrix, evaluations, toggleMatrix, showToast } = useWorkspace();
   const navigate = useNavigate();
   const [view, setView] = useState("grid");
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [conflict, setConflict] = useState(null);
+
+  function surface(result) {
+    if (result?.conflict) setConflict(result.error);
+    else if (result?.error) showToast(result.error, { tone: "error" });
+    else setConflict(null);
+  }
+
+  // Toggle a matrix cell and surface a lost lock_version race (prod). In demo the
+  // result is always { ok }, so this is a no-op wrapper.
+  async function applyToggle(assetId, threatId) {
+    surface(await toggleMatrix(assetId, threatId, actor));
+  }
 
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
@@ -76,7 +90,7 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
   function handleCellClick(assetId, threatId, state) {
     if (readOnly) return;
     if (state === "unscoped") {
-      toggleMatrix(assetId, threatId, actor);
+      applyToggle(assetId, threatId);
       return;
     }
     focusInSection6(assetId, threatId);
@@ -102,7 +116,7 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
       });
       return;
     }
-    toggleMatrix(assetId, threatId, actor);
+    applyToggle(assetId, threatId);
   }
 
   function handleCellContextMenu(assetId, threatId, state) {
@@ -144,6 +158,14 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
       }
     >
       <ValidationSummary errors={errors} />
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
       {view === "grid" ? (
         <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-raised p-4">
           <AssetThreatMatrix
@@ -203,7 +225,7 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
                               if (ticked) {
                                 requestUntick(asset.id, threat.id);
                               } else {
-                                toggleMatrix(asset.id, threat.id, actor);
+                                applyToggle(asset.id, threat.id);
                               }
                             }}
                             disabled={readOnly}
@@ -236,7 +258,7 @@ export function AssetThreatMatrixSection({ assessment, readOnly, errors }) {
         open={Boolean(removeTarget)}
         label={removeTarget?.label}
         onConfirm={() => {
-          toggleMatrix(removeTarget.assetId, removeTarget.threatId, actor);
+          applyToggle(removeTarget.assetId, removeTarget.threatId);
           setRemoveTarget(null);
         }}
         onCancel={() => setRemoveTarget(null)}

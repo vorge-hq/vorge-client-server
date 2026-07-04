@@ -1,3 +1,29 @@
+2026-07-04 — P3 (g) WRITES: remaining content entities (threats/links/evals/contributors)
+  Finished the content-entity write flip — all four remaining entities, same mold
+  as Assets. P3 (g) client flip now COMPLETE.
+  - Threats (§4): toServerThreatPayload (inverse; name column + details bag) +
+    prod-aware addThreat(POST)/persistThreat(PATCH on blur)/removeThreat(DELETE,
+    server cascades links) in WorkspaceContext; ThreatAssessmentSection blur/rating
+    persist + async add/remove + conflict banner.
+  - Asset×threat links (§5): toggleMatrix is prod-aware — PUT /links with
+    enabled=!wasTicked + lockVersion; updates matrix+links, syncs version; server
+    owns audit + no client-side eval pruning. AssetThreatMatrixSection routes all
+    4 toggle call sites through applyToggle (surfaces 409).
+  - Evaluations (§6): toServerEvaluationPayload (existingControls→controls,
+    R1/R2→r1/r2 bags, consequences→r1.consequences) + persistEvaluation→PATCH on
+    blur; EvaluationSection editor persists text on blur + risk-blocks on discrete
+    change (overrides). KNOWN SERVER GAP: evaluations have PATCH only — no create
+    path (link-enable doesn't seed one). persistEvaluation guards on UUID ids so
+    client stubs don't fire doomed PATCHes; editing EXISTING evals works, creating
+    NEW ones in prod needs a server endpoint (roadmap backlog + decision-doc note).
+  - Contributors (§9.A): saveContributors→whole-list PUT /contributors + lockVersion;
+    ContributorsCard (AppendicesSection) now inits from assessment.contributors,
+    persists on add/remove/field-blur (teamRef), conflict banner.
+  - Infra: UUID_RE module const; syncLockVersion reused across all writes.
+  - Tests: 4 new section write suites (threats/matrix/evaluations[hydrated UUID
+    eval]/appendices) = +13. make test: 250 server / 176 client green (integration
+    not run — no TEST_DATABASE_URL; slices are client-only).
+
 2026-07-04 — P3 (g) WRITES: §2 Facility Info + Assets (Section 3) content writes
   Continued the client flip onto live writes (user: "go with your recommendation"
   — content-entity writes + §2 serialize approach).

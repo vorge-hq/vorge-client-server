@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
+import { Banner } from "../../../components/Banner";
 import { Chip } from "../../../components/Chip";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { getCommentPermission } from "../assessmentModel";
@@ -118,7 +119,7 @@ function CollapsedThreatRow({ threat, onClick }) {
   );
 }
 
-function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOnly }) {
+function ExpandedThreatRow({ threat, onFieldChange, onFieldBlur, onCollapse, onRemove, readOnly }) {
   return (
     <div className="border-b border-border-subtle bg-surface-muted/60 last:border-b-0">
       <button
@@ -139,6 +140,7 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
           <input
             value={threat.classification || ""}
             onChange={(e) => onFieldChange("classification", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             placeholder="e.g. Terrorism, Organised Crime, Insider Threat"
             className="field-control"
@@ -150,6 +152,7 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
           <textarea
             value={threat.history || ""}
             onChange={(e) => onFieldChange("history", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             rows={3}
             placeholder="Describe the general history of this threat type globally or nationally..."
@@ -162,6 +165,7 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
           <textarea
             value={threat.facilityHistory || ""}
             onChange={(e) => onFieldChange("facilityHistory", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             rows={3}
             placeholder="Any incidents or intelligence relating to this threat at this specific facility..."
@@ -174,6 +178,7 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
           <textarea
             value={threat.capabilityIntent || ""}
             onChange={(e) => onFieldChange("capabilityIntent", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             rows={3}
             placeholder="Assess the threat actor's capability and intent to target this facility..."
@@ -185,7 +190,12 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
           <label className="field-label">Threat Rating</label>
           <RatingToggle
             value={threat.rating}
-            onChange={(level) => onFieldChange("rating", level)}
+            onChange={(level) => {
+              onFieldChange("rating", level);
+              // Discrete change: pass the new value as an override (the setState
+              // above hasn't flushed to the persist ref yet).
+              onFieldBlur({ rating: level });
+            }}
             disabled={readOnly}
           />
         </div>
@@ -208,8 +218,10 @@ function ExpandedThreatRow({ threat, onFieldChange, onCollapse, onRemove, readOn
 
 export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
-  const { threats, updateThreat, addThreat, removeThreat } = useWorkspace();
+  const { threats, updateThreat, addThreat, persistThreat, removeThreat, showToast } = useWorkspace();
   const [expandedId, setExpandedId] = useState(null);
+  const [conflict, setConflict] = useState(null);
+  const actingRole = session.actingRole;
 
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
@@ -218,17 +230,28 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
 
   const completeCount = threats.filter(isThreatComplete).length;
 
+  function surface(result) {
+    if (result?.conflict) setConflict(result.error);
+    else if (result?.error) showToast(result.error, { tone: "error" });
+    else setConflict(null);
+  }
+
   function handleField(threat, field, value) {
     updateThreat(threat.id, { [field]: value });
   }
 
-  function handleAdd() {
-    const newThreat = buildNewThreat();
-    addThreat(newThreat);
-    setExpandedId(newThreat.id);
+  async function handlePersist(threatId, overrides) {
+    surface(await persistThreat(threatId, actingRole, overrides));
   }
 
-  function handleRemove(threat) {
+  async function handleAdd() {
+    const newThreat = buildNewThreat();
+    const result = await addThreat(newThreat, actingRole);
+    if (result?.threat) setExpandedId(result.threat.id);
+    surface(result);
+  }
+
+  async function handleRemove(threat) {
     if (typeof window !== "undefined") {
       const ok = window.confirm(
         `Remove ${threat.classification}? This will also clear any Section 5 ticks linking assets to this threat.`
@@ -238,7 +261,7 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
     if (expandedId === threat.id) {
       setExpandedId(null);
     }
-    removeThreat(threat.id);
+    surface(await removeThreat(threat.id, actingRole));
   }
 
   return (
@@ -273,6 +296,14 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
       }
     >
       <ValidationSummary errors={errors} />
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
 
       {/* Progress summary */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -308,6 +339,7 @@ export function ThreatAssessmentSection({ assessment, readOnly, errors }) {
                 threat={threat}
                 readOnly={readOnly}
                 onFieldChange={(field, value) => handleField(threat, field, value)}
+                onFieldBlur={(overrides) => handlePersist(threat.id, overrides)}
                 onCollapse={() => setExpandedId(null)}
                 onRemove={handleRemove}
               />

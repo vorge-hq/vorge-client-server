@@ -13,7 +13,9 @@
 //   4. Gateway call        — model string from config; transient failure →
 //                            EXACTLY ONE backoff retry with the SAME model
 //                            (never a fallback model/provider); second failure →
-//                            503 "temporarily unavailable".
+//                            503 "temporarily unavailable". PERMANENT failures
+//                            (4xx/schema-validation, tagged by the gateway
+//                            seam) are NOT retried → 502 AI_CALL_FAILED (F2).
 //   5. Audit write, ALWAYS — one ai_call_log row on success AND every failure
 //                            class, with the full §9.7 field set. provider/model
 //                            reflect what the gateway REPORTED, else the
@@ -94,24 +96,35 @@ async function runAiCall(params) {
   const monthKey = budget.monthKey(now);
   const model = config.modelFor(feature, kind);
 
+  // Every AI call MUST have a budget scope — a scopeless call would silently
+  // accrue against nothing. Programming error, not a user error (F2 2026-07-04).
+  if (!scopeId) {
+    throw new DomainError("An AI call requires a facility or operator scope", 500, "AI_SCOPE_MISSING", { feature });
+  }
+
   // Fields common to every terminal audit row. created_at is stamped from the
   // SAME `now` used to derive monthKey, so accrual (the month SUM) and the
   // ceiling/latch logic share one clock — no DB-vs-JS month-boundary straddle.
   const baseRow = { feature, facilityId, operatorId, userId, actingRole, model, traceId, createdAt: now };
 
   // ── 1. Entitlement (add-on features only) ─────────────────────────────────
-  // Gated per-facility. anomaly_detection is always facility-scoped, so it is
-  // gated here. consistency_flagging runs at OPERATOR scope (no single
-  // facilityId) — its entitlement is enforced upstream by the O7 job, which
-  // clusters only ENTITLED facilities, so the per-facility check is skipped when
-  // there is no facilityId. See Open questions (F2) in the P4 execution plan.
-  if (ENTITLEMENT_GATED.has(feature) && facilityId) {
-    const enabled = await entitlementsRepository.isFeatureEnabled({ facilityId, featureKey: feature });
-    if (!enabled) {
-      // No gateway call, no cost, no audit row — refuse before anything runs.
-      throw new DomainError("This AI feature is not enabled for this facility.", 403, "FEATURE_NOT_ENABLED", {
-        feature
-      });
+  // Per-facility gate (facility_entitlements has no operator scope by design).
+  // F2 resolution 2026-07-04: consistency_flagging is the ONLY gated feature
+  // allowed to run operator-wide (no single facilityId) — its entitlement is
+  // enforced upstream by the O7 job, which clusters ENTITLED facilities only.
+  // Any other gated feature arriving without a facility scope is a programming
+  // error and throws — never a silent ungate.
+  if (ENTITLEMENT_GATED.has(feature)) {
+    if (facilityId) {
+      const enabled = await entitlementsRepository.isFeatureEnabled({ facilityId, featureKey: feature });
+      if (!enabled) {
+        // No gateway call, no cost, no audit row — refuse before anything runs.
+        throw new DomainError("This AI feature is not enabled for this facility.", 403, "FEATURE_NOT_ENABLED", {
+          feature
+        });
+      }
+    } else if (feature !== "consistency_flagging") {
+      throw new DomainError("This AI feature requires a facility scope", 500, "AI_SCOPE_MISSING", { feature });
     }
   }
 
@@ -169,7 +182,22 @@ async function runAiCall(params) {
   let result;
   try {
     result = await gateway.callModel({ kind, model, prompt, schema, value });
-  } catch (_firstErr) {
+  } catch (firstErr) {
+    // F2 resolution 2026-07-04 (retry taxonomy): a PERMANENT failure (tagged
+    // aiPermanent by the gateway seam — 4xx, schema validation) is never
+    // retried; retrying cannot help and would double spend and latency.
+    // Untagged/unknown errors default to transient (one retry, safe posture).
+    if (firstErr && firstErr.aiPermanent) {
+      await aiRepository.logCall({
+        ...baseRow,
+        provider: providerFromModel(model),
+        outcome: "error",
+        latencyMs: Date.now() - startedAt,
+        errorDetail: safeError(firstErr),
+        metadata: { providerUnverified: true, permanent: true }
+      });
+      throw new DomainError("The AI request could not be completed.", 502, "AI_CALL_FAILED");
+    }
     try {
       await sleep(RETRY_BACKOFF_MS);
       result = await gateway.callModel({ kind, model, prompt, schema, value });

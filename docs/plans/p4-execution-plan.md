@@ -259,6 +259,14 @@ completeness, no-fallback, RLS on new tables).
   seam.
 - Tests: §P4 spec (synthetic portfolio with known 2σ outlier → flagged; non-outlier → not;
   operator boundary respected — two operators seeded, no cross-flagging).
+- **F2 bindings (2026-07-04):** (a) the job selects ONLY entitled facilities into
+  clusters — this is where `consistency_flagging`'s entitlement is enforced (there is
+  no per-facility check at an operator-scoped `runAiCall`; §P4 spec has the case);
+  (b) the job's DB connection must be able to read/write operator-scoped
+  `ai_call_log`/`ai_budgets` rows, which facility RLS denies to the request-path app
+  role BY DESIGN — base pool today (owner), an explicitly documented elevated
+  connection (own env var) once P2's non-owner switch lands. Document the choice in
+  the O7 session log.
 
 ### O8 — P4.5 part 1: PLATFORM_OWNER + provisioning API  → GATE F3
 
@@ -334,36 +342,37 @@ normal roles; no operator-facing surface lists the owner.
 
 ## Open questions (build sessions append here; resolved in Fable sessions)
 
-- **[O2 → F2] Entitlement gate for `consistency_flagging` at operator scope.** The
-  runAiCall step-1 entitlement set lists `consistency_flagging`, but that feature
-  runs at operator scope (`operatorId`, no single `facilityId`) — there is no one
-  facility to check `facility_entitlements` against. O2 implemented the defensive
-  reading: the per-facility entitlement check in `runAiCall` fires only when a
-  `facilityId` is present (so `anomaly_detection` is gated at the call; base
-  features skip it), and `consistency_flagging`'s entitlement is enforced upstream
-  by the O7 nightly job selecting only entitled facilities. **F2: confirm this is
-  the intended boundary, or specify how consistency should gate at the call site.**
-- **[O2 → F2] Operator-scope RLS + the app's connection model for operator/platform
-  rows (HIGH — surfaced by O2 self-review).** The `ai_call_log`/`ai_budgets` RLS
-  predicates deny operator-scoped rows (`facility_id NULL` / `scope='operator'`) to
-  the **non-owner** app role — by design, since operator/platform rows are meant to
-  be reached "via explicit owner-role queries" (migration comments). But O2 has no
-  owner/elevated connection seam: `aiRepository` (`logCall`/`getBudget`/
-  `getMonthToDateCost`/`markSoftAlerted`) all use `activeConn()`. **Today the app pool
-  is still the OWNER (RLS inert), so this works;** once P2's non-owner switch lands,
-  the O7 consistency job's operator writes/reads would be RLS-denied. This is not
-  wired in O2 (no O7 job yet) — but O7/O8 must establish the owner/explicit-query
-  connection (O8 already plans a `platformRepository.js` on the base connection).
-  **F2: ratify that operator/platform DB access uses a reviewed owner-role seam (not
-  `activeConn()`), and that O7 builds it — or adjust the RLS model.** Related: the
-  facility read/alert helpers rely on an ambient request-scope GUC (only `logCall`
-  self-sets defensively); F2 to confirm the facility helpers are only ever called
-  inside a request scope (true for O3–O7 endpoints).
-- **[O2 → F2] Retry taxonomy + error-code fidelity.** `runAiCall` retries on ANY
-  gateway error and reports the second failure as `503 AI_TEMPORARILY_UNAVAILABLE`.
-  A permanent error (gateway 400/401, `generateObject` schema-validation failure) is
-  thus retried pointlessly and mislabeled as transient. The spec says "transient →
-  one retry" but doesn't define the transient/permanent split. O2 did not improvise a
-  taxonomy (would require the gateway to tag errors from `@ai-sdk` error classes).
-  **F2: define which gateway errors are retryable vs surfaced immediately, and the
-  error code/shape for a permanent failure.**
+All three O2 questions **RESOLVED at gate F2 (Fable session, 2026-07-04)**. The
+resolutions below are binding; the code for 1 and 3 landed in the F2 gate commit.
+
+1. **Entitlement gate for `consistency_flagging` at operator scope — RESOLVED.**
+   The entitlement is a per-facility record by design (`facility_entitlements` has
+   no operator scope), so there is nothing to check at an operator-scoped call
+   site. Binding: (a) the O7 job enforces the entitlement by selecting ONLY
+   entitled facilities into clusters — §P4 test spec extended with that case;
+   (b) the silent skip is replaced with an explicit rule in `runAiCall`:
+   `consistency_flagging` is the ONLY gated feature allowed to run without a
+   `facilityId`; any other gated feature without one throws
+   `500 AI_SCOPE_MISSING` (plus a global guard: every call must carry a facility
+   OR operator scope — a scopeless call would accrue against nothing).
+2. **Operator-scope RLS + connection seam — RESOLVED (design ratified as built).**
+   The RLS predicates are CORRECT: the request-path app role must never see
+   operator-scoped rows. Operator rows are reached only by out-of-request
+   surfaces: the O7 job and the O8 platform repository. Binding on O7 (added to
+   its block above): the consistency job runs as a standalone process whose DB
+   connection can read/write operator-scoped `ai_call_log`/`ai_budgets` rows —
+   the base pool today (owner; RLS-exempt), an explicitly documented elevated
+   connection once P2's non-owner switch lands. `aiRepository`'s operator-scope
+   paths are called ONLY from that job/platform context. Facility-path helpers
+   (`getBudget`/`getMonthToDateCost`/`markSoftAlerted`) are only ever called
+   inside request scopes in O3–O6 — ratified; any future batch caller of a
+   facility feature must open a facility scope first.
+3. **Retry taxonomy — RESOLVED.** Classification lives at the gateway seam
+   (`gateway.js isPermanentError` — the only file allowed to know SDK error
+   shapes; duck-typed on `statusCode`/`name`, no top-level SDK import).
+   PERMANENT = statusCode ∈ {400, 401, 403, 404, 413, 422} or schema-validation/
+   invalid-prompt error names → NO retry, `502 AI_CALL_FAILED` ("The AI request
+   could not be completed."), audit outcome `error` + `metadata.permanent=true`.
+   TRANSIENT = everything else (5xx, 429, timeout, network, unknown) → exactly
+   one backoff retry with the same model, then `503 AI_TEMPORARILY_UNAVAILABLE`
+   (unchanged). Unknown defaults to transient: one retry is the safe posture.

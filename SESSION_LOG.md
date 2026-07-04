@@ -1,3 +1,31 @@
+2026-07-04 — review(F2): Fable gate on P4 O2 — PASSED; 3 open questions resolved
+  Reviewed ONLY the O2 diff (c5ca72d) against the F2 checklist. All items verified:
+  ceiling boundary math (79/80/100 + once-per-month latch + rollover, pinned in
+  tests); month key bound UTC end-to-end (timestamptz + single-clock created_at);
+  every failure class writes ai_call_log (rate_limited + ceiling included);
+  promptContext throw coverage; retry exactly-one/same-model/no-fallback;
+  RLS + CHECKs live-verified on all 3 tables; aiImportBoundary non-vacuous
+  (breadth + positive-control assertions); accrual query correct per scope;
+  secrets not logged (safeError message-only). Ratified: entitlement denial
+  writes NO ai_call_log row (outcome vocabulary excludes it; 403 before spend);
+  logCall's GUC self-set narrowing = accepted appendAuditLog precedent.
+  - Resolutions (binding, recorded in the playbook Open questions + O7 block):
+    (1) consistency_flagging entitlement enforced by O7 job's entitled-facility
+    selection; explicit runAiCall rule — only consistency_flagging may run
+    operator-scoped, any other gated feature without facilityId throws 500
+    AI_SCOPE_MISSING, plus a global no-scope guard. (2) Operator-row RLS design
+    ratified as built; O7 job must use an elevated/base connection for operator
+    rows (bound in the O7 block). (3) Retry taxonomy: isPermanentError at the
+    gateway seam (duck-typed statusCode/name, no top-level SDK import) —
+    permanent 4xx/validation → NO retry, 502 AI_CALL_FAILED, audit
+    metadata.permanent=true; unknown defaults to transient.
+  - Code landed at the gate: gateway.js classifier + aiPermanent tagging,
+    runAiCall scope guards + permanent short-circuit; tests aiGatewayClassify
+    (new) + 4 runAiCall cases; test-specs §P4 extended (permanent/scope-guard
+    bullets + entitled-clustering case in the consistency line).
+  - O3 (semantic search) cleared to build on Opus.
+  - make test: 359 unit / 143 integration green.
+
 2026-07-04 — feat(server): P4 O2 — AI service module foundation (→ F2 gate)
   Built the whole AI module per the p4-execution-plan Architecture section; gateway
   fully mocked, no network in CI. STOP here — F2 Fable review gate before O3.

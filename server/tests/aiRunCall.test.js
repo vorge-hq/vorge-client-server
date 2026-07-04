@@ -217,6 +217,24 @@ describe("runAiCall — entitlements", () => {
     expect(isFeatureEnabled).not.toHaveBeenCalled();
     expect(getMonthToDateCost).toHaveBeenCalledWith({ scope: "operator", scopeId: "op-1", monthKey: "2026-07" });
   });
+
+  test("F2: a gated facility feature without a facilityId throws — never a silent ungate", async () => {
+    await expect(
+      draftedSummaryCall({ feature: "anomaly_detection", facilityId: undefined, operatorId: "op-1" })
+    ).rejects.toMatchObject({ status: 500, code: "AI_SCOPE_MISSING" });
+    expect(callModel).not.toHaveBeenCalled();
+    expect(logCall).not.toHaveBeenCalled();
+  });
+
+  test("F2: a call with no scope at all is refused before anything runs", async () => {
+    await expect(draftedSummaryCall({ facilityId: undefined, operatorId: undefined })).rejects.toMatchObject({
+      status: 500,
+      code: "AI_SCOPE_MISSING"
+    });
+    expect(callModel).not.toHaveBeenCalled();
+    expect(getBudget).not.toHaveBeenCalled();
+    expect(logCall).not.toHaveBeenCalled();
+  });
 });
 
 describe("runAiCall — rate limiting", () => {
@@ -256,6 +274,25 @@ describe("runAiCall — retry + no fallback", () => {
     const modelsTried = callModel.mock.calls.map((c) => c[0].model);
     expect(new Set(modelsTried)).toEqual(new Set(["meta/llama-3.3-70b"]));
     expect(logCall.mock.calls[0][0].outcome).toBe("error");
+  });
+
+  test("F2: a PERMANENT error is NOT retried — one gateway call, 502, permanent-flagged error row", async () => {
+    const permErr = new Error("Invalid request: schema mismatch");
+    permErr.aiPermanent = true; // the gateway seam tags this in production
+    callModel.mockRejectedValue(permErr);
+    await expect(draftedSummaryCall()).rejects.toMatchObject({ status: 502, code: "AI_CALL_FAILED" });
+    expect(callModel).toHaveBeenCalledTimes(1);
+    const row = logCall.mock.calls[0][0];
+    expect(row.outcome).toBe("error");
+    expect(row.metadata.permanent).toBe(true);
+  });
+
+  test("F2: an untagged/unknown error still gets the one transient retry (safe default)", async () => {
+    // The plain Errors used by the retry tests above are untagged — this pins
+    // the default explicitly: unknown → transient → exactly two attempts.
+    callModel.mockRejectedValue(new Error("who knows"));
+    await expect(draftedSummaryCall()).rejects.toMatchObject({ status: 503 });
+    expect(callModel).toHaveBeenCalledTimes(2);
   });
 
   test("a timeout failure is recorded with the timeout outcome", async () => {

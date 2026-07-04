@@ -50,7 +50,45 @@ function reported(response, providerMetadata) {
   };
 }
 
-async function callModel({ kind, model, prompt, schema, value }) {
+// F2 resolution 2026-07-04 (retry taxonomy): classify a gateway/SDK failure as
+// PERMANENT (retrying cannot help — auth, malformed request, unknown model,
+// payload too large, schema validation) vs TRANSIENT (5xx, provider 429,
+// timeout, network). Duck-typed on statusCode/name so no SDK import is needed
+// at module top (the lazy-load constraint above). Unknown errors default to
+// transient — one retry on an unknown failure is the safe posture. This lives
+// HERE because only this file is allowed to know SDK error shapes; runAiCall
+// reads only the aiPermanent tag.
+const PERMANENT_STATUS_CODES = new Set([400, 401, 403, 404, 413, 422]);
+
+function isPermanentError(err) {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+  const status = err.statusCode ?? err.status;
+  if (typeof status === "number") {
+    return PERMANENT_STATUS_CODES.has(status);
+  }
+  const name = String(err.name || "");
+  return (
+    name.includes("NoObjectGenerated") ||
+    name.includes("TypeValidation") ||
+    name.includes("InvalidPrompt") ||
+    name.includes("InvalidArgument")
+  );
+}
+
+async function callModel(args) {
+  try {
+    return await dispatch(args);
+  } catch (err) {
+    if (err && typeof err === "object") {
+      err.aiPermanent = isPermanentError(err);
+    }
+    throw err;
+  }
+}
+
+async function dispatch({ kind, model, prompt, schema, value }) {
   const { generateText, generateObject, embed, provider } = loadSdk();
 
   if (kind === "embedding") {
@@ -77,4 +115,4 @@ async function callModel({ kind, model, prompt, schema, value }) {
   return { output: text, usage: normalizeUsage(usage), ...reported(response, providerMetadata) };
 }
 
-module.exports = { callModel };
+module.exports = { callModel, isPermanentError };

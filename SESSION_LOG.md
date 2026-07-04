@@ -1,3 +1,74 @@
+2026-07-04 — feat(server): P4 O2 — AI service module foundation (→ F2 gate)
+  Built the whole AI module per the p4-execution-plan Architecture section; gateway
+  fully mocked, no network in CI. STOP here — F2 Fable review gate before O3.
+  - Migrations (RLS'd, applied to vorge_test): ai_call_log (dedicated §9.7 audit +
+    cost-accrual table, outcome CHECK, facility/operator indexes), ai_budgets (scope
+    CHECK, computed suspension, soft_alerted_for_month latch), facility_entitlements
+    (feature_key CHECK anomaly_detection|consistency_flagging|offline_mode, owner-only
+    writes v1 — write surface O9; staging seed snippet in the migration).
+  - server/src/ai/: index.js runAiCall (5 ordered steps — entitlement → ceiling →
+    rate limit → gateway+exactly-one-retry → audit-always); gateway.js (ONLY SDK
+    importer, lazy-loads `ai`/@ai-sdk/gateway so the ESM package never breaks the CJS
+    unit suite); config.js (env-overridable model + price map); promptContext.js
+    (throws CROSS_FACILITY_PROMPT / CROSS_OPERATOR_PROMPT); rateLimiter.js (in-memory,
+    Redis-swap caveat). Pure services/aiBudgetService.js (monthKey UTC, computeCost,
+    evaluateCeiling 79/80/100 — 100% coverage). repositories aiRepository (logCall +
+    month-to-date SUM + budget/soft-alert) + entitlementsRepository (read-only for now).
+    middleware/rejectMitigationOwner (shared 403 guard for AI endpoints as they land).
+  - provider/model recorded = what the gateway REPORTS, else requested string +
+    metadata.providerUnverified (decision-record consequence #2). No silent model
+    fallback — retry reuses the SAME model, asserted.
+  - Tests (all mocked-gateway / no-DB unit): aiRunCall, aiBudgetService, aiPromptContext,
+    aiRejectMitigationOwner, aiRepository (fake-conn full §9.7 column assertion),
+    aiImportBoundary (fs-walk, non-vacuous). Config: env.js AI_* + boot guard; .env.example.
+  - Self-review (2 parallel finder agents + verify) → 5 fixes folded in before commit:
+    cost keys off the requested-model price when the gateway reports a variant id
+    (was silently using the $1/$1 default); soft-alert emission is best-effort
+    (a bookkeeping hiccup no longer fails the AI call); embedding path now passes
+    providerMetadata through (was always providerUnverified); exhausted-budget error
+    is scope-neutral (not "this facility") for operator scope; created_at threaded
+    from the same `now` as monthKey (single-clock accrual). Migrations: onDelete
+    RESTRICT (was SET NULL — mirrors audit_log_entries), CHECK exactly-one-scope on
+    ai_call_log, CHECK monthly_usd>0 on ai_budgets.
+  - Open questions logged for F2: (1) consistency_flagging entitlement at operator
+    scope (no facilityId); (2) HIGH — operator/platform-row RLS + the owner/elevated
+    connection seam O7/O8 must establish (inert today: app pool is still owner);
+    (3) retry taxonomy (transient vs permanent errors). See p4-execution-plan Open questions.
+  - Key files: server/migrations/202607050001-3, server/src/ai/*, server/src/services/
+    aiBudgetService.js, server/src/repositories/ai*.js, server/src/middleware/
+    rejectMitigationOwner.js, server/tests/ai*.test.js.
+  - make test: 336 unit / 143 integration green (was 272/143 at O1 close; +64 unit).
+    Client untouched (O2 is server-only). RLS + cross-tenant suites pass unchanged.
+
+2026-07-04 — docs(P6): Fable spec session — Offline / Field mode architecture + execution playbook
+  Design-only session (same Fable-specs/Opus-builds split as P4). Resolved the standing
+  businesslogic §8 vs roadmap "defer until customers ask" conflict: field mode ships as
+  P6, a paid per-facility add-on (offline_mode entitlement), build after P4.5.
+  - Decisions (user-approved): WHOLE-ASSESSMENT exclusive checkout supersedes §8's
+    per-section model (sections are workflow stages, not specialist territories —
+    future granularity is domain-scoped, customer-driven); offline auth v1 = PIN-only
+    (PBKDF2/AES-GCM cache encryption; biometric + tamper counters v2); deviceEditAt
+    rides audit metadata (server created_at never backdated — hash chain intact);
+    photos out of v1 (no attachments feature exists online); §8.4 read-only fallback
+    + PWA shell are FREE tier; sync is never entitlement-blocked (no stranded data).
+  - Architecture: checkout freezes lock_version so sync replays through the existing
+    contentWriteGuard (new step 3.5 lease check + syncCheckoutId param); tables
+    offline_checkouts + offline_sync_batches (RLS'd; partial unique active lease;
+    request_id idempotency ledger); op dispatch onto the existing repo mutators with
+    client-supplied UUIDs (no temp-id remapping); all-or-nothing batches (422 names
+    the failing op); client third persistence branch in WorkspaceContext + IndexedDB
+    (idb) snapshot/queue; vite-plugin-pwa app-shell precache only.
+  - NEW docs/plans/p6-offline-execution-plan.md (binding playbook: O1–O6, Fable gates
+    F4 after O3 + F5 after O6, escalation rule, migration DDL, API sketch, op table);
+    NEW docs/test-specs.md §P6 (cross-tenant sync isolation is the critical suite;
+    true-race double checkout; all-or-nothing; idempotent retry; PIN/wipe specs);
+    NEW docs/decisions/2026-07-04-offline-mode-architecture.md (the §8 bridge).
+  - Roadmap: field-mode row NEEDS DECISION → SCHEDULED (P6) + new P6 section (O1–O6
+    checklist); production-status field-mode row updated; CLAUDE.md Current focus 0.5.
+  Key files: docs/plans/p6-offline-execution-plan.md, docs/test-specs.md,
+    docs/decisions/2026-07-04-offline-mode-architecture.md, docs/roadmap.md,
+    docs/production-status.md, CLAUDE.md. make test not run (docs only).
+
 2026-07-04 — feat(server): P4 O1 — Library management CRUD + seeding
   First Opus build session of the P4 playbook (docs/plans/p4-execution-plan.md, O1).
   No AI in this block — prereq so semantic search (O3) has content to search.

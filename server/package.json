@@ -13,6 +13,8 @@
     "seed": "node src/db/seed.js"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^4.0.12",
+    "ai": "^7.0.15",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

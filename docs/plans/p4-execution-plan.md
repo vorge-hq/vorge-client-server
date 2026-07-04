@@ -334,4 +334,36 @@ normal roles; no operator-facing surface lists the owner.
 
 ## Open questions (build sessions append here; resolved in Fable sessions)
 
-_(none yet)_
+- **[O2 → F2] Entitlement gate for `consistency_flagging` at operator scope.** The
+  runAiCall step-1 entitlement set lists `consistency_flagging`, but that feature
+  runs at operator scope (`operatorId`, no single `facilityId`) — there is no one
+  facility to check `facility_entitlements` against. O2 implemented the defensive
+  reading: the per-facility entitlement check in `runAiCall` fires only when a
+  `facilityId` is present (so `anomaly_detection` is gated at the call; base
+  features skip it), and `consistency_flagging`'s entitlement is enforced upstream
+  by the O7 nightly job selecting only entitled facilities. **F2: confirm this is
+  the intended boundary, or specify how consistency should gate at the call site.**
+- **[O2 → F2] Operator-scope RLS + the app's connection model for operator/platform
+  rows (HIGH — surfaced by O2 self-review).** The `ai_call_log`/`ai_budgets` RLS
+  predicates deny operator-scoped rows (`facility_id NULL` / `scope='operator'`) to
+  the **non-owner** app role — by design, since operator/platform rows are meant to
+  be reached "via explicit owner-role queries" (migration comments). But O2 has no
+  owner/elevated connection seam: `aiRepository` (`logCall`/`getBudget`/
+  `getMonthToDateCost`/`markSoftAlerted`) all use `activeConn()`. **Today the app pool
+  is still the OWNER (RLS inert), so this works;** once P2's non-owner switch lands,
+  the O7 consistency job's operator writes/reads would be RLS-denied. This is not
+  wired in O2 (no O7 job yet) — but O7/O8 must establish the owner/explicit-query
+  connection (O8 already plans a `platformRepository.js` on the base connection).
+  **F2: ratify that operator/platform DB access uses a reviewed owner-role seam (not
+  `activeConn()`), and that O7 builds it — or adjust the RLS model.** Related: the
+  facility read/alert helpers rely on an ambient request-scope GUC (only `logCall`
+  self-sets defensively); F2 to confirm the facility helpers are only ever called
+  inside a request scope (true for O3–O7 endpoints).
+- **[O2 → F2] Retry taxonomy + error-code fidelity.** `runAiCall` retries on ANY
+  gateway error and reports the second failure as `503 AI_TEMPORARILY_UNAVAILABLE`.
+  A permanent error (gateway 400/401, `generateObject` schema-validation failure) is
+  thus retried pointlessly and mislabeled as transient. The spec says "transient →
+  one retry" but doesn't define the transient/permanent split. O2 did not improvise a
+  taxonomy (would require the gateway to tag errors from `@ai-sdk` error classes).
+  **F2: define which gateway errors are retryable vs surfaced immediately, and the
+  error code/shape for a permanent failure.**

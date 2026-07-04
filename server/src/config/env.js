@@ -51,7 +51,22 @@ const env = {
   // Same rebrand fallback as refreshCookieName above.
   legacyMfaTrustCookieName: "vantage_mfa_trust",
   mfaTrustCookiePath: "/api/auth",
-  mfaTrustCookieMaxAgeMs: 30 * 24 * 60 * 60 * 1000
+  mfaTrustCookieMaxAgeMs: 30 * 24 * 60 * 60 * 1000,
+
+  // ── AI service module (P4) ────────────────────────────────────────────────
+  // Master switch: features return 404 cleanly when off (default false so a
+  // deploy without a gateway key never attempts a call). The gateway is the
+  // single egress — see docs/decisions/2026-07-03-ai-gateway-ai-sdk.md.
+  aiEnabled: process.env.AI_ENABLED === "true",
+  aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY,
+  // Per-feature model choice is a config string (gateway "provider/model" id),
+  // env-overridable with NO code change — preserves §9's "no feature-code change
+  // to switch models" property. Consumed by src/ai/config.js.
+  aiModelDraftedSummary: process.env.AI_MODEL_DRAFTED_SUMMARY,
+  aiModelAnomaly: process.env.AI_MODEL_ANOMALY,
+  aiModelTagging: process.env.AI_MODEL_TAGGING,
+  aiModelConsistency: process.env.AI_MODEL_CONSISTENCY,
+  aiModelEmbeddings: process.env.AI_MODEL_EMBEDDINGS
 };
 
 // ── Boot guards ─────────────────────────────────────────────────────────────
@@ -104,6 +119,11 @@ if (env.nodeEnv === "production") {
   }
   if (process.env.__MFA_TEST_MODE__ === "1") {
     throw new Error("__MFA_TEST_MODE__ MUST NOT be set in production");
+  }
+  // The gateway is the only AI egress; enabling AI in production without a key
+  // would fail every call at request time — refuse to boot instead.
+  if (env.aiEnabled && !env.aiGatewayApiKey) {
+    throw new Error("AI_GATEWAY_API_KEY is required when AI_ENABLED=true in production");
   }
 }
 

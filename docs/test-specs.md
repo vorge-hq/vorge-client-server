@@ -146,6 +146,53 @@ Decisions bound 2026-07-04: support access = **link-only** (audited self-assignm
 - Redis swap: existing rate-limit + MFA-replay tests must pass UNCHANGED against the Redis-backed implementation (that's the point of the abstraction); plus TTL expiry test with fake timers.
 - Monitoring: error handler still returns safe shape + traceId with the tracker wired in (no PII in captured events — assert scrubbing on a synthetic event containing an email).
 
+## P6 — Offline / Field mode
+
+Decisions bound 2026-07-04 (`docs/decisions/2026-07-04-offline-mode-architecture.md`): **whole-assessment checkout** (exclusive lease; supersedes businesslogic §8 per-section), PIN-only offline auth, deviceEditAt in audit `metadata` (server `created_at` never backdated). Plan: `docs/plans/p6-offline-execution-plan.md` (O1–O6, gates F4/F5).
+
+**Free-tier fallback (RTL, O1):**
+- Connectivity loss with no active checkout → workspace fields disabled + the read-only banner; typing impossible; NO ops queued and NO fetch fired while offline (fetch spy).
+- Reconnect → fields re-enable; demo mode behavior unchanged (spy: zero new calls).
+
+**Checkout lifecycle (`offlineCheckout.test.js`, integration, O2):**
+- All six ground-rule cases per new route, plus: `POST /checkout` with `offline_mode` disabled (no entitlement row) → 403 `FEATURE_NOT_ENABLED` and NO checkout row created; enabled → 201 with `checkoutSecret` + `deviceToken` + full bundle; facility B unaffected.
+- Non-Author → 403; non-Draft → 409 `INVALID_ASSESSMENT_STATE`; second checkout → 409 `ALREADY_CHECKED_OUT` naming the holder.
+- True race: two concurrent `POST /checkout` (Promise.all) → exactly one 201 and one 409 (row lock + partial unique index — do not fake sequentially).
+- Owner `DELETE /checkout` → status `released` + `offline-checkout-released` audit row; Admin force-release → `force_released` + audit; non-Admin force-release → 403.
+
+**Guard block (`checkoutGuard.test.js`, integration, O2):**
+- While a checkout is active: every content write endpoint, `POST /workflow`, and `PUT /lead-author` → 409 `ASSESSMENT_CHECKED_OUT` **including for the checkout owner's own online session**; target rows unchanged. Red-check: removing guard step 3.5 makes this fail.
+- After sync/release/force-release, the same writes succeed again with the post-replay lockVersion.
+- `GET /api/assessments` and `GET /:id` expose `checkout {userId, expiresAt}` while active, `null` after.
+
+**Sync replay (`offlineSync.test.js`, integration, O3):**
+- Happy path: a batch covering EVERY op type (asset/threat create-update-delete with client UUIDs, link-set with `evaluationId` passthrough, evaluation-update against the client-created id, section-set) → 200, entities present with the client-supplied ids, lockVersion = base + opCount, one audit row per op with `metadata {offline: true, checkoutId, opId, deviceEditAt}` and server `created_at` (hash chain verifies across the batch).
+- All-or-nothing: batch whose 5th op fails validation → 422 `SYNC_OP_FAILED` naming the opId; ops 1–4 ABSENT from the DB; no batch row; lockVersion unchanged.
+- Wrong user → 403 `CHECKOUT_NOT_YOURS`; wrong secret → the SAME code (no factor leak); revoked checkout → 409 `CHECKOUT_REVOKED`; already-synced → 409 `CHECKOUT_ALREADY_CLOSED`.
+- Entitlement disabled AFTER checkout → sync still succeeds (never strand field data); new checkout still 403.
+- Late sync (past `expires_at`, still `active`) → succeeds.
+
+**Sync isolation (integration — the critical suite, O3):**
+- Tenant A syncing with a forged/real Tenant-B `checkoutId` → 404 `CHECKOUT_NOT_FOUND` (not 403), zero B rows touched (assert unchanged in DB).
+- Tenant A `POST /checkout` on a B assessment → 404 `ASSESSMENT_NOT_FOUND`; force-release cross-tenant → 404.
+- Existing cross-tenant matrix and RLS suites pass UNCHANGED with the offline routes mounted.
+
+**Idempotency & ordering (integration, O3):**
+- Replay the same `requestId` → 200 with the byte-identical stored response; op count in DB unchanged (no double-apply).
+- `batchSeq` gap or repeat → 409 `SYNC_BATCH_OUT_OF_ORDER`; nothing applied.
+
+**Client offline branch (RTL fetch-spy, O4):**
+- With an active local checkout: every WorkspaceContext write resolves `{ok:true}`, fires ZERO fetches, and appends the correctly-shaped op (type/payload/opId/deviceEditAt) to the queue store (fake IDB).
+- Workspace hydrates from the IDB snapshot + queued ops, not the network; demo mode untouched (spy).
+
+**Sync UX (RTL, O5):**
+- Reconnect with pending ops → sync affordance; success drains the queue and shows post-sync lockVersion state; `CHECKOUT_REVOKED` renders the export-queue-to-file affordance (download fired); retry after a network drop reuses the SAME requestId.
+
+**PIN & wipe (unit + integration, O6):**
+- Crypto round-trip: PIN → PBKDF2(600k, per-checkout salt) → AES-GCM encrypt/decrypt; wrong PIN fails the pinCheck without exposing plaintext; no PIN hash stored anywhere (assert store contents).
+- 5th failed attempt → `checkouts` + `opQueue` cleared, wipe marker `{checkoutId, wipedAt}` persisted; next online session POSTs wipe-report → exactly one `offline-cache-wiped` audit row; checkout status unchanged (Admin decides).
+- Window expiry locks the offline sign-in but PRESERVES the queue (lockout ≠ data loss).
+
 ## Side-quest — dark mode
 
 Visual work: no new unit gates. Keep the existing rule — token classes only (assert no `zinc-*` in changed files via grep in the session, not a test), tests unaffected.

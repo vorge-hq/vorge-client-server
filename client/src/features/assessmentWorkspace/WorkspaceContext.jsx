@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { ASSESSMENTS, ACTIVE_ASSESSMENT_ID, HQ_AGGREGATE } from "../../data/assessments";
 import { DEFAULT_ASSETS } from "../../data/assets";
 import { DEFAULT_THREATS } from "../../data/threats";
@@ -13,8 +13,24 @@ import { LIBRARY_SCENARIOS } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
 import { evaluationHasAnyData } from "./assessmentModel";
 import { isDemoEnabled } from "../../auth/demoFlag";
-import { putSection, getAssessmentBundle, isConflict, CONFLICT_RELOAD_MESSAGE } from "../../api/assessmentApi";
-import { toClientAssessment, applySectionTexts } from "../../api/adapters";
+import {
+  putSection,
+  getAssessmentBundle,
+  isConflict,
+  CONFLICT_RELOAD_MESSAGE,
+  createAsset as apiCreateAsset,
+  updateAsset as apiUpdateAsset,
+  deleteAsset as apiDeleteAsset
+} from "../../api/assessmentApi";
+import {
+  toClientAssessment,
+  applySectionTexts,
+  toClientAsset,
+  toClientThreat,
+  toClientEvaluation,
+  toClientLinks,
+  toServerAssetPayload
+} from "../../api/adapters";
 import {
   WORKFLOW_ACTIONS,
   applyWorkflowAction,
@@ -58,6 +74,24 @@ function buildInitialState() {
 
 export function WorkspaceProvider({ children }) {
   const [state, setState] = useState(buildInitialState);
+
+  /* Always-current mirror of state, so the async prod content mutations can read
+     the freshest assets + active-assessment lockVersion at call time (the write
+     functions are memoized with [] deps and can't close over `state`). Updated on
+     every render; safe to read outside setState because content writes are
+     user-paced (blur / click), never mid-keystroke bursts. */
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  /* Merge a server-returned lockVersion into the active assessment. Every content
+     mutation bumps assessment.lock_version server-side; syncing it back keeps the
+     NEXT write's optimistic-concurrency check from failing against a stale value. */
+  const syncLockVersion = (current, assessmentId, lockVersion) => {
+    if (lockVersion === undefined || lockVersion === null || !assessmentId) return current.assessmentsById;
+    const assessment = current.assessmentsById[assessmentId];
+    if (!assessment) return current.assessmentsById;
+    return { ...current.assessmentsById, [assessmentId]: { ...assessment, lockVersion } };
+  };
 
   const showToast = useCallback((message, options = {}) => {
     /* Normalize: callers may pass a plain string OR an object
@@ -223,13 +257,60 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  const addAsset = useCallback(async (asset) => {
+  /* P3 (g) content-entity write — add an asset. PROD fires POST /assets with the
+     active assessment's lockVersion, maps the server row (real UUID) back through
+     toClientAsset, appends it, and syncs the new lockVersion; a lost race returns
+     { conflict }. DEMO appends the passed fixture object unchanged, no network.
+     Both modes return { ok, asset } so the caller can expand the created row by
+     its (server or client) id. */
+  const addAsset = useCallback(async (asset, actingRole) => {
+    if (!isDemoEnabled()) {
+      const current = stateRef.current;
+      const assessmentId = current.activeAssessmentId;
+      const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+      try {
+        const res = await apiCreateAsset({ assessmentId, lockVersion, actingRole, ...toServerAssetPayload(asset) });
+        const created = toClientAsset(res.asset);
+        setState((cur) => ({
+          ...cur,
+          assets: [...cur.assets, created],
+          assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
+        }));
+        return { ok: true, asset: created };
+      } catch (error) {
+        if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        return { error: error?.message || "Could not add this asset." };
+      }
+    }
     return new Promise((resolve) => {
       setState((current) => {
-        queueMicrotask(() => resolve({ ok: true }));
+        queueMicrotask(() => resolve({ ok: true, asset }));
         return { ...current, assets: [...current.assets, asset] };
       });
     });
+  }, []);
+
+  /* P3 (g) — persist an existing asset's fields (called on field blur; the
+     per-keystroke updateAsset above keeps local state optimistic). PROD packs the
+     asset's CURRENT value from the ref (plus any `overrides` for a discrete change
+     whose setState hasn't flushed yet — e.g. the criticality toggle) and PUTs it
+     with the live lockVersion. DEMO is a no-op (local state is already the truth). */
+  const persistAsset = useCallback(async (assetId, actingRole, overrides = {}) => {
+    if (isDemoEnabled()) return { ok: true };
+    const current = stateRef.current;
+    const assessmentId = current.activeAssessmentId;
+    const existing = current.assets.find((a) => a.id === assetId);
+    if (!existing) return { ok: true };
+    const asset = { ...existing, ...overrides };
+    const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+    try {
+      const res = await apiUpdateAsset({ assessmentId, assetId, lockVersion, actingRole, ...toServerAssetPayload(asset) });
+      setState((cur) => ({ ...cur, assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion) }));
+      return { ok: true };
+    } catch (error) {
+      if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      return { error: error?.message || "Could not save this asset." };
+    }
   }, []);
 
   /* Advisory anomaly acknowledgement (AD-1). Writes the ack onto the
@@ -281,7 +362,27 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  const removeAsset = useCallback(async (assetId) => {
+  /* P3 (g) — remove an asset. PROD fires DELETE /assets/:id with the live
+     lockVersion, drops it locally and syncs the new version; a lost race returns
+     { conflict }. DEMO filters it out locally, no network. */
+  const removeAsset = useCallback(async (assetId, actingRole) => {
+    if (!isDemoEnabled()) {
+      const current = stateRef.current;
+      const assessmentId = current.activeAssessmentId;
+      const lockVersion = current.assessmentsById[assessmentId]?.lockVersion ?? 1;
+      try {
+        const res = await apiDeleteAsset({ assessmentId, assetId, lockVersion, actingRole });
+        setState((cur) => ({
+          ...cur,
+          assets: cur.assets.filter((asset) => asset.id !== assetId),
+          assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
+        }));
+        return { ok: true };
+      } catch (error) {
+        if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        return { error: error?.message || "Could not delete this asset." };
+      }
+    }
     return new Promise((resolve) => {
       setState((current) => {
         queueMicrotask(() => resolve({ ok: true }));
@@ -473,23 +574,31 @@ export function WorkspaceProvider({ children }) {
   }, []);
 
   /* P3 (g) reads — hydrate ONE assessment from the live API in PROD (its
-     assessment-level fields + section texts for 1/8), injecting it into
-     assessmentsById so the workspace + narrative sections render real data.
-     Child entities (assets/threats/…) still come from fixtures until the
-     content-entity flip. DEMO mode is a no-op (fixtures already present).
+     assessment-level fields + section texts for 1/8, plus the child entities:
+     assets/threats/asset×threat links/evaluations), injecting them into state so
+     the workspace + all content sections render real data. The child entities
+     are workspace-global (single-active-assessment model, §17.7), so they
+     replace the top-level assets/threats/links/matrix/evaluations slices — the
+     opened assessment owns them. DEMO mode is a no-op (fixtures already present).
      Returns true when hydrated, false on 404 (so the page can redirect). */
   const hydrateAssessmentBundle = useCallback(async (assessmentId, actingRole) => {
     if (isDemoEnabled()) return true;
     try {
       const bundle = await getAssessmentBundle(assessmentId, actingRole);
       const mapped = applySectionTexts(toClientAssessment(bundle.assessment), bundle.sectionTexts || {});
+      const { links, matrix } = toClientLinks(bundle.links || []);
       setState((current) => ({
         ...current,
         activeAssessmentId: assessmentId,
         assessmentsById: {
           ...current.assessmentsById,
           [assessmentId]: { ...(current.assessmentsById[assessmentId] || {}), ...mapped }
-        }
+        },
+        assets: (bundle.assets || []).map(toClientAsset),
+        threats: (bundle.threats || []).map(toClientThreat),
+        evaluations: (bundle.evaluations || []).map(toClientEvaluation),
+        links,
+        matrix
       }));
       return true;
     } catch (error) {
@@ -559,6 +668,7 @@ export function WorkspaceProvider({ children }) {
       addComment,
       updateAsset,
       addAsset,
+      persistAsset,
       removeAsset,
       acknowledgeAnomaly,
       updateThreat,
@@ -585,6 +695,7 @@ export function WorkspaceProvider({ children }) {
       addComment,
       updateAsset,
       addAsset,
+      persistAsset,
       removeAsset,
       acknowledgeAnomaly,
       updateThreat,

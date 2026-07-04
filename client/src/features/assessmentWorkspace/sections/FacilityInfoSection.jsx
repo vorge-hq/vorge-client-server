@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { FormField, Select, TextArea, TextInput } from "../../../components/FormField";
 import { useOperatorMemory } from "../../../hooks/useOperatorMemory";
 import { getCommentPermission } from "../assessmentModel";
+import { useWorkspace } from "../WorkspaceContext";
+import { parseFacilityInfo, serializeFacilityInfo } from "../../../api/adapters";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -24,10 +27,16 @@ const REGULATORS = [
 
 export function FacilityInfoSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
+  const { saveSectionText, showToast } = useWorkspace();
   const operatorId = session?.facility?.operatorId || "op-a";
   const { suggestionsFor, recordFacility } = useOperatorMemory(operatorId);
 
-  const [data, setData] = useState({
+  /* §2 is a structured form persisted as JSON in the section-2 content_text
+     column (2026-07-04 decision). Initialise from the stored blob when present
+     (prod hydration set `facilityInfo` to the JSON string), else the demo
+     defaults; parseFacilityInfo merges over these so a legacy/plain value or a
+     newly-added field degrades gracefully. */
+  const DEFAULTS = {
     name: assessment?.facilityName || "Eko Petrochemical Hub",
     region: "Lagos, Nigeria",
     location: "12.07°N, 3.87°E",
@@ -38,7 +47,11 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
     regulator: "Department of Petroleum Resources",
     general:
       "Eko Petrochemical Hub is the primary refining and export facility for Operator A in the Lagos region. The site comprises a process unit, tank farm, control room, marine loading terminal, fuel loading skid, and supporting administration buildings. Operations run 24/7 with shift handovers at 06:00 and 18:00 local time."
-  });
+  };
+  const [data, setData] = useState(() => parseFacilityInfo(assessment?.facilityInfo, DEFAULTS));
+  const [conflict, setConflict] = useState(null);
+  // Last value persisted to the server, so an unchanged blur fires no PUT.
+  const lastSavedRef = useRef(serializeFacilityInfo(parseFacilityInfo(assessment?.facilityInfo, DEFAULTS)));
 
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
@@ -49,11 +62,13 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
     setData((prev) => ({ ...prev, [field]: value }));
   }
 
-  /* On blur, persist the current values into the operator-scoped memory
-     so future assessments see them as autocomplete suggestions. We
-     record the whole facility shape on every blur (cheap; deduped by
-     facility name in the hook). */
-  function handleBlur() {
+  /* On blur we do two things: (1) record the facility shape into operator-scoped
+     memory for autocomplete (both modes, cheap, deduped by name); (2) persist the
+     whole form. Persistence goes through the shared section seam serialized as
+     JSON — in prod a live PUT /sections/2 with the lockVersion the client read
+     (a lost race renders the reload affordance); in demo, fixtures only, no
+     network. Skipped when nothing changed since the last save. */
+  async function handleBlur() {
     if (readOnly) return;
     recordFacility({
       name: data.name,
@@ -63,6 +78,25 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
       manager: data.manager,
       regulator: data.regulator
     });
+
+    const serialized = serializeFacilityInfo(data);
+    if (serialized === lastSavedRef.current) return;
+
+    const result = await saveSectionText({
+      assessmentId: assessment.id,
+      sectionNumber: 2,
+      contentText: serialized,
+      lockVersion: assessment?.lockVersion ?? 1,
+      actingRole: session.actingRole
+    });
+    if (result?.conflict) {
+      setConflict(result.error);
+    } else if (result?.error) {
+      showToast(result.error, { tone: "error" });
+    } else {
+      lastSavedRef.current = serialized;
+      setConflict(null);
+    }
   }
 
   const inputProps = (field) => ({
@@ -95,6 +129,14 @@ export function FacilityInfoSection({ assessment, readOnly, errors }) {
       }
     >
       <ValidationSummary errors={errors} />
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Facility name" htmlFor="facility-name">
           <TextInput

@@ -45,3 +45,142 @@ export function applySectionTexts(assessment, sectionTexts = {}) {
     conclusion: sectionTexts["8"] ?? assessment.conclusion ?? ""
   };
 }
+
+// --- Child entities (Sections 3/4/5/6) --------------------------------------
+// The server models a lean row + a free-form JSONB bag for the demo-rich fields
+// the columns don't cover (assets/threats: `details`; evaluations: `r1`/`r2`).
+// These adapters UNPACK that canonical mapping back into the flat client shape.
+// The write flip must pack the same way — see
+// docs/decisions/2026-07-04-content-entity-field-mapping.md.
+
+// Asset row → client asset. `asset_type` column → `type`; `details` carries the
+// narrative fields (description/dependencies/consequences) plus any client-only
+// advisory state (e.g. AD-1 `anomalyAcks`), which we spread through untouched.
+export function toClientAsset(server) {
+  if (!server) return null;
+  const { type, description, dependencies, consequences, ...restDetails } = server.details || {};
+  return {
+    ...restDetails,
+    id: server.id,
+    name: server.name,
+    type: server.assetType ?? type ?? "",
+    criticality: server.criticality ?? "",
+    description: description ?? "",
+    dependencies: dependencies ?? "",
+    consequences: consequences ?? ""
+  };
+}
+
+// Threat row → client threat. `name` is the column; everything the UI shows
+// (short label, classification, history, capability/intent, rating) lives in
+// `details`. `likelihood` (int column) is not surfaced by the demo UI, which
+// keys off the `rating` string instead.
+export function toClientThreat(server) {
+  if (!server) return null;
+  const { short, classification, history, facilityHistory, capabilityIntent, rating, ...restDetails } =
+    server.details || {};
+  return {
+    ...restDetails,
+    id: server.id,
+    name: server.name,
+    short: short ?? server.name ?? "",
+    classification: classification ?? "",
+    history: history ?? "",
+    facilityHistory: facilityHistory ?? "",
+    capabilityIntent: capabilityIntent ?? "",
+    rating: rating ?? ""
+  };
+}
+
+// Evaluation row → client evaluation. `controls` column → `existingControls`;
+// the pre/post risk pairs live in the `r1`/`r2` JSONB bags as
+// { consequence, likelihood }. The demo also carries mirror score fields
+// (consequenceScore/…); we derive them from the same numbers so the existing
+// UI renders without them present on the server row.
+export function toClientEvaluation(server) {
+  if (!server) return null;
+  const r1 = server.r1 || {};
+  const r2 = server.r2 || {};
+  const consequenceR1 = r1.consequence ?? null;
+  const likelihoodR1 = r1.likelihood ?? null;
+  const consequenceR2 = r2.consequence ?? null;
+  const likelihoodR2 = r2.likelihood ?? null;
+  return {
+    id: server.id,
+    assetId: server.assetId,
+    threatId: server.threatId,
+    scenario: server.scenario ?? "",
+    consequences: r1.consequences ?? "",
+    existingControls: server.controls ?? "",
+    vulnerabilities: server.vulnerabilities ?? "",
+    proposedMitigation: server.proposedMitigation ?? "",
+    consequenceR1,
+    likelihoodR1,
+    consequenceR2,
+    likelihoodR2,
+    consequenceScore: consequenceR1,
+    likelihoodScore: likelihoodR1,
+    postConsequenceScore: consequenceR2,
+    postLikelihoodScore: likelihoodR2
+  };
+}
+
+// Server links ([{ assetId, threatId, enabled }]) → the client's two parallel
+// representations: the flat `{ assetId, threatId }` presence list (enabled only)
+// and the `matrix` map keyed "assetId|threatId". Disabled links are omitted from
+// both, matching the demo where an absent pair means "not linked".
+export function toClientLinks(serverLinks = []) {
+  const enabled = serverLinks.filter((link) => link.enabled);
+  const links = enabled.map(({ assetId, threatId }) => ({ assetId, threatId }));
+  const matrix = {};
+  enabled.forEach(({ assetId, threatId }) => {
+    matrix[`${assetId}|${threatId}`] = true;
+  });
+  return { links, matrix };
+}
+
+// --- Write adapters (the inverse of the read adapters above) -----------------
+// PACK a flat client entity into the server's { columns…, jsonb bag } payload,
+// per docs/decisions/2026-07-04-content-entity-field-mapping.md. Used ONLY by the
+// prod write seam in WorkspaceContext; demo never calls these.
+
+// Client asset → POST/PATCH /assets body (minus lockVersion, which the seam adds).
+// `id` is dropped (server-assigned / in the URL). Everything that isn't a column
+// (description/dependencies/consequences + any client-only key like anomalyAcks)
+// goes into `details`.
+export function toServerAssetPayload(asset) {
+  const { id, name, type, criticality, description, dependencies, consequences, ...rest } = asset;
+  return {
+    name,
+    assetType: type ?? null,
+    criticality: criticality ?? null,
+    details: {
+      description: description ?? "",
+      dependencies: dependencies ?? "",
+      consequences: consequences ?? "",
+      ...rest
+    }
+  };
+}
+
+// --- §2 Facility Information (structured form) -------------------------------
+// §2 is a structured form, not a single narrative blob. Per the 2026-07-04
+// sign-off it serializes to JSON and rides the existing `content_text` column via
+// PUT /sections/2 (no new server model in v1). parse() merges the stored object
+// over the caller's defaults so a form field added later still has a default, and
+// tolerates a legacy plain-text value (returns defaults) instead of throwing.
+export function serializeFacilityInfo(data) {
+  return JSON.stringify(data);
+}
+
+export function parseFacilityInfo(text, fallback = {}) {
+  if (!text) return fallback;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? { ...fallback, ...parsed }
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}

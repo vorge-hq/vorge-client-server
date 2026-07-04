@@ -1,3 +1,35 @@
+2026-07-04 — P3.5 server: Word/PDF document export (§16)
+  Server-side of P3.5 landed (client Export button deferred as a follow-on).
+  Endpoint: GET /api/assessments/:id/export?format=docx|pdf on the assessments
+  router — a read + audited download, NOT a content mutation, so it uses the
+  repo-scoped-getter pattern (getAssessmentForUser → null → 404) and is added to
+  the middlewareCoverage allowlist. Roles: all section-readers may export
+  (Author/Reviewer/Approver/HQ Exec/Admin); Mitigation Owner → 403.
+  - services/exportService.js: buildAssessmentDocx (docx npm) + buildAssessmentPdf
+    (pdfkit — pure-JS, no headless browser; DoD PDF checks are minimal so pdfkit
+    meets them and stays fast/CI-deterministic, superseding the roadmap's
+    "print-CSS" suggestion). Both render from ONE deriveTables source so the two
+    formats never drift. Cover page, Document Approvals + Version Control
+    front-matter, Sections 1–8 tables + Appendices (SRA Team Members), watermark.
+  - repositories/exportRepository.js: loadExportBundle (frozen `versions` snapshot
+    when Approved, else live bundle) + getExportFrontMatter (approvals from lead
+    author + audit sign-off events review_completed/approved; Version Control from
+    versions). Watermark on any non-Approved state (lenient read of §16.2 covering
+    Awaiting Approval); Approved exports are clean. Every export writes an `export`
+    audit row (metadata: format/watermarked/frozenSnapshot), atomic under
+    facilityScope's txn.
+  - Decisions (user-approved recommendations): PDF engine = pdfkit; export roles =
+    section-readers except Mitigation Owner; scope = server API + tests (client
+    button follow-on).
+  Deps: +docx, +pdfkit (deps); +mammoth, +pdf-parse (devDeps, test parsing only).
+  Key files: server/src/services/exportService.js, server/src/repositories/exportRepository.js,
+    server/src/modules/assessments/routes.js, server/tests/integration/export.test.js,
+    server/tests/middlewareCoverage.test.js (allowlist), assessmentRepository.js (exports).
+  Tests: make test → 252 unit / 124 integration green (+2 unit from the allowlist
+    entry; +15 integration = export.test.js §P3.5 full DoD: golden-content docx via
+    mammoth, PDF smoke via pdf-parse, role matrix, export audit, frozen snapshot,
+    <30s guard).
+
 2026-07-04 — fix: prod workspace open crash (React #310)
   AssessmentWorkspacePage ran useMemo after early returns during prod hydration
   (loading → ready), violating Rules of Hooks and crashing on Open from /assessments.

@@ -52,6 +52,7 @@ const NON_DATA_MOUNTS = {
 const REPO_SCOPED_ALLOWLIST = {
   "GET /api/assessments/": "listAssessmentsForUser — SQL facility/operator scope (facilityScopeFor)",
   "GET /api/assessments/:assessmentId": "getAssessmentBundleForUser — user-scoped getter → null → 404",
+  "GET /api/assessments/:assessmentId/export": "getAssessmentForUser — user-scoped getter → null → 404 before render",
   "POST /api/assessments/:assessmentId/workflow": "getAssessmentForUser — user-scoped getter → null → 404",
   // P3 content writes: URL carries only assessment/entity ids (no facilityId in
   // the payload), so they use the repo-scoped pattern — runContentMutation loads

@@ -284,7 +284,9 @@ async function createVersionSnapshot({ assessmentId, trx = activeConn() }) {
 }
 
 module.exports = {
+  SECTION_NAMES,
   createVersionSnapshot,
+  getAssessmentBundleById,
   getAssessmentBundleForUser,
   getAssessmentForUser,
   listAssessmentsForUser,

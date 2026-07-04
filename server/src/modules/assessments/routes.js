@@ -3,7 +3,9 @@ const authenticate = require("../../middleware/authenticate");
 const facilityScope = require("../../middleware/facilityScope");
 const { transitionAssessment, listAllowedWorkflowActions } = require("../../services/assessmentStateMachine");
 const { ASSESSMENT_STATES, ROLES } = require("../../services/constants");
-const { getAssessmentPermissions } = require("../../services/permissionService");
+const { getAssessmentPermissions, canAccessAssessmentSections } = require("../../services/permissionService");
+const { loadExportBundle, getExportFrontMatter } = require("../../repositories/exportRepository");
+const { FORMATS } = require("../../services/exportService");
 const { activeConn } = require("../../db/requestScope");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const {
@@ -161,6 +163,73 @@ router.post("/:assessmentId/workflow", async (req, res, next) => {
     });
 
     res.json({ assessment: updatedAssessment, transition: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- Document export (§16) — GET /export?format=docx|pdf ---------------------
+// A read + audited download, NOT a content mutation, so it does not use the
+// Author-only write guard: any role that can access the assessment sections may
+// export (§16 export rules; Mitigation Owner — no section access — gets 403).
+// Approved assessments render the frozen snapshot; non-final states carry a
+// watermark (§16.2). The download is logged with the `export` audit vocabulary.
+function exportFilename(name) {
+  const slug = String(name || "assessment")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "assessment";
+  return slug.slice(0, 80);
+}
+
+router.get("/:assessmentId/export", async (req, res, next) => {
+  try {
+    const format = String(req.query.format || "docx").toLowerCase();
+    const spec = FORMATS[format];
+    if (!spec) {
+      throw new DomainError("Unsupported export format", 400, "UNSUPPORTED_EXPORT_FORMAT", {
+        supported: Object.keys(FORMATS)
+      });
+    }
+
+    const assessment = await getAssessmentForUser({
+      assessmentId: req.params.assessmentId,
+      user: req.user,
+      actingRole: req.actingRole
+    });
+    if (!assessment) {
+      throw new DomainError("Assessment not found or outside facility scope", 404, "ASSESSMENT_NOT_FOUND");
+    }
+
+    if (!canAccessAssessmentSections({ actingRole: req.actingRole })) {
+      throw new DomainError("The acting role cannot export assessments", 403, "ROLE_NOT_ALLOWED");
+    }
+
+    const { bundle, isSnapshot } = await loadExportBundle({ assessment });
+    const frontMatter = await getExportFrontMatter({ assessment });
+    const buffer = await spec.build({ bundle, frontMatter });
+
+    // Log the download BEFORE flushing bytes so a failed audit write fails the
+    // export (the row commits with the request under facilityScope's txn).
+    await appendAuditLog({
+      actionType: "export",
+      userId: req.user.id,
+      actingRole: req.actingRole,
+      facilityId: assessment.facilityId,
+      assessmentId: assessment.id,
+      entityType: "assessment",
+      entityId: assessment.id,
+      diff: {},
+      metadata: { format, watermarked: !frontMatter.isFinal, frozenSnapshot: isSnapshot },
+      traceId: req.traceId
+    });
+
+    res.setHeader("Content-Type", spec.contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${exportFilename(bundle.assessment.name)}.${spec.extension}"`
+    );
+    res.send(buffer);
   } catch (error) {
     next(error);
   }

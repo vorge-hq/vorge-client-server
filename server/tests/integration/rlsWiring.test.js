@@ -18,6 +18,7 @@ const { FACILITIES, ASSESSMENTS, USERS, truncateAll, seedFixtures } = require(".
 const { runInFacilityScope } = require("../../src/db/requestScope");
 const { resolveFacilityIds } = require("../../src/middleware/facilityScope");
 const { listAssessmentsForUser } = require("../../src/repositories/assessmentRepository");
+const { appendAuditLog } = require("../../src/repositories/auditRepository");
 const { findUserById } = require("../../src/repositories/userRepository");
 const { ROLES } = require("../../src/services/constants");
 
@@ -93,5 +94,37 @@ describe("RLS app wiring (runInFacilityScope + activeConn) as the non-owner role
         throw new Error("boom");
       }, appDb)
     ).rejects.toThrow("boom");
+  });
+
+  // Regression for the staging login 500: an audit write (audit_log_entries is
+  // RLS-protected) runs OUTSIDE any facility-scoped request during auth events,
+  // so appendAuditLog must self-scope to the entry's facility or the non-owner
+  // role is denied by the policy. Reproduces the login path: no pre-set context,
+  // passing the base (non-owner) pool as the connection.
+  test("audit write with no request context succeeds under RLS + chains the hash (login path)", async () => {
+    const event = {
+      actionType: "auth.login_succeeded",
+      userId: USERS.authorA1.id,
+      actingRole: ROLES.AUTHOR,
+      facilityId: FACILITIES.A1.id,
+      entityType: "session",
+      entityId: USERS.authorA1.id,
+      metadata: { sourceIp: "127.0.0.1" },
+      traceId: "test-trace-rls-wiring"
+    };
+
+    const first = await appendAuditLog(event, appDb);
+    expect(first.hash).toBeTruthy();
+    expect(first.previousHash).toBeNull();
+
+    // Second write chains onto the first — proving getPreviousHash read the prior
+    // row back under the self-set context (without the fix it saw nothing → the
+    // chain would silently restart with previousHash null every time).
+    const second = await appendAuditLog(event, appDb);
+    expect(second.previousHash).toBe(first.hash);
+
+    // And the rows are actually persisted + visible to the facility (owner read).
+    const rows = await db("audit_log_entries").where({ facility_id: FACILITIES.A1.id });
+    expect(rows.length).toBeGreaterThanOrEqual(2);
   });
 });

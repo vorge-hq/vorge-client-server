@@ -1,3 +1,33 @@
+2026-07-03 — P2 hotfix: staging login 500 — audit writes denied by RLS (appendAuditLog self-scopes)
+  Staging smoke caught a P0 regression from the RLS work: POST /api/auth/login
+  returned 500 under the non-owner `vorge_app` role. Root cause (confirmed by a
+  red-check reproducing the exact error `new row violates row-level security
+  policy for table "audit_log_entries"`): login audits the event via
+  appendAuditLog → INSERT into audit_log_entries, which is RLS-protected, but the
+  auth routes don't run through facilityScope, so no app.current_facility_ids
+  context was set → WITH CHECK denied the insert. Owner-run tests never saw it
+  (owner bypasses RLS). Same latent break in getPreviousHash (no context → read
+  returns nothing → hash chain would silently restart every entry).
+  Fix: appendAuditLog now runs its read-back + insert inside a transaction (a
+  SAVEPOINT when the caller already passed one, preserving atomicity with the
+  caller's work; a real txn when called standalone e.g. failed-login) whose
+  facility context is set to the entry's own facilityId. Covers all auth audit
+  writes (login/logout/admin reset) and request-scoped ones alike. All 5 callers
+  pass a non-null facilityId (auditAuthEvent early-returns when none).
+  Test: rlsWiring.test.js +1 — appendAuditLog on the non-owner pool with no
+  pre-set context succeeds AND chains the hash (2nd entry.previousHash == 1st
+  hash). Red-checked (remove set_config → RLS-deny → fail).
+  Tests: 226 server unit + 144 client + 39 integration (was 38, +1) green.
+  Diagnosis of the earlier two 500s (already resolved by user before this): (1)
+  URL-encoded password — `/` and `=` in the vorge_app password made DATABASE_URL
+  an invalid URL (pg-connection-string threw); user rotated to a hex password.
+  (2) Render env var name — app reads DATABASE_URL only (not VORGE_APP_DATABASE_URL,
+  the local .env name); user corrected the Render var. This audit-RLS fix is the
+  third and (pending redeploy + re-smoke) final blocker. NEEDS: commit → push →
+  Render redeploy → re-run smoke to confirm vorge_app + RLS serve real data.
+
+================================================================
+
 2026-07-03 — P2 CLOSED: Supabase dashboard checkpoint complete, RLS live on staging
   User completed the manual checkpoint that flips RLS from tests-only to enforced:
     - Ran migration 202607030002_rls_policies on Supabase staging.

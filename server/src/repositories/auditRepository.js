@@ -34,13 +34,27 @@ async function getPreviousHash({ facilityId, trx = activeConn() }) {
   return latest?.hash || null;
 }
 
-async function appendAuditLog(event, trx = activeConn()) {
-  const previousHash = await getPreviousHash({ facilityId: event.facilityId, trx });
-  const entry = createAuditEntry({ ...event, previousHash });
-
-  await trx("audit_log_entries").insert(toAuditRow(entry));
-
-  return entry;
+async function appendAuditLog(event, conn = activeConn()) {
+  // audit_log_entries is RLS-protected, but audit writes happen BOTH inside
+  // facility-scoped requests (workflow/mitigation) AND outside them — auth
+  // events (login/logout/admin reset) run with no request context. Under the
+  // non-owner app role that means the WITH CHECK policy denies the INSERT (→ a
+  // 500 on login) and the hash-chain read-back silently returns nothing.
+  //
+  // So run the read-back + insert in ONE transaction whose facility context is
+  // THIS entry's own facility. When the caller already passed a transaction,
+  // conn.transaction() opens a savepoint on it — the audit write stays atomic
+  // with the caller's work. When called standalone (failed-login audit), it's a
+  // real transaction so SET LOCAL actually persists across the two statements.
+  return conn.transaction(async (trx) => {
+    if (event.facilityId) {
+      await trx.raw("SELECT set_config('app.current_facility_ids', ?, true)", [event.facilityId]);
+    }
+    const previousHash = await getPreviousHash({ facilityId: event.facilityId, trx });
+    const entry = createAuditEntry({ ...event, previousHash });
+    await trx("audit_log_entries").insert(toAuditRow(entry));
+    return entry;
+  });
 }
 
 module.exports = {

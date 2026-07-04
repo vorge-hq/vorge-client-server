@@ -55,16 +55,16 @@ DoD: `docs/test-specs.md` §P2 — integration harness (real Postgres, fail-loud
 
 There are NO write endpoints today (assessments API = GET /, GET /:id, POST /:id/workflow). All demo editing is client-side fixtures; a real Author cannot save anything. Contract extension approved 2026-07-03 (`docs/decisions/2026-07-03-write-section-api.md`; api-contract.md itself edited only on explicit instruction when P3 lands).
 
-**In progress (2026-07-03):** foundation slice (a)+(b)+(c) landed & green — section-text migration (`assessment_sections`, decision recorded), the shared write-guard (`contentWriteGuard.runContentMutation`: six-case guards + optimistic concurrency + atomic audit, all tested once here), and **Assets** as the reference CRUD endpoint with the full §P3 suite (six-case, true lock_version race, state×role matrices, atomic audit, cross-tenant). Boxes below stay unticked until the pattern is replicated to every entity. Remaining: (d) threats/links/evaluations/contributors, (e) section-text endpoints, (f) withdraw/recall + reassignment + mitigation-assignment, (g) client flip. Paused for review before fanning out (per `docs/p3-kickoff.md`).
+**Server-side complete (2026-07-03):** slices (a)–(f) landed & green (250 unit / 107 integration). Foundation: section-text migration (`assessment_sections`, decision recorded) + shared write-guard (`contentWriteGuard.runContentMutation`). Endpoints: Assets/Threats CRUD, links (PUT enable/disable), evaluations (PATCH), contributors (PUT), section text (PUT /sections/:n), withdraw/recall (lockVersion on /workflow), Lead Author reassignment (PUT /lead-author), mitigation owner assignment. Each proven with the §P3 suite (six-case, true lock_version race, state×role matrices, atomic audit, cross-tenant). Also fixed a read-your-writes gap in P2's `facilityScope` (commit-before-flush — `docs/decisions/2026-07-03-facility-scope-commit-before-flush.md`). **Remaining: (g) client flip** (prod mode off fixtures onto live calls + 409-reload RTL) — the only unticked P3 work.
 
-- [ ] CRUD endpoints: assets, threats, asset-threat links, evaluations, contributors (+ section-1/8 text content — schema gap: no column holds Executive Summary/Conclusion text; needs a migration).
-- [ ] Optimistic concurrency via existing `lock_version` on every mutation (409 on stale).
-- [ ] State/role guards: writes only by Author on non-Approved (per state machine); every route through `requireFacilityAccess`.
-- [ ] Audit entry on every mutation (existing `appendAuditLog` vocabulary).
-- [ ] Flip client prod mode off fixtures onto live calls (`api/client.js` already handles auth/refresh; wire feature data fetching + saves).
-- [ ] Withdraw/recall + Lead Author reassignment endpoints (§5.5–5.6) — approved into P3 scope 2026-07-03 (same guards as other writes; resolves the AGENTS.md recall-race concern via `lock_version`).
-- [ ] Mitigation-assignment endpoints (§7 owner management) — approved into P3 scope 2026-07-03.
-- [ ] DoD: `docs/test-specs.md` §P3 — per-endpoint six-case minimum, true-race lock_version test (concurrent, not sequential), state×role guard matrices, atomic audit-write test, section-text round-trip, client 409-reload RTL test, cross-tenant matrix extended to every mutation.
+- [x] CRUD endpoints: assets, threats, asset-threat links, evaluations, contributors (+ section-1/2/8 text — `assessment_sections` migration `202607030003`). **DONE 2026-07-03.**
+- [x] Optimistic concurrency via existing `lock_version` on every mutation (409 on stale; true concurrent-race test). **DONE 2026-07-03.**
+- [x] State/role guards: writes only by Author on Draft (per state machine); by-id routes repo-scoped (getter → 404), enforced by the introspection test. **DONE 2026-07-03.**
+- [x] Audit entry on every mutation (`appendAuditLog`, atomic with the write; lowercase-hyphen vocabulary). **DONE 2026-07-03.**
+- [ ] Flip client prod mode off fixtures onto live calls (`api/client.js` already handles auth/refresh; wire feature data fetching + saves). **← (g), remaining.**
+- [x] Withdraw/recall + Lead Author reassignment endpoints (§5.5–5.6) — `lockVersion` on `/workflow` closes the recall-race concern; `PUT /lead-author` (Lead Author or Admin, non-Approved, target-must-be-Author). **DONE 2026-07-03.**
+- [x] Mitigation-assignment endpoints (§7 owner management) — `PUT /mitigations/:id/owner` through the write-guard. **DONE 2026-07-03.**
+- [ ] DoD: `docs/test-specs.md` §P3 — server portions DONE (six-case, true-race lock_version, state×role matrices, atomic audit, section-text round-trip + migration idempotency, cross-tenant matrix extended to every mutation). **Remaining: client 409-reload RTL test** (part of (g)).
 
 ## P3.5 — Word/PDF export (pulled forward from P5 — approved 2026-07-03)
 

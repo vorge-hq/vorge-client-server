@@ -36,7 +36,7 @@ SESSION_LOG format: date — title — what shipped — key files — test count
 Never add `Co-Authored-By` trailers or any AI attribution to commit messages or PR bodies. Commits must show only the human author — no Claude, Cursor, or Anthropic co-author lines.
 
 ## Current focus
-1. **P3 — Write/section API** ⬅ **ACTIVE** (started 2026-07-03; the missing core — no write endpoints exist today). Read first: `docs/p3-kickoff.md` (build sequence + first slice), then the binding spec `docs/test-specs.md §P3` and the approved contract `docs/decisions/2026-07-03-write-section-api.md`. Do NOT edit `docs/api-contract.md` without explicit instruction.
+1. **P3 — Write/section API** ⬅ **ACTIVE — server-side DONE 2026-07-03; only (g) client flip remains.** All write endpoints landed & green (content CRUD + section text + withdraw/recall + Lead Author reassignment + mitigation-owner assignment; 250 unit / 107 integration). **Next: (g)** — flip client prod mode (`VITE_ENABLE_DEMO=false`) off `client/src/data` fixtures onto live API calls with `lockVersion`; 409 renders the "modified by another user — reload" copy; demo mode keeps fixtures (assert with a fetch spy). Binding: `docs/test-specs.md §P3` "Client flip". Build context in `docs/p3-kickoff.md` (g). Do NOT edit `docs/api-contract.md` without explicit instruction (edit it only when P3 fully lands).
 2. **Done:** P2 — Tenant isolation ✅ complete 2026-07-03 (repo/route guards, cross-tenant matrix, RLS policies + app wiring + non-owner `vorge_app` role; verified live on staging). P0 infra ✅ complete 2026-07-03.
 Side-quest: dark mode (~52%), any time.
 

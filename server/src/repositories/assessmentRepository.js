@@ -177,6 +177,15 @@ async function getAssessmentBundleById({ assessment, trx = activeConn() }) {
   const links = await trx("asset_threat_links").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
   const evaluations = await trx("evaluations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
   const mitigations = await trx("mitigations").where({ assessment_id: assessment.id }).orderBy("created_at", "asc");
+  const sectionRows = await trx("assessment_sections").where({ assessment_id: assessment.id });
+
+  // Narrative section text (Sections 1/2/8) keyed by section number, so a
+  // PUT /sections/:n round-trips through the GET bundle. Absent sections are
+  // simply not present (client treats missing as empty).
+  const sectionTexts = {};
+  for (const row of sectionRows) {
+    sectionTexts[row.section_number] = row.content_text;
+  }
 
   return {
     assessment,
@@ -184,13 +193,23 @@ async function getAssessmentBundleById({ assessment, trx = activeConn() }) {
     threats: threats.map(mapThreat),
     links: links.map(mapLink),
     evaluations: evaluations.map(mapEvaluation),
-    mitigations: mitigations.map(mapMitigation)
+    mitigations: mitigations.map(mapMitigation),
+    sectionTexts
   };
 }
 
-async function updateAssessmentState({ assessmentId, fromState, toState, trx = activeConn() }) {
+async function updateAssessmentState({ assessmentId, fromState, toState, expectedLockVersion = null, trx = activeConn() }) {
+  const where = { id: assessmentId, state: fromState };
+  // Optimistic concurrency for workflow actions (withdraw/recall race, §17.7):
+  // when the client sends the lock_version it read, a mismatch means another
+  // actor moved first → 0 rows → the caller's 409. When omitted, the state guard
+  // alone applies (back-compatible).
+  if (expectedLockVersion !== null && expectedLockVersion !== undefined) {
+    where.lock_version = expectedLockVersion;
+  }
+
   const updatedRows = await trx("assessments")
-    .where({ id: assessmentId, state: fromState })
+    .where(where)
     .update({
       state: toState,
       lock_version: trx.raw("lock_version + 1"),
@@ -204,6 +223,34 @@ async function updateAssessmentState({ assessmentId, fromState, toState, trx = a
 
   const row = await assessmentBaseQuery(trx).where("a.id", assessmentId).first();
   return mapAssessment(row);
+}
+
+// P3 · (d) — Contributors (Section 9.A) live as a jsonb array ON the assessment
+// row. PUT replaces the whole list. Runs inside the write-guard savepoint; the
+// guard's lock_version bump on the same row is a separate statement.
+async function replaceContributors({ assessment, contributors, trx = activeConn() }) {
+  await trx("assessments")
+    .where({ id: assessment.id })
+    .update({ contributors: JSON.stringify(contributors), updated_at: trx.fn.now() });
+  return {
+    entityId: assessment.id,
+    diff: { contributors: [assessment.contributors || [], contributors] },
+    result: { contributors }
+  };
+}
+
+// P3 · (f) — Lead Author reassignment (§5.5). role_assignments carries no RLS
+// policy (auth/lookup table), so this lookup is safe on the scoped connection.
+async function userHasFacilityRole({ userId, facilityId, role, trx = activeConn() }) {
+  const row = await trx("role_assignments").where({ user_id: userId, facility_id: facilityId, role }).first();
+  return Boolean(row);
+}
+
+async function reassignLeadAuthor({ assessment, newLeadAuthorUserId, trx = activeConn() }) {
+  await trx("assessments")
+    .where({ id: assessment.id })
+    .update({ lead_author_user_id: newLeadAuthorUserId, updated_at: trx.fn.now() });
+  return { entityId: assessment.id, previous: assessment.leadAuthorUserId, next: newLeadAuthorUserId };
 }
 
 async function createVersionSnapshot({ assessmentId, trx = activeConn() }) {
@@ -246,5 +293,8 @@ module.exports = {
   mapThreat,
   mapLink,
   mapEvaluation,
+  replaceContributors,
+  reassignLeadAuthor,
+  userHasFacilityRole,
   updateAssessmentState
 };

@@ -1,3 +1,48 @@
+2026-07-03 — P3 slices (d)+(e)+(f): full write API server-side (all content + workflow-adjacent endpoints)
+  Fanned the write-guard pattern out to every remaining entity; P3 server-side complete.
+  (d) Threats CRUD, links (PUT enable/disable), evaluations (PATCH), contributors
+      (PUT). New repos threatRepository/linkRepository/evaluationRepository +
+      replaceContributors on assessmentRepository; all flow through
+      runContentMutation. Audit vocab: threat-created/updated/deleted,
+      link-updated, evaluation-updated, contributors-updated.
+  (e) Section text: PUT /api/assessments/:id/sections/:n on assessment_sections
+      (upsert), narrative set {1,2,8} validated in Zod (non-narrative → 400). GET
+      bundle now returns sectionTexts keyed by number. Round-trip test
+      (unicode/long/empty) + migration idempotency (migrate:latest twice).
+  (f) Withdraw/recall: added optional lockVersion to POST /:id/workflow
+      (updateAssessmentState checks it in the WHERE) — closes the AGENTS.md
+      recall-race concern (withdraw with matching lockVersion → 200, reviewer's
+      late complete_review → 409; stale lockVersion → 409). Lead Author
+      reassignment: PUT /:id/lead-author — dedicated guard chain (current Lead
+      Author OR Admin; non-Approved; target must hold Author at facility → 422
+      TARGET_NOT_AUTHOR) + lockVersion + atomic audit (assessment.lead_author_reassigned).
+      Mitigation owner assignment: PUT /:id/mitigations/:mid/owner through the
+      write-guard (Author/Draft); assignMitigationOwner on mitigationRepository.
+  Infra fix (flagged deviation, touches P2): facilityScope now COMMITS the request
+      transaction BEFORE flushing the response (intercepts res.end) — previously it
+      committed on res.finish (after the response was sent), leaving a read-your-writes
+      gap + ack-before-durable on writes. Found via a flaky P3 delete-then-read test;
+      now deterministic across repeated runs. Decision:
+      docs/decisions/2026-07-03-facility-scope-commit-before-flush.md. rlsWiring/rls
+      tests (drive runInFacilityScope directly) unaffected.
+  Tests: contentWritesD.test.js, sectionText.test.js, workflowConcurrencyF.test.js;
+  tenantIsolation.test.js extended to every new mutation (10 cross-tenant cases now).
+  Red-checks: workflow lockVersion off → withdraw-stale fails; reassignment role
+  off → reviewer-reassign fails; target-author off → 422 test fails. (Plus the
+  (a)–(c) content-guard red-checks from the prior entry.)
+  Counts: server unit 250 (16 suites); integration 107 (10 suites); client vitest
+  green; services coverage gate held. `make test` green (ran twice for determinism).
+  Remaining P3: (g) client flip (prod mode off fixtures + 409-reload RTL). Roadmap
+  P3 server boxes ticked; api-contract.md still NOT edited (per kickoff — edited only
+  on explicit instruction when P3 fully lands).
+  Key files: server/src/repositories/{threat,link,evaluation,asset,mitigation,assessment}Repository.js,
+  server/src/repositories/sectionRepository.js, server/src/modules/assessments/{routes,schemas,contentWriteGuard}.js,
+  server/src/middleware/facilityScope.js,
+  server/tests/integration/{contentWritesD,sectionText,workflowConcurrencyF,tenantIsolation}.test.js,
+  docs/decisions/2026-07-03-facility-scope-commit-before-flush.md.
+
+================================================================
+
 2026-07-03 — P3 slice (a)+(b)+(c): write-API foundation + Assets reference endpoint
   First code of P3 (the missing write core). Landed the three de-risking pieces
   the kickoff sequences first, per docs/p3-kickoff.md.

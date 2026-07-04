@@ -21,27 +21,47 @@ async function resolveFacilityIds({ user, actingRole }) {
 // context so Postgres RLS enforces tenant isolation beneath the repo-layer
 // scoping. Must run AFTER `authenticate` (needs req.user + req.actingRole).
 //
-// It holds a transaction open for the duration of the request and commits when
-// the response finishes. Content mutations still open their own inner
-// transaction via activeConn().transaction — that becomes a savepoint on this
-// connection, so it (a) inherits the facility context and (b) rolls back
-// independently on a conflict without discarding the whole request.
+// It holds a transaction open for the duration of the request. Content mutations
+// open their own inner transaction via activeConn().transaction — that becomes a
+// savepoint on this connection, so it (a) inherits the facility context and
+// (b) rolls back independently on a conflict without discarding the whole request.
+//
+// Commit-before-flush: we intercept res.end, resolve the scope (→ COMMIT the
+// request transaction) FIRST, and only then flush the response bytes. This makes
+// a 2xx write durable before the client can observe it — so a client (or a test)
+// re-reading on a fresh connection reliably sees its own write (read-your-writes),
+// and the client is never told "success" before the commit lands. Resolving on
+// `res.on("finish")` instead would commit AFTER the response was already sent.
 function facilityScope(req, res, next) {
   Promise.resolve()
     .then(() => resolveFacilityIds({ user: req.user, actingRole: req.actingRole }))
     .then((facilityIds) =>
-      runInFacilityScope(
-        facilityIds,
-        () =>
-          new Promise((resolve) => {
-            // Resolve (→ commit) once the response is fully sent or the client
-            // hangs up. Write atomicity is owned by the inner savepoint, so a
-            // committed read-only request is always safe.
-            res.on("finish", resolve);
-            res.on("close", resolve);
-            next();
-          })
-      )
+      runInFacilityScope(facilityIds, () =>
+        new Promise((resolve) => {
+          const realEnd = res.end.bind(res);
+          let done = false;
+          // First res.end call: capture the flush, resolve the scope so the txn
+          // commits, then the .then() below performs the real end. Subsequent
+          // calls (shouldn't happen) pass straight through.
+          res.end = (...args) => {
+            if (done) {
+              return realEnd(...args);
+            }
+            done = true;
+            resolve(() => realEnd(...args));
+            return res;
+          };
+          // Client hung up before the handler ended: resolve with a no-op flush
+          // so the transaction still commits/cleans up.
+          res.on("close", () => {
+            if (!done) {
+              done = true;
+              resolve(() => {});
+            }
+          });
+          next();
+        })
+      ).then((flush) => flush())
     )
     .catch(next);
 }

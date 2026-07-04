@@ -4,17 +4,42 @@ import { useAuth } from "../../../auth/AuthContext";
 import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { getCommentPermission } from "../assessmentModel";
+import { useWorkspace } from "../WorkspaceContext";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
 export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors }) {
   const { session } = useAuth();
+  const { saveSectionText, showToast } = useWorkspace();
   const [text, setText] = useState(assessment?.conclusion || "");
+  const [conflict, setConflict] = useState(null);
   const wordCount = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
     state: assessment?.state
   });
+
+  /* Persist on blur (Section 8 is a free-text narrative section). Prod fires
+     PUT /sections/8 with the lockVersion the client read; a lost race surfaces
+     the reload affordance. Demo updates fixtures only. Mirrors Section 1. */
+  const handleBlur = async () => {
+    if (readOnly || text === (assessment?.conclusion || "")) return;
+    const result = await saveSectionText({
+      assessmentId: assessment.id,
+      sectionNumber: 8,
+      contentText: text,
+      lockVersion: assessment?.lockVersion ?? 1,
+      actingRole: session.actingRole
+    });
+    if (result?.conflict) {
+      setConflict(result.error);
+    } else if (result?.error) {
+      showToast(result.error, { tone: "error" });
+    } else {
+      setConflict(null);
+      showToast("Conclusion saved.");
+    }
+  };
 
   return (
     <SectionShell
@@ -48,6 +73,15 @@ export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors 
         Approver attention focuses on this section; keep findings and proposed mitigations clearly summarised.
       </Banner>
 
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
+
       {readOnly ? (
         <article className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700 whitespace-pre-line">
           {text || "Author has not yet drafted the Conclusion."}
@@ -56,6 +90,7 @@ export function ConclusionSection({ assessment, readOnly, onOpenAIDraft, errors 
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
+          onBlur={handleBlur}
           rows={12}
           className="field-control resize-y text-sm leading-relaxed"
           placeholder="Conclude the assessment and recommend approval conditions."

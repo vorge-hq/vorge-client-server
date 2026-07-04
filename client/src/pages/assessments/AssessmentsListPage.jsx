@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { isDemoEnabled } from "../../auth/demoFlag";
+import { listAssessments } from "../../api/assessmentApi";
+import { toClientAssessment } from "../../api/adapters";
 import { Card, CardHeader } from "../../components/Card";
 import { StateChip } from "../../components/Chip";
 import { FormField, Select, TextInput } from "../../components/FormField";
@@ -17,8 +20,12 @@ import {
 
 const STATE_OPTIONS = Object.values(ASSESSMENT_STATES);
 
-function getFacilityName(facilityId) {
-  return FACILITIES.find((facility) => facility.id === facilityId)?.name || facilityId;
+function getFacilityName(assessment) {
+  return (
+    assessment.facilityName ||
+    FACILITIES.find((facility) => facility.id === assessment.facilityId)?.name ||
+    assessment.facilityId
+  );
 }
 
 export function AssessmentsListPage() {
@@ -29,20 +36,43 @@ export function AssessmentsListPage() {
   const [facilityFilter, setFacilityFilter] = useState("All");
   const [newOpen, setNewOpen] = useState(false);
 
+  // Prod reads: fetch the live, server-scoped list once on mount. Demo mode
+  // keeps its fixtures (via the workspace) and fires no request. In prod we do
+  // NOT re-apply the client's per-user role narrowing — the server already
+  // returned exactly what the acting role may read (decision 2026-07-03).
+  const demo = isDemoEnabled();
+  const [prodAssessments, setProdAssessments] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  useEffect(() => {
+    if (demo) return;
+    let cancelled = false;
+    listAssessments(session.actingRole)
+      .then((payload) => {
+        if (!cancelled) setProdAssessments((payload.assessments || []).map(toClientAssessment));
+      })
+      .catch((error) => {
+        if (!cancelled) setLoadError(error?.message || "Could not load assessments.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [demo, session.actingRole]);
+
   const accessibleFacilityIds = useMemo(
     () => session.facilities.map((facility) => facility.id),
     [session.facilities]
   );
 
   const filtered = useMemo(() => {
-    return filterAssessmentsForRole(
-      {
-        actingRole: session.actingRole,
-        userId: session.user.id,
-        accessibleFacilityIds
-      },
-      Object.values(workspace.assessmentsById)
-    )
+    // Prod: server already role/facility-scoped the rows — no client narrowing.
+    // Demo: keep the fixture-era per-user filter.
+    const source = demo
+      ? filterAssessmentsForRole(
+          { actingRole: session.actingRole, userId: session.user.id, accessibleFacilityIds },
+          Object.values(workspace.assessmentsById)
+        )
+      : prodAssessments || [];
+    return source
       .filter((assessment) =>
         facilityFilter === "All" ? true : assessment.facilityId === facilityFilter
       )
@@ -52,6 +82,8 @@ export function AssessmentsListPage() {
       )
       .sort((a, b) => (a.lastUpdated < b.lastUpdated ? 1 : -1));
   }, [
+    demo,
+    prodAssessments,
     session.actingRole,
     session.user.id,
     accessibleFacilityIds,
@@ -121,7 +153,11 @@ export function AssessmentsListPage() {
       </Card>
 
       <ul className="grid gap-3">
-        {filtered.length === 0 ? (
+        {loadError ? (
+          <li className="surface-card p-6 text-center text-sm text-rose-600">{loadError}</li>
+        ) : !demo && prodAssessments === null ? (
+          <li className="surface-card p-6 text-center text-sm text-zinc-500">Loading assessments…</li>
+        ) : filtered.length === 0 ? (
           <li className="surface-card p-6 text-center text-sm text-zinc-500">
             No assessments match these filters.
           </li>
@@ -139,7 +175,8 @@ export function AssessmentsListPage() {
                     </div>
                     <h3 className="mt-2 text-lg font-semibold text-zinc-900">{assessment.name}</h3>
                     <p className="mt-1 text-xs text-zinc-500">
-                      Facility · {getFacilityName(assessment.facilityId)} · Updated {new Date(assessment.lastUpdated).toLocaleString()}
+                      Facility · {getFacilityName(assessment)} · Updated{" "}
+                      {assessment.lastUpdated ? new Date(assessment.lastUpdated).toLocaleString() : "—"}
                     </p>
                     <p className="mt-2 text-xs text-zinc-600">{stateMeta?.description}</p>
                     <div className="mt-3 flex items-center gap-3">

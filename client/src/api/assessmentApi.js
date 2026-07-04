@@ -12,6 +12,10 @@ function mutate(path, method, body, actingRole) {
   return apiRequest(path, { method, actingRole, body: JSON.stringify(body) });
 }
 
+export function listAssessments(actingRole) {
+  return apiRequest("/api/assessments", { actingRole });
+}
+
 export function getAssessmentBundle(assessmentId, actingRole) {
   return apiRequest(`/api/assessments/${assessmentId}`, { actingRole });
 }

@@ -13,7 +13,8 @@ import { LIBRARY_SCENARIOS } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
 import { evaluationHasAnyData } from "./assessmentModel";
 import { isDemoEnabled } from "../../auth/demoFlag";
-import { putSection, isConflict, CONFLICT_RELOAD_MESSAGE } from "../../api/assessmentApi";
+import { putSection, getAssessmentBundle, isConflict, CONFLICT_RELOAD_MESSAGE } from "../../api/assessmentApi";
+import { toClientAssessment, applySectionTexts } from "../../api/adapters";
 import {
   WORKFLOW_ACTIONS,
   applyWorkflowAction,
@@ -471,7 +472,34 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
-  /* P3 (g) — save a narrative section (1/2/8). The prod↔demo seam: in PROD mode
+  /* P3 (g) reads — hydrate ONE assessment from the live API in PROD (its
+     assessment-level fields + section texts for 1/8), injecting it into
+     assessmentsById so the workspace + narrative sections render real data.
+     Child entities (assets/threats/…) still come from fixtures until the
+     content-entity flip. DEMO mode is a no-op (fixtures already present).
+     Returns true when hydrated, false on 404 (so the page can redirect). */
+  const hydrateAssessmentBundle = useCallback(async (assessmentId, actingRole) => {
+    if (isDemoEnabled()) return true;
+    try {
+      const bundle = await getAssessmentBundle(assessmentId, actingRole);
+      const mapped = applySectionTexts(toClientAssessment(bundle.assessment), bundle.sectionTexts || {});
+      setState((current) => ({
+        ...current,
+        activeAssessmentId: assessmentId,
+        assessmentsById: {
+          ...current.assessmentsById,
+          [assessmentId]: { ...(current.assessmentsById[assessmentId] || {}), ...mapped }
+        }
+      }));
+      return true;
+    } catch (error) {
+      if (error?.status === 404) return false;
+      throw error;
+    }
+  }, []);
+
+  /* P3 (g) — save a narrative section (1/8; §2 is a structured form, handled
+     separately). The prod↔demo seam: in PROD mode
      it fires the live PUT /sections/:n with the lockVersion the client read,
      updates the local text + lockVersion from the response, and maps a lost
      lock_version race to the exact "modified by another user — reload" copy
@@ -541,12 +569,14 @@ export function WorkspaceProvider({ children }) {
       updateEvaluation,
       upsertEvaluation,
       saveSectionText,
+      hydrateAssessmentBundle,
       WORKFLOW_ACTIONS
     }),
     [
       state,
       showToast,
       saveSectionText,
+      hydrateAssessmentBundle,
       showResultToast,
       dismissToast,
       applyWorkflowTransition,

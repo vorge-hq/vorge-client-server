@@ -1,3 +1,40 @@
+2026-07-03 — P3 (g) reads + §8: prod list/bundle hydration + Conclusion save
+  Continued the client flip (user picked "reads + narrative writes"). Two surfaces
+  now read live data in prod; demo keeps fixtures (fetch-spy proven).
+  - Adapter: client/src/api/adapters.js — toClientAssessment (server→client shape;
+    defaults the demo-only display fields the server doesn't model: cycle, version
+    label, completedSectionIds, sectionValidation) + applySectionTexts (sectionTexts
+    {1,2,8} → executiveSummary/facilityInfo/conclusion). assessmentApi.listAssessments added.
+  - List (AssessmentsListPage): prod fetches GET /api/assessments locally on mount,
+    adapter-maps, renders — with loading + error affordances. Per the 2026-07-03
+    decision, prod does NOT re-apply the client's per-user Reviewer/Approver
+    narrowing (server tracks no reviewer/approver assignment; server already
+    role/facility-scopes the rows). Demo still uses the fixture per-user filter.
+    Kept the flip LOCAL to the page (no global state swap) so dashboards are untouched.
+  - Workspace (WorkspaceContext.hydrateAssessmentBundle + AssessmentWorkspacePage):
+    prod hydrates the OPENED assessment's fields + section texts from GET /:id into
+    assessmentsById; page shows a loading state instead of redirecting while in flight;
+    404 → redirect. Child entities (assets/threats/…) still fixture-backed until the
+    content-entity flip.
+  - §8 Conclusion: save-on-blur through saveSectionText (sectionNumber 8), 409 →
+    exact reload affordance — mirrors §1. §2 Facility Info NOT wired: it's a
+    STRUCTURED form (name/region/type/manager/general…), not a single content_text
+    blob — needs a structured-section-data decision first (noted in roadmap).
+  Model-divergence surfaced to user (client demo model richer than server): (A)
+  cosmetic fields → adapter defaults; (B) reviewer/approver visibility → decided to
+  rely on server scoping in prod. Both recorded above.
+  Tests: AssessmentsListPage.test.jsx (prod hydrate + error + demo no-fetch),
+  ConclusionSection.test.jsx (§8 PUT w/ lockVersion + 409 copy + demo no-fetch),
+  hydrateBundle.test.jsx (prod maps section texts; demo no-op). Client 155 (+8, 14
+  files); server unchanged (250 / 107); make test green; client build compiles.
+  Remaining P3 (g): content-entity reads/writes + the §2 structured-section decision.
+  Key files: client/src/api/{adapters,assessmentApi}.js,
+  client/src/features/assessmentWorkspace/WorkspaceContext.jsx,
+  client/src/features/assessmentWorkspace/sections/ConclusionSection.jsx,
+  client/src/pages/assessments/{AssessmentsListPage,AssessmentWorkspacePage}.jsx (+ tests).
+
+================================================================
+
 2026-07-03 — P3 (g) start: client API seam + section-save vertical slice (prod↔demo)
   Discovered the whole feature/workspace layer is fixtures in BOTH modes (only auth
   pages ever called the API) — so "flip" is really "build the prod data path". Per

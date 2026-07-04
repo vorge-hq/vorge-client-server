@@ -1,3 +1,31 @@
+2026-07-03 — P3 (g) start: client API seam + section-save vertical slice (prod↔demo)
+  Discovered the whole feature/workspace layer is fixtures in BOTH modes (only auth
+  pages ever called the API) — so "flip" is really "build the prod data path". Per
+  user decision, did the tested vertical slice + reusable seam (not the full rewire).
+  - client/src/api/assessmentApi.js: typed wrappers over apiRequest for EVERY P3
+    endpoint (sections, assets, threats, links, evaluations, contributors, workflow,
+    lead-author, mitigation owner) + getAssessmentBundle. Exports CONFLICT_RELOAD_MESSAGE
+    (single source of truth for the 409 copy) + isConflict().
+  - WorkspaceContext.saveSectionText: the prod↔demo seam. PROD → live PUT /sections/:n
+    with the lockVersion the client read, updates local text + lockVersion from the
+    response, maps a lost lock_version race to result.conflict (CONFLICT_RELOAD_MESSAGE).
+    DEMO → updates fixtures only, never touches the network.
+  - ExecutiveSummarySection (Section 1): save-on-blur through the seam; on conflict
+    renders an error Banner with the exact reload copy + a Reload button. (Previously
+    the "auto-saved" footer was cosmetic — text was never persisted at all.)
+  - Test (test-specs §P3 "Client flip"): ExecutiveSummarySection.test.jsx — prod edit
+    fires PUT /sections/1 with lockVersion=1 (asserted from the fetch body) + no conflict
+    affordance on success; a 409 renders the exact CONFLICT_RELOAD_MESSAGE + Reload button;
+    demo edit fires NO fetch (spy). vi.stubEnv toggles VITE_ENABLE_DEMO per block.
+  Counts: client 147 (11 files, +3); server unchanged (250 unit / 107 integration);
+  make test green. §P3 client-flip DoD met. Remaining P3: broad per-section rewire
+  (replicate the seam across the rest of the workspace reads/writes) — its own chunk.
+  Key files: client/src/api/assessmentApi.js,
+  client/src/features/assessmentWorkspace/WorkspaceContext.jsx,
+  client/src/features/assessmentWorkspace/sections/ExecutiveSummarySection.jsx(+.test.jsx).
+
+================================================================
+
 2026-07-03 — P3 slices (d)+(e)+(f): full write API server-side (all content + workflow-adjacent endpoints)
   Fanned the write-guard pattern out to every remaining entity; P3 server-side complete.
   (d) Threats CRUD, links (PUT enable/disable), evaluations (PATCH), contributors

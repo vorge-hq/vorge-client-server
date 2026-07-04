@@ -12,6 +12,8 @@ import { VERSIONS } from "../../data/versions";
 import { LIBRARY_SCENARIOS } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
 import { evaluationHasAnyData } from "./assessmentModel";
+import { isDemoEnabled } from "../../auth/demoFlag";
+import { putSection, isConflict, CONFLICT_RELOAD_MESSAGE } from "../../api/assessmentApi";
 import {
   WORKFLOW_ACTIONS,
   applyWorkflowAction,
@@ -19,6 +21,9 @@ import {
 } from "./workflowReducer";
 
 const WorkspaceContext = createContext(null);
+
+// Narrative section number → the assessment field that holds its text.
+const SECTION_FIELD = Object.freeze({ 1: "executiveSummary", 2: "facilityInfo", 8: "conclusion" });
 
 function buildInitialState() {
   const assessmentsById = {};
@@ -466,6 +471,54 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
+  /* P3 (g) — save a narrative section (1/2/8). The prod↔demo seam: in PROD mode
+     it fires the live PUT /sections/:n with the lockVersion the client read,
+     updates the local text + lockVersion from the response, and maps a lost
+     lock_version race to the exact "modified by another user — reload" copy
+     (result.conflict). In DEMO mode it never touches the network — it just
+     updates the fixture-backed local state. The section component branches its UI
+     on result.conflict. */
+  const saveSectionText = useCallback(
+    async ({ assessmentId, sectionNumber, contentText, lockVersion, actingRole }) => {
+      const field = SECTION_FIELD[sectionNumber];
+
+      const writeLocal = (nextLockVersion) =>
+        setState((current) => {
+          const assessment = current.assessmentsById[assessmentId];
+          if (!assessment) return current;
+          return {
+            ...current,
+            assessmentsById: {
+              ...current.assessmentsById,
+              [assessmentId]: {
+                ...assessment,
+                ...(field ? { [field]: contentText } : {}),
+                ...(nextLockVersion !== undefined ? { lockVersion: nextLockVersion } : {})
+              }
+            }
+          };
+        });
+
+      if (!isDemoEnabled()) {
+        try {
+          const res = await putSection({ assessmentId, sectionNumber, contentText, lockVersion, actingRole });
+          writeLocal(res?.lockVersion);
+          return { ok: true, lockVersion: res?.lockVersion };
+        } catch (error) {
+          if (isConflict(error)) {
+            return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+          }
+          return { error: error?.message || "Could not save this section." };
+        }
+      }
+
+      // Demo mode: fixtures only, no network.
+      writeLocal();
+      return { ok: true };
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -487,11 +540,13 @@ export function WorkspaceProvider({ children }) {
       toggleMatrix,
       updateEvaluation,
       upsertEvaluation,
+      saveSectionText,
       WORKFLOW_ACTIONS
     }),
     [
       state,
       showToast,
+      saveSectionText,
       showResultToast,
       dismissToast,
       applyWorkflowTransition,

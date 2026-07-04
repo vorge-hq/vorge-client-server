@@ -61,10 +61,10 @@ There are NO write endpoints today (assessments API = GET /, GET /:id, POST /:id
 - [x] Optimistic concurrency via existing `lock_version` on every mutation (409 on stale; true concurrent-race test). **DONE 2026-07-03.**
 - [x] State/role guards: writes only by Author on Draft (per state machine); by-id routes repo-scoped (getter → 404), enforced by the introspection test. **DONE 2026-07-03.**
 - [x] Audit entry on every mutation (`appendAuditLog`, atomic with the write; lowercase-hyphen vocabulary). **DONE 2026-07-03.**
-- [ ] Flip client prod mode off fixtures onto live calls (`api/client.js` already handles auth/refresh; wire feature data fetching + saves). **← (g), remaining.**
+- [~] Flip client prod mode off fixtures onto live calls. **Seam + first vertical slice landed 2026-07-03:** `client/src/api/assessmentApi.js` (typed wrappers for every P3 endpoint) + `WorkspaceContext.saveSectionText` prod↔demo branch; Executive Summary (Section 1) save wired end-to-end (prod: live PUT w/ lockVersion, 409 → reload affordance; demo: fixtures, no fetch). **Remaining: broad per-section rewire** — replicate the seam to the rest of the workspace reads/writes (its own chunk; the whole feature layer was fixtures-only in both modes).
 - [x] Withdraw/recall + Lead Author reassignment endpoints (§5.5–5.6) — `lockVersion` on `/workflow` closes the recall-race concern; `PUT /lead-author` (Lead Author or Admin, non-Approved, target-must-be-Author). **DONE 2026-07-03.**
 - [x] Mitigation-assignment endpoints (§7 owner management) — `PUT /mitigations/:id/owner` through the write-guard. **DONE 2026-07-03.**
-- [ ] DoD: `docs/test-specs.md` §P3 — server portions DONE (six-case, true-race lock_version, state×role matrices, atomic audit, section-text round-trip + migration idempotency, cross-tenant matrix extended to every mutation). **Remaining: client 409-reload RTL test** (part of (g)).
+- [x] DoD: `docs/test-specs.md` §P3 — server portions DONE (six-case, true-race lock_version, state×role matrices, atomic audit, section-text round-trip + migration idempotency, cross-tenant matrix extended to every mutation). **Client flip DoD** (prod section-save fires live call w/ lockVersion; 409 renders exact reload copy; demo fires no fetch — fetch spy) DONE via `ExecutiveSummarySection.test.jsx`. **DONE 2026-07-03** (broad per-section rewire tracked above as remaining follow-on, not a §P3 DoD gap).
 
 ## P3.5 — Word/PDF export (pulled forward from P5 — approved 2026-07-03)
 

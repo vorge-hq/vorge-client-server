@@ -579,10 +579,17 @@ export function WorkspaceProvider({ children }) {
           const nextLinks = enabled
             ? [...cur.links.filter((l) => !(l.assetId === assetId && l.threatId === threatId)), { assetId, threatId }]
             : cur.links.filter((l) => !(l.assetId === assetId && l.threatId === threatId));
+          // Enabling seeds a server evaluation (real UUID) — add it if we don't
+          // already have one for this pair, so Section 6 can PATCH it.
+          let nextEvaluations = cur.evaluations;
+          if (enabled && res?.evaluation && !cur.evaluations.some((e) => e.assetId === assetId && e.threatId === threatId)) {
+            nextEvaluations = [...cur.evaluations, toClientEvaluation(res.evaluation)];
+          }
           return {
             ...cur,
             matrix: nextMatrix,
             links: nextLinks,
+            evaluations: nextEvaluations,
             assessmentsById: syncLockVersion(cur, assessmentId, res?.lockVersion)
           };
         });

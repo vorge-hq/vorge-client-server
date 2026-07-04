@@ -1,3 +1,21 @@
+2026-07-04 — P3 (g) server: auto-create evaluation on link-enable (close eval gap)
+  Closed the one gap from the content-entity write flip (user chose auto-create
+  over a separate POST). Section 6 evals had PATCH only + no create path.
+  - Server: setAssetThreatLink (linkRepository) now, when a pair is ENABLED and no
+    evaluation exists for it, inserts an empty evaluation row (ensureEvaluation;
+    idempotent — returns { row, created }). Disable never deletes it (re-enable
+    restores work). The link route returns { link, evaluation, lockVersion }; the
+    write-guard audit records metadata.evaluationCreated on first create. Refactored
+    setAssetThreatLink to a unified linkRow/before path.
+  - Client: toggleMatrix prod branch adds the echoed evaluation (mapped via
+    toClientEvaluation) to local state on enable when the pair has none, giving
+    Section 6 a real UUID row to PATCH immediately.
+  - Tests: +2 integration (fresh enable auto-creates + echoes + audit metadata;
+    re-enable echoes existing without duplicating). Ran the FULL suite with the
+    docker test DB: TEST_DATABASE_URL=…/vorge_test make test → 250 unit / 176
+    client / 109 integration all green. P3 write/section API now feature-complete
+    end-to-end.
+
 2026-07-04 — P3 (g) WRITES: remaining content entities (threats/links/evals/contributors)
   Finished the content-entity write flip — all four remaining entities, same mold
   as Assets. P3 (g) client flip now COMPLETE.

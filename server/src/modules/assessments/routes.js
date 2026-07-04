@@ -324,7 +324,9 @@ router.put(
             trx
           })
       });
-      res.json({ link: result, lockVersion: newLockVersion });
+      // `result` = { link, evaluation }: enabling a pair also seeds/returns its
+      // evaluation so the client has a real (UUID) row to edit in Section 6.
+      res.json({ link: result.link, evaluation: result.evaluation, lockVersion: newLockVersion });
     } catch (error) {
       next(error);
     }

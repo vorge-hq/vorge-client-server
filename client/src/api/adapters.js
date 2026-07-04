@@ -163,6 +163,42 @@ export function toServerAssetPayload(asset) {
   };
 }
 
+// Client threat → POST/PATCH /threats body. `name` is the column (falls back to
+// classification for a freshly-added threat, which has no separate name); the
+// demo-rich fields + any client-only key go into `details`. `likelihood` (int
+// column) is not surfaced by the UI, so it is left unset.
+export function toServerThreatPayload(threat) {
+  const { id, name, short, classification, history, facilityHistory, capabilityIntent, rating, ...rest } = threat;
+  return {
+    name: name ?? classification ?? "Threat",
+    details: {
+      short: short ?? "",
+      classification: classification ?? "",
+      history: history ?? "",
+      facilityHistory: facilityHistory ?? "",
+      capabilityIntent: capabilityIntent ?? "",
+      rating: rating ?? "",
+      ...rest
+    }
+  };
+}
+
+// Client evaluation → PATCH /evaluations/:id body. `existingControls`→`controls`
+// column; the R1/R2 pairs go into the r1/r2 jsonb as { consequence, likelihood };
+// the scenario-consequence text has no column, so it rides r1.consequences
+// (matching the read adapter). Mirror score fields are pure projections and not
+// sent.
+export function toServerEvaluationPayload(ev) {
+  return {
+    scenario: ev.scenario ?? "",
+    controls: ev.existingControls ?? "",
+    vulnerabilities: ev.vulnerabilities ?? "",
+    proposedMitigation: ev.proposedMitigation ?? "",
+    r1: { consequence: ev.consequenceR1 ?? null, likelihood: ev.likelihoodR1 ?? null, consequences: ev.consequences ?? "" },
+    r2: { consequence: ev.consequenceR2 ?? null, likelihood: ev.likelihoodR2 ?? null }
+  };
+}
+
 // --- §2 Facility Information (structured form) -------------------------------
 // §2 is a structured form, not a single narrative blob. Per the 2026-07-04
 // sign-off it serializes to JSON and rides the existing `content_text` column via

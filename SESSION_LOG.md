@@ -1,3 +1,19 @@
+2026-07-04 — chore(seed): populate Bonny 2026 + Pernis test assessments
+  Enriched server/src/db/seed.js so the two test assessments carry full content
+  for exercising every feature end-to-end in prod mode.
+  - Bonny 2026 (In Review): +marine×maritime link + evaluation + mitigation, a
+    2nd contributor, and §1/§2/§8 narrative (facility info as JSON in section 2).
+  - Pernis Refinery (Draft): full set from empty — 3 assets, 3 threats, 3 enabled
+    links, 3 evaluations, 2 mitigations, 2 contributors, §1/§2/§8 narrative.
+  - Fixed a pre-existing anomaly: Bonny 2025's evaluation referenced Bonny 2026's
+    marine asset/threat pair (evaluations are UNIQUE on asset_id+threat_id), which
+    collided with the new 2026 marine eval. Gave Bonny 2025 its own marine
+    asset/threat/link so it's self-consistent (and its Approved export now has
+    real §3/§4/§5 tables). §2 JSON matches the client FacilityInfo form shape.
+  Verified: re-seeded local vantage DB, GET /:id returns all content + parsed
+  section text for both assessments. Seed file only — committable/reproducible;
+  Supabase seeding tracked separately. Key file: server/src/db/seed.js.
+
 2026-07-04 — fix(client): prod dashboards empty (hydrate list from API)
   Found during P3.5 browser smoke: in prod every role dashboard showed 0
   assessments while /assessments (list page) showed them. Cause: dashboards

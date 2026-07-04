@@ -17,7 +17,7 @@ const app = require("../../src/app");
 const db = require("../../src/db/knex");
 const { ROLES } = require("../../src/services/constants");
 const { ACTIONS } = require("../../src/services/assessmentStateMachine");
-const { ASSESSMENTS, CHILD, truncateAll, seedFixtures } = require("./fixtures");
+const { ASSESSMENTS, CHILD, USERS, truncateAll, seedFixtures } = require("./fixtures");
 const { login, withAuth } = require("./session");
 
 // Actions referenced below, resolved from the state machine so a vocabulary
@@ -169,6 +169,75 @@ describe("P3 content mutations — cross-tenant blocked + target row unchanged",
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
     expect(await db("assets").where({ id: CHILD.B1.asset }).first()).toBeTruthy();
+  });
+
+  test("PATCH an Op-B threat -> 404, B1 threat unchanged", async () => {
+    const before = await db("threats").where({ id: CHILD.B1.threat }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).patch(`/api/assessments/${ASSESSMENTS.B1.id}/threats/${CHILD.B1.threat}`), session)
+      .send({ lockVersion: 1, likelihood: 1 });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("threats").where({ id: CHILD.B1.threat }).first()).likelihood).toBe(before.likelihood);
+  });
+
+  test("PUT an Op-B link -> 404, B1 link unchanged", async () => {
+    const before = await db("asset_threat_links").where({ id: CHILD.B1.link }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).put(`/api/assessments/${ASSESSMENTS.B1.id}/links/${CHILD.B1.asset}/${CHILD.B1.threat}`), session)
+      .send({ lockVersion: 1, enabled: false });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("asset_threat_links").where({ id: CHILD.B1.link }).first()).enabled).toBe(before.enabled);
+  });
+
+  test("PATCH an Op-B evaluation -> 404, B1 evaluation unchanged", async () => {
+    const before = await db("evaluations").where({ id: CHILD.B1.evaluation }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).patch(`/api/assessments/${ASSESSMENTS.B1.id}/evaluations/${CHILD.B1.evaluation}`), session)
+      .send({ lockVersion: 1, scenario: "hijacked" });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("evaluations").where({ id: CHILD.B1.evaluation }).first()).scenario).toBe(before.scenario);
+  });
+
+  test("PUT Op-B contributors -> 404, B1 contributors unchanged", async () => {
+    const before = await db("assessments").where({ id: ASSESSMENTS.B1.id }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).put(`/api/assessments/${ASSESSMENTS.B1.id}/contributors`), session)
+      .send({ lockVersion: 1, contributors: [{ name: "intruder" }] });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("assessments").where({ id: ASSESSMENTS.B1.id }).first()).contributors).toEqual(before.contributors);
+  });
+
+  test("PUT Op-B section text -> 404, no section row written for B1", async () => {
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).put(`/api/assessments/${ASSESSMENTS.B1.id}/sections/1`), session)
+      .send({ lockVersion: 1, contentText: "intruder note" });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect(await db("assessment_sections").where({ assessment_id: ASSESSMENTS.B1.id })).toHaveLength(0);
+  });
+
+  test("PUT Op-B lead-author -> 404, B1 lead author unchanged", async () => {
+    const before = await db("assessments").where({ id: ASSESSMENTS.B1.id }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).put(`/api/assessments/${ASSESSMENTS.B1.id}/lead-author`), session)
+      .send({ lockVersion: 1, leadAuthorUserId: USERS.authorA1.id });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("assessments").where({ id: ASSESSMENTS.B1.id }).first()).lead_author_user_id).toBe(before.lead_author_user_id);
+  });
+
+  test("PUT owner on an Op-B mitigation -> 404, B1 mitigation owner unchanged", async () => {
+    const before = await db("mitigations").where({ id: CHILD.B1.mitigation }).first();
+    const session = await login("authorA1", ROLES.AUTHOR);
+    const res = await withAuth(request(app).put(`/api/assessments/${ASSESSMENTS.B1.id}/mitigations/${CHILD.B1.mitigation}/owner`), session)
+      .send({ lockVersion: 1, ownerRoleLabel: "hijacked" });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("ASSESSMENT_NOT_FOUND");
+    expect((await db("mitigations").where({ id: CHILD.B1.mitigation }).first()).owner_role_label).toBe(before.owner_role_label);
   });
 });
 

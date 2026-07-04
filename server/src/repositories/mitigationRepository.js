@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { activeConn } = require("../db/requestScope");
 const { ASSESSMENT_STATES, MITIGATION_STATUSES, ROLES } = require("../services/constants");
 const { canAccessFacility } = require("../services/facilityAccessService");
+const { DomainError } = require("../services/domainError");
 
 function toDateString(value) {
   if (!value) {
@@ -204,8 +205,46 @@ async function applyMitigationUpdate({ mitigation, transition, userId, note, trx
   return mapProgressLog(row);
 }
 
+// P3 · (f) — Mitigation owner assignment (§7 owner management). Set during
+// authoring by the Author, so it runs inside the content write-guard (Author +
+// Draft). Sets owner_user_id and/or owner_role_label on a mitigation that must
+// belong to this assessment. changed-fields-only diff.
+async function assignMitigationOwner({ assessment, mitigationId, ownerUserId, ownerRoleLabel, trx }) {
+  const row = await trx("mitigations").where({ id: mitigationId, assessment_id: assessment.id }).first();
+  if (!row) {
+    throw new DomainError("Mitigation not found in this assessment", 404, "MITIGATION_NOT_FOUND");
+  }
+
+  const changes = {};
+  const diff = {};
+  if (ownerUserId !== undefined && ownerUserId !== row.owner_user_id) {
+    changes.owner_user_id = ownerUserId;
+    diff.ownerUserId = [row.owner_user_id, ownerUserId];
+  }
+  if (ownerRoleLabel !== undefined && ownerRoleLabel !== row.owner_role_label) {
+    changes.owner_role_label = ownerRoleLabel;
+    diff.ownerLabel = [row.owner_role_label, ownerRoleLabel];
+  }
+
+  if (Object.keys(changes).length > 0) {
+    changes.updated_at = trx.fn.now();
+    await trx("mitigations").where({ id: mitigationId }).update(changes);
+  }
+
+  return {
+    entityId: mitigationId,
+    diff,
+    result: {
+      id: mitigationId,
+      ownerUserId: changes.owner_user_id !== undefined ? changes.owner_user_id : row.owner_user_id,
+      ownerLabel: changes.owner_role_label !== undefined ? changes.owner_role_label : row.owner_role_label
+    }
+  };
+}
+
 module.exports = {
   applyMitigationUpdate,
+  assignMitigationOwner,
   calculateKpis,
   getMitigationForUser,
   listMine

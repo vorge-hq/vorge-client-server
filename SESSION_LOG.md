@@ -1,3 +1,11 @@
+2026-07-04 — fix: prod workspace open crash (React #310)
+  AssessmentWorkspacePage ran useMemo after early returns during prod hydration
+  (loading → ready), violating Rules of Hooks and crashing on Open from /assessments.
+  Moved errorsBySection + commentCounts useMemo above the loading/redirect guards;
+  validateAssessment already no-ops on null assessment. Regression test:
+  AssessmentWorkspacePage.test.jsx (prod loading→hydrated, demo fixture no-fetch).
+  Client tests: 2 new (AssessmentWorkspacePage.test.jsx green).
+
 2026-07-04 — P3 (g) server: auto-create evaluation on link-enable (close eval gap)
   Closed the one gap from the content-entity write flip (user chose auto-create
   over a separate POST). Section 6 evals had PATCH only + no create path.

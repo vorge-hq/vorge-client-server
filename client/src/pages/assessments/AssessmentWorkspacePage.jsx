@@ -175,6 +175,25 @@ export function AssessmentWorkspacePage() {
     workspace
   ]);
 
+  // Hooks must run unconditionally (Rules of Hooks). validateAssessment accepts
+  // a null assessment and returns empty buckets while prod hydration is in flight.
+  const errorsBySection = useMemo(
+    () =>
+      validateAssessment({
+        assessment,
+        assets: workspace.assets,
+        threats: workspace.threats,
+        evaluations: workspace.evaluations,
+        mitigations: workspace.mitigations
+      }),
+    [assessment, workspace.assets, workspace.threats, workspace.evaluations, workspace.mitigations]
+  );
+
+  const commentCounts = useMemo(
+    () => commentCountsBySection(workspace.audit),
+    [workspace.audit]
+  );
+
   if (!demo && prodStatus === "loading" && !assessment) {
     return (
       <div className="p-8 text-center text-sm text-zinc-500">Loading assessment…</div>
@@ -193,23 +212,6 @@ export function AssessmentWorkspacePage() {
     state: assessment.state,
     actingRole: session.actingRole
   });
-
-  const errorsBySection = useMemo(
-    () =>
-      validateAssessment({
-        assessment,
-        assets: workspace.assets,
-        threats: workspace.threats,
-        evaluations: workspace.evaluations,
-        mitigations: workspace.mitigations
-      }),
-    [assessment, workspace.assets, workspace.threats, workspace.evaluations, workspace.mitigations]
-  );
-
-  const commentCounts = useMemo(
-    () => commentCountsBySection(workspace.audit),
-    [workspace.audit]
-  );
 
   function openAuditPanelForSection(targetSectionId) {
     setAuditFilter({ sectionId: targetSectionId, filter: "comments" });

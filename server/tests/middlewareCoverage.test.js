@@ -66,6 +66,12 @@ const REPO_SCOPED_ALLOWLIST = {
   "DELETE /api/assessments/:assessmentId/threats/:threatId": "runContentMutation → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/links/:assetId/:threatId": "runContentMutation → getAssessmentForUser → null → 404",
   "PATCH /api/assessments/:assessmentId/evaluations/:evaluationId": "runContentMutation → getAssessmentForUser → null → 404",
+  // P4 O4 smart tagging: same repo-scoped pattern — loadWritableAssessment /
+  // getAssessmentForUser loads via the user-scoped getter → null → 404 before
+  // any AI call or tag read/write. smartTagging.test.js is the cross-tenant proof.
+  "POST /api/assessments/:assessmentId/evaluations/:evaluationId/suggest-tags": "loadWritableAssessment → getAssessmentForUser → null → 404",
+  "GET /api/assessments/:assessmentId/evaluations/:evaluationId/tags": "getAssessmentForUser → null → 404",
+  "POST /api/assessments/:assessmentId/evaluations/:evaluationId/tags/confirm": "loadWritableAssessment → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/contributors": "runContentMutation → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/sections/:n": "runContentMutation → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/lead-author": "getAssessmentForUser → null → 404 (reassignment guard chain)",

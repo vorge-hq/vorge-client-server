@@ -1,3 +1,43 @@
+2026-07-04 — feat: P4 O4 — smart tagging (structured output + controlled vocabulary)
+  Feature 2 of the P4 AI features. Gateway mocked in tests; no network in CI.
+  - Migration 202607050005: tag_vocabulary (facility-scoped controlled vocabulary
+    in four categories: threat_type|asset_class|region|consequence_category;
+    unique(facility, category, value)) + scenario_tags (evaluation-scoped;
+    source ai|manual, status suggested|confirmed|removed; facility_id denormalized
+    for RLS exactly as mitigations carries it; unique(evaluation, category, value)).
+    Both RLS by the standard facility GUC predicate + CHECK constraints.
+  - Pure services/tagVocabularyService.js: validateTags DISCARDS out-of-vocab
+    strings (case/whitespace-insensitive match → canonical {category,value}),
+    DEFAULT_VOCABULARY + defaultVocabularyRows seeded from §19.1/§6.3/§19.5.
+  - src/ai/prompts/smartTagging.js: buildTaggingPrompt + zod TAG_OUTPUT_SCHEMA
+    ({tags:string[]}); zod only, no SDK import (aiImportBoundary still green).
+  - repositories/tagRepository.js: getVocabulary, listTagsForEvaluation,
+    saveSuggestedTags (clears prior AI suggestions, never demotes confirmed),
+    confirmTags (removes de-selected + upserts chosen→confirmed), seedVocabulary
+    (idempotent; reused by db/seed.js now and O8 provisioning later).
+  - Routes on the assessments router: POST .../suggest-tags (Author+Draft via a
+    NEW reusable loadWritableAssessment extracted from contentWriteGuard — same
+    404/403/409 gate WITHOUT the lock_version bump, since tags are advisory
+    metadata firing after the save; rejectMitigationOwner; buildPromptContext
+    scope invariant; 404 when AI off) → runAiCall({kind:'object'}) → validate →
+    persist suggested + audit ai-tags-suggested. POST .../tags/confirm re-validates
+    the submitted set against the vocabulary and persists confirmed + audit
+    tags-confirmed (SEPARATE row). GET .../tags for hydration.
+  - db/seed.js: seedVocabulary for the two demo facilities (idempotent).
+  - Client: sections/ScenarioTags.jsx chips under the §6 scenario field —
+    "AI-suggested" dashed chips, remove/add-manual (category select + value),
+    Confirm, and a 30s auto-confirm timer (§9.6; duration injectable for tests).
+    WorkspaceContext seam: suggestScenarioTags/confirmScenarioTags/loadScenarioTags
+    (prod hits endpoints scoped to the active assessment; demo canned + no fetch)
+    + assessmentApi wrappers (no lockVersion). middlewareCoverage allowlist +3.
+  - Tests: smartTagging.test.js integration (2 valid + 2 invalid → exactly 2
+    persist; suggested & confirmed audited separately; non-Author 403, non-Draft
+    409, Mitigation Owner 403, cross-tenant 404, no gateway call on any reject) +
+    smartTagging seam fetch-spy + ScenarioTags component RTL. tagVocabularyService
+    unit. 379 unit / 163 integration / 198 client (was 366/152/190).
+  Verification: exercised end-to-end through supertest against real Postgres with
+  the gateway mocked (the live gateway needs AI_ENABLED + a real key). Next: O5.
+
 2026-07-04 — feat: P4 O3 — semantic library search (embeddings + pgvector)
   Feature 1 of the P4 AI features. Gateway mocked in tests; no network in CI.
   - Migration 202607050004: library_entries.embedding vector(1536) (nullable; no

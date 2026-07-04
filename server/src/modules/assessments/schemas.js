@@ -139,7 +139,36 @@ const assignMitigationOwnerSchema = z.object({
     })
 });
 
+// --- Smart tagging (§9.6) — evaluation-scoped -------------------------------
+// suggest-tags takes no body: the scenario text is read server-side from the
+// evaluation the client just saved (single source of truth; also feeds the
+// facility-scope invariant via buildPromptContext). confirm carries the Author's
+// final chosen set — each tag names its category + canonical value + source; the
+// route re-validates every value against the facility vocabulary before persist.
+const evaluationParams = assessmentParams.extend({ evaluationId: z.string().uuid() });
+const tagCategory = z.enum(["threat_type", "asset_class", "region", "consequence_category"]);
+
+const suggestTagsSchema = z.object({ params: evaluationParams });
+const getTagsSchema = z.object({ params: evaluationParams });
+const confirmTagsSchema = z.object({
+  params: evaluationParams,
+  body: z.object({
+    tags: z
+      .array(
+        z.object({
+          category: tagCategory,
+          value: z.string().min(1),
+          source: z.enum(["ai", "manual"]).optional()
+        })
+      )
+      .max(12)
+  })
+});
+
 module.exports = {
+  suggestTagsSchema,
+  getTagsSchema,
+  confirmTagsSchema,
   createAssetSchema,
   updateAssetSchema,
   deleteAssetSchema,

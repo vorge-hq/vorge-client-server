@@ -16,6 +16,7 @@ import {
   getEvaluationStatus,
   isEvaluationComplete
 } from "../assessmentModel";
+import { ScenarioTags } from "./ScenarioTags";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
@@ -307,6 +308,7 @@ function EvaluationEditor({ evaluation, asset, threat, onChange, onFieldBlur, ca
                 </div>
               ) : null}
             </div>
+            <ScenarioTags evaluationId={evaluation.id} canEdit={canEdit} />
           </Field>
 
           <Field label="Consequences of scenario">

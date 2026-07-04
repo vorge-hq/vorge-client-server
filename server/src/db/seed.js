@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const db = require("./knex");
 const env = require("../config/env");
 const { ASSESSMENT_STATES, MITIGATION_STATUSES, ROLES } = require("../services/constants");
+const { defaultVocabularyRows } = require("../services/tagVocabularyService");
+const { seedVocabulary } = require("../repositories/tagRepository");
 
 const IDS = Object.freeze({
   northstar: "00000000-0000-4000-8000-000000000001",
@@ -675,6 +677,13 @@ async function seed() {
     ]);
 
     await upsert(trx, "library_entries", LIBRARY_ENTRIES);
+
+    // Smart-tagging controlled vocabulary (§9.6): seed the §19-default starter
+    // set per demo facility so AI tag suggestions have something to validate
+    // against. Idempotent — onConflict(facility_id, category, value) ignores.
+    for (const facilityId of [IDS.bonny, IDS.coral]) {
+      await seedVocabulary({ facilityId, rows: defaultVocabularyRows(), trx });
+    }
   });
 
   console.log("Seeded Vorge demo data.");

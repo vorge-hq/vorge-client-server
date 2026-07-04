@@ -27,17 +27,13 @@ const { getAssessmentForUser } = require("../../repositories/assessmentRepositor
 const { ROLES, ASSESSMENT_STATES } = require("../../services/constants");
 const { DomainError } = require("../../services/domainError");
 
-async function runContentMutation({
-  req,
-  assessmentId,
-  expectedLockVersion,
-  actionType,
-  entityType,
-  // mutate: async (trx, { assessment }) => ({ entityId, diff, metadata?, result })
-  //   `diff` is the before/after of changed fields only ([before, after] pairs).
-  //   `result` is whatever the route wants to return to the client.
-  mutate
-}) {
+// Guard steps 1–3 (scope 404 → Author 403 → Draft 409), factored out so the
+// smart-tagging endpoints (O4) can reuse the SAME role/state gate without the
+// lock_version bump: a tag suggestion is advisory metadata, not lock-versioned
+// content, and must not force the Author's next content save into a 409. Returns
+// the loaded, writable assessment. Both this and runContentMutation stay the one
+// place those three rules live.
+async function loadWritableAssessment({ req, assessmentId }) {
   const { user, actingRole } = req;
 
   const assessment = await getAssessmentForUser({ assessmentId, user, actingRole });
@@ -60,6 +56,24 @@ async function runContentMutation({
       { expectedState: ASSESSMENT_STATES.DRAFT, actualState: assessment.state }
     );
   }
+
+  return assessment;
+}
+
+async function runContentMutation({
+  req,
+  assessmentId,
+  expectedLockVersion,
+  actionType,
+  entityType,
+  // mutate: async (trx, { assessment }) => ({ entityId, diff, metadata?, result })
+  //   `diff` is the before/after of changed fields only ([before, after] pairs).
+  //   `result` is whatever the route wants to return to the client.
+  mutate
+}) {
+  const { user, actingRole } = req;
+
+  const assessment = await loadWritableAssessment({ req, assessmentId });
 
   return activeConn().transaction(async (trx) => {
     const bumped = await trx("assessments")
@@ -100,4 +114,4 @@ async function runContentMutation({
   });
 }
 
-module.exports = { runContentMutation };
+module.exports = { runContentMutation, loadWritableAssessment };

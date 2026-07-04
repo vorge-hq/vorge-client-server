@@ -69,6 +69,21 @@ export function updateEvaluation({ assessmentId, evaluationId, lockVersion, acti
   return mutate(`/api/assessments/${assessmentId}/evaluations/${evaluationId}`, "PATCH", { lockVersion, ...changes }, actingRole);
 }
 
+// --- Smart tagging (P4 O4, §9.6) --------------------------------------------
+// Tags are advisory metadata that fire AFTER the scenario save, so these carry
+// NO lockVersion (they never bump it). suggest-tags returns the AI-suggested
+// set (out-of-vocab already discarded server-side); confirm persists the
+// Author's final chosen set. PROD only — the demo/prod branch lives in the seam.
+export function suggestTags({ assessmentId, evaluationId, actingRole }) {
+  return mutate(`/api/assessments/${assessmentId}/evaluations/${evaluationId}/suggest-tags`, "POST", {}, actingRole);
+}
+export function getTags({ assessmentId, evaluationId, actingRole }) {
+  return apiRequest(`/api/assessments/${assessmentId}/evaluations/${evaluationId}/tags`, { actingRole });
+}
+export function confirmTags({ assessmentId, evaluationId, tags, actingRole }) {
+  return mutate(`/api/assessments/${assessmentId}/evaluations/${evaluationId}/tags/confirm`, "POST", { tags }, actingRole);
+}
+
 // --- Contributors ------------------------------------------------------------
 export function putContributors({ assessmentId, contributors, lockVersion, actingRole }) {
   return mutate(`/api/assessments/${assessmentId}/contributors`, "PUT", { lockVersion, contributors }, actingRole);

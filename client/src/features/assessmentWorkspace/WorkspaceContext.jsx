@@ -29,7 +29,10 @@ import {
   updateEvaluation as apiUpdateEvaluation,
   putContributors as apiPutContributors,
   exportAssessment as apiExportAssessment,
-  searchLibrary as apiSearchLibrary
+  searchLibrary as apiSearchLibrary,
+  suggestTags as apiSuggestTags,
+  getTags as apiGetTags,
+  confirmTags as apiConfirmTags
 } from "../../api/assessmentApi";
 import { triggerBrowserDownload } from "../../api/download";
 import {
@@ -54,6 +57,13 @@ const WorkspaceContext = createContext(null);
 
 // Narrative section number → the assessment field that holds its text.
 const SECTION_FIELD = Object.freeze({ 1: "executiveSummary", 2: "facilityInfo", 8: "conclusion" });
+
+// Demo-mode smart-tag suggestions (§9.6): a canned "AI-suggested" set so the
+// chips UI is visible in the showcase without a gateway call.
+const DEMO_SUGGESTED_TAGS = Object.freeze([
+  { category: "threat_type", value: "Insider", source: "ai", status: "suggested" },
+  { category: "consequence_category", value: "People", source: "ai", status: "suggested" }
+]);
 
 // Server-assigned ids are UUIDs; client-created stub ids are not. Used to tell a
 // persistable (server-backed) row from a client-only stub — see persistEvaluation.
@@ -926,6 +936,44 @@ export function WorkspaceProvider({ children }) {
     });
   }, []);
 
+  /* Smart tagging (§9.6) — the prod↔demo seam for the Section-6 scenario chips.
+     Tags never bump lockVersion (advisory metadata that fires after the save),
+     so these carry none. DEMO: no fetch — suggest returns a canned AI set,
+     confirm/load echo locally. PROD: hit the evaluation-scoped tag endpoints,
+     scoped to the active assessment. All three resolve to a tag array. */
+  const activeAssessmentIdRef = () => stateRef.current.activeAssessmentId;
+
+  const loadScenarioTags = useCallback(async (evaluationId, actingRole) => {
+    if (isDemoEnabled()) return [];
+    const assessmentId = activeAssessmentIdRef();
+    if (!assessmentId) return [];
+    const { tags } = await apiGetTags({ assessmentId, evaluationId, actingRole });
+    return tags || [];
+  }, []);
+
+  const suggestScenarioTags = useCallback(async (evaluationId, actingRole) => {
+    if (isDemoEnabled()) {
+      return DEMO_SUGGESTED_TAGS.map((t) => ({ ...t }));
+    }
+    const assessmentId = activeAssessmentIdRef();
+    if (!assessmentId) return [];
+    const { tags } = await apiSuggestTags({ assessmentId, evaluationId, actingRole });
+    return tags || [];
+  }, []);
+
+  const confirmScenarioTags = useCallback(async (evaluationId, tags, actingRole) => {
+    const chosen = (tags || []).map((t) => ({ category: t.category, value: t.value, source: t.source }));
+    if (isDemoEnabled()) {
+      return { ok: true, tags: chosen.map((t) => ({ ...t, status: "confirmed" })) };
+    }
+    const assessmentId = activeAssessmentIdRef();
+    // No active assessment → don't fire a malformed /assessments/undefined URL;
+    // signal a no-op the caller can ignore without wiping the working set.
+    if (!assessmentId) return { ok: false, tags: null };
+    const { tags: confirmed } = await apiConfirmTags({ assessmentId, evaluationId, tags: chosen, actingRole });
+    return { ok: true, tags: confirmed || [] };
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -956,6 +1004,9 @@ export function WorkspaceProvider({ children }) {
       hydrateAssessmentsList,
       exportDocument,
       searchLibrary,
+      loadScenarioTags,
+      suggestScenarioTags,
+      confirmScenarioTags,
       WORKFLOW_ACTIONS
     }),
     [
@@ -986,7 +1037,10 @@ export function WorkspaceProvider({ children }) {
       persistEvaluation,
       saveContributors,
       exportDocument,
-      searchLibrary
+      searchLibrary,
+      loadScenarioTags,
+      suggestScenarioTags,
+      confirmScenarioTags
     ]
   );
 

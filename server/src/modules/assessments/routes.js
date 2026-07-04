@@ -32,7 +32,18 @@ const {
 const { setAssetThreatLink } = require("../../repositories/linkRepository");
 const { updateEvaluationInAssessment } = require("../../repositories/evaluationRepository");
 const { setSectionText } = require("../../repositories/sectionRepository");
-const { runContentMutation } = require("./contentWriteGuard");
+const {
+  getVocabulary,
+  listTagsForEvaluation,
+  saveSuggestedTags,
+  confirmTags
+} = require("../../repositories/tagRepository");
+const { runContentMutation, loadWritableAssessment } = require("./contentWriteGuard");
+const { rejectMitigationOwner } = require("../../middleware/rejectMitigationOwner");
+const { runAiCall, buildPromptContext } = require("../../ai");
+const { buildTaggingPrompt, TAG_OUTPUT_SCHEMA } = require("../../ai/prompts/smartTagging");
+const { validateTags, normalize: normalizeTag } = require("../../services/tagVocabularyService");
+const env = require("../../config/env");
 const {
   createAssetSchema,
   updateAssetSchema,
@@ -45,7 +56,10 @@ const {
   putContributorsSchema,
   putSectionSchema,
   reassignLeadAuthorSchema,
-  assignMitigationOwnerSchema
+  assignMitigationOwnerSchema,
+  suggestTagsSchema,
+  getTagsSchema,
+  confirmTagsSchema
 } = require("./schemas");
 const validateRequest = require("../../middleware/validateRequest");
 const { DomainError } = require("../../services/domainError");
@@ -419,6 +433,184 @@ router.patch(
           updateEvaluationInAssessment({ assessment, evaluationId: req.params.evaluationId, input, trx })
       });
       res.json({ evaluation: result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// --- Smart tagging (Section 6, §9.6) — AI suggest + Author confirm ------------
+// These share the content role/state gate (Author + Draft) via
+// loadWritableAssessment but do NOT bump lock_version: tags are advisory
+// metadata that fire AFTER the client's scenario save, so touching lock_version
+// would 409 the Author's next content write. rejectMitigationOwner is mounted on
+// the AI endpoint for the "Mitigation Owner × every AI endpoint → 403" matrix
+// (the Author check would 403 them anyway, but the shared guard makes it hold by
+// construction). §9.7 audit: the suggested set and the confirmed set are written
+// as SEPARATE rows (ai-tags-suggested, tags-confirmed).
+
+// Load the evaluation the tags hang off, scoped to the (already facility-scoped)
+// assessment. Returns null → 404 without leaking whether the id exists elsewhere.
+async function loadEvaluationForTags({ assessment, evaluationId }) {
+  const row = await activeConn()("evaluations")
+    .where({ id: evaluationId, assessment_id: assessment.id })
+    .first();
+  return row || null;
+}
+
+router.post(
+  "/:assessmentId/evaluations/:evaluationId/suggest-tags",
+  rejectMitigationOwner,
+  validateRequest(suggestTagsSchema),
+  async (req, res, next) => {
+    try {
+      if (!env.aiEnabled) {
+        throw new DomainError("Smart tagging is not enabled", 404, "AI_FEATURE_DISABLED");
+      }
+      const assessment = await loadWritableAssessment({ req, assessmentId: req.params.assessmentId });
+      const evaluation = await loadEvaluationForTags({ assessment, evaluationId: req.params.evaluationId });
+      if (!evaluation) {
+        throw new DomainError("Evaluation not found in this assessment", 404, "EVALUATION_NOT_FOUND");
+      }
+
+      // Facility-scope invariant by construction: the evaluation must belong to
+      // the request's facility, else buildPromptContext throws (never a bleed).
+      buildPromptContext({ facilityId: assessment.facilityId, entities: [evaluation] });
+
+      const vocabulary = await getVocabulary({ facilityId: assessment.facilityId });
+      const { output } = await runAiCall({
+        feature: "smart_tagging",
+        kind: "object",
+        facilityId: assessment.facilityId,
+        userId: req.user.id,
+        actingRole: req.actingRole,
+        traceId: req.traceId,
+        schema: TAG_OUTPUT_SCHEMA,
+        prompt: buildTaggingPrompt({ scenario: evaluation.scenario, vocabulary })
+      });
+
+      // Out-of-vocabulary tags are DISCARDED here (§9.6) — only canonical
+      // {category, value} pairs the facility actually defines are persisted.
+      const validTags = validateTags({ vocabulary, tags: output && output.tags });
+
+      const tags = await activeConn().transaction(async (trx) => {
+        const persisted = await saveSuggestedTags({
+          facilityId: assessment.facilityId,
+          evaluationId: evaluation.id,
+          tags: validTags,
+          trx
+        });
+        await appendAuditLog(
+          {
+            actionType: "ai-tags-suggested",
+            userId: req.user.id,
+            actingRole: req.actingRole,
+            facilityId: assessment.facilityId,
+            assessmentId: assessment.id,
+            entityType: "evaluation",
+            entityId: evaluation.id,
+            diff: null,
+            metadata: { tags: persisted.map((t) => ({ category: t.category, value: t.value })) },
+            traceId: req.traceId
+          },
+          trx
+        );
+        return persisted;
+      });
+
+      res.json({ tags });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/:assessmentId/evaluations/:evaluationId/tags",
+  validateRequest(getTagsSchema),
+  async (req, res, next) => {
+    try {
+      const assessment = await getAssessmentForUser({
+        assessmentId: req.params.assessmentId,
+        user: req.user,
+        actingRole: req.actingRole
+      });
+      if (!assessment) {
+        throw new DomainError("Assessment not found or outside facility scope", 404, "ASSESSMENT_NOT_FOUND");
+      }
+      // Bind the evaluation to THIS assessment (same invariant the write paths
+      // enforce) so a tag read can't reach another assessment's evaluation in
+      // the same facility via a mismatched URL.
+      const evaluation = await loadEvaluationForTags({ assessment, evaluationId: req.params.evaluationId });
+      if (!evaluation) {
+        throw new DomainError("Evaluation not found in this assessment", 404, "EVALUATION_NOT_FOUND");
+      }
+      const tags = await listTagsForEvaluation({
+        facilityId: assessment.facilityId,
+        evaluationId: evaluation.id
+      });
+      res.json({ tags });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:assessmentId/evaluations/:evaluationId/tags/confirm",
+  rejectMitigationOwner,
+  validateRequest(confirmTagsSchema),
+  async (req, res, next) => {
+    try {
+      const assessment = await loadWritableAssessment({ req, assessmentId: req.params.assessmentId });
+      const evaluation = await loadEvaluationForTags({ assessment, evaluationId: req.params.evaluationId });
+      if (!evaluation) {
+        throw new DomainError("Evaluation not found in this assessment", 404, "EVALUATION_NOT_FOUND");
+      }
+
+      // Re-validate every submitted value against the facility vocabulary — the
+      // client cannot confirm a tag outside the dictionary even by hand. Sources
+      // are preserved so the audit distinguishes AI-kept from manually-added.
+      const vocabulary = await getVocabulary({ facilityId: assessment.facilityId });
+      // validateTags matches by normalized VALUE (ignoring the submitted
+      // category, which it replaces with the canonical one), so the source map
+      // must key on the same normalized value — else a mis-categorized or
+      // whitespace-padded submission would lose its "ai" source and be audited
+      // as manual (§9.6 must distinguish AI-kept from manually-added).
+      const sourceByValue = new Map(
+        (req.validated.body.tags || []).map((t) => [normalizeTag(t.value), t.source])
+      );
+      const validated = validateTags({
+        vocabulary,
+        tags: (req.validated.body.tags || []).map((t) => t.value)
+      }).map((t) => ({ ...t, source: sourceByValue.get(normalizeTag(t.value)) === "ai" ? "ai" : "manual" }));
+
+      const tags = await activeConn().transaction(async (trx) => {
+        const confirmed = await confirmTags({
+          facilityId: assessment.facilityId,
+          evaluationId: evaluation.id,
+          tags: validated,
+          trx
+        });
+        await appendAuditLog(
+          {
+            actionType: "tags-confirmed",
+            userId: req.user.id,
+            actingRole: req.actingRole,
+            facilityId: assessment.facilityId,
+            assessmentId: assessment.id,
+            entityType: "evaluation",
+            entityId: evaluation.id,
+            diff: null,
+            metadata: { tags: confirmed.map((t) => ({ category: t.category, value: t.value, source: t.source })) },
+            traceId: req.traceId
+          },
+          trx
+        );
+        return confirmed;
+      });
+
+      res.json({ tags });
     } catch (error) {
       next(error);
     }

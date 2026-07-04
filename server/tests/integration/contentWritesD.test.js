@@ -109,6 +109,50 @@ describe("Asset×threat links (Section 5) — PUT enable/disable", () => {
     expect(res.body.error.code).toBe("LINK_TARGET_NOT_FOUND");
     expect(await lockVersionOf(A2.id)).toBe(v); // rolled back
   });
+
+  // P3 (g) follow-on: enabling a pair seeds its evaluation (evaluations have no
+  // create endpoint) and echoes it, so Section 6 has a real row to PATCH.
+  test("PUT enabling a fresh pair auto-creates an evaluation and echoes it", async () => {
+    const s = await authorSession();
+    let v = await lockVersionOf(A2.id);
+    const a = await withAuth(request(app).post(`/api/assessments/${A2.id}/assets`), s).send({ lockVersion: v, name: "Freshly added asset" });
+    const assetId = a.body.asset.id;
+    v = await lockVersionOf(A2.id);
+    const t = await withAuth(request(app).post(`/api/assessments/${A2.id}/threats`), s).send({ lockVersion: v, name: "Freshly added threat" });
+    const threatId = t.body.threat.id;
+
+    v = await lockVersionOf(A2.id);
+    const res = await withAuth(request(app).put(`/api/assessments/${A2.id}/links/${assetId}/${threatId}`), s)
+      .send({ lockVersion: v, enabled: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.link.enabled).toBe(true);
+    expect(res.body.evaluation).toBeTruthy();
+    expect(res.body.evaluation.assetId).toBe(assetId);
+    expect(res.body.evaluation.threatId).toBe(threatId);
+    const evalRow = await db("evaluations").where({ assessment_id: A2.id, asset_id: assetId, threat_id: threatId }).first();
+    expect(evalRow).toBeTruthy();
+    expect(res.body.evaluation.id).toBe(evalRow.id);
+    // The auto-create is recorded on the link-updated audit row.
+    const audit = await auditRow("link-updated", res.body.link.id);
+    expect(audit.metadata.evaluationCreated).toBe(evalRow.id);
+  });
+
+  test("re-enabling a pair that already has an evaluation echoes it without duplicating", async () => {
+    const s = await authorSession();
+    let v = await lockVersionOf(A2.id);
+    await withAuth(request(app).put(`/api/assessments/${A2.id}/links/${C.asset}/${C.threat}`), s).send({ lockVersion: v, enabled: false });
+    v = await lockVersionOf(A2.id);
+    const res = await withAuth(request(app).put(`/api/assessments/${A2.id}/links/${C.asset}/${C.threat}`), s).send({ lockVersion: v, enabled: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.evaluation.id).toBe(C.evaluation);
+    const count = await db("evaluations").where({ assessment_id: A2.id, asset_id: C.asset, threat_id: C.threat }).count("* as n").first();
+    expect(Number(count.n)).toBe(1);
+    // No new evaluation was created, so no evaluationCreated metadata.
+    const audit = await auditRow("link-updated", C.link);
+    expect(audit.metadata?.evaluationCreated).toBeUndefined();
+  });
 });
 
 describe("Evaluations (Section 6) — PATCH", () => {

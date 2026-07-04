@@ -1,3 +1,60 @@
+2026-07-04 — P3 (g) WRITES: §2 Facility Info + Assets (Section 3) content writes
+  Continued the client flip onto live writes (user: "go with your recommendation"
+  — content-entity writes + §2 serialize approach).
+  - §2 Facility Info (structured form): DECIDED serialize→JSON in the section-2
+    content_text column (no new server model; sign-off 2026-07-04, recorded in the
+    field-mapping decision doc). Adapters serializeFacilityInfo/parseFacilityInfo
+    (parse merges over defaults; tolerates legacy plain text). FacilityInfoSection
+    inits from the parsed blob and saves the whole form on blur through
+    saveSectionText(section 2) — prod live PUT w/ lockVersion + 409 reload banner;
+    demo no-fetch. Operator-memory autocomplete recording unchanged. Skips the PUT
+    when nothing changed since last save (lastSavedRef).
+  - Assets (Section 3) writes — the reference content-entity flip:
+    · Write adapter toServerAssetPayload (inverse of toClientAsset: type→assetType
+      column, description/dependencies/consequences + any client-only key → details).
+    · WorkspaceContext now prod-aware: addAsset→POST (maps server UUID back, syncs
+      lockVersion), removeAsset→DELETE, NEW persistAsset→PATCH on field blur.
+      updateAsset stays local/optimistic (per-keystroke). A stateRef mirrors state
+      so the async writes read the freshest assets + active-assessment lockVersion;
+      syncLockVersion merges each response's version back so the next write's
+      optimistic-concurrency check doesn't fail stale. persistAsset takes an
+      `overrides` arg for discrete changes (criticality toggle) whose setState
+      hasn't flushed to the ref yet. 409 → { conflict } → reload banner; demo = no
+      network.
+    · AssetDisaggregationSection: onBlur→persist on the 4 text fields, toggle
+      persists with an override, async add (auto-expands the server-id row), async
+      remove, top-of-section conflict banner.
+  - Tests: FacilityInfoSection.test.jsx (3) + AssetDisaggregationSection.write.test.jsx
+    (4) — prod fires PATCH/POST/DELETE/PUT w/ lockVersion + details packing, 409
+    renders reload copy, demo fires nothing. make test: 250 server-unit / 163
+    client green (integration not run — no TEST_DATABASE_URL; slice is client-only).
+    Existing AD-1 test unaffected (it only fires onChange, never blur/add/remove).
+  - Remaining P3 (g): writes for threats / link-toggle / evaluations / contributors
+    — same mold as Assets.
+
+2026-07-04 — P3 (g) content-entity READS: prod bundle hydrates child entities
+  Continued the client flip. The opened assessment now reads its child entities
+  live in prod (was: fields + section text only; child rows still fixtures).
+  - Adapters (client/src/api/adapters.js): toClientAsset / toClientThreat /
+    toClientEvaluation / toClientLinks — unpack the server's lean row + JSONB bag
+    (assets/threats: details; evaluations: r1/r2) back into the demo-rich flat
+    client shapes. Unknown bag keys spread through (nothing lost, e.g. AD-1
+    anomalyAcks). toClientLinks yields BOTH the {assetId,threatId} presence list
+    and the matrix map; enabled-only (disabled/absent pair = not linked); scores
+    derived from R1/R2, never stored.
+  - WorkspaceContext.hydrateAssessmentBundle: in prod now also replaces the
+    top-level assets/threats/evaluations/links/matrix slices from the bundle
+    (single-active-assessment model, §17.7). Demo still a no-op.
+  - Decision recorded (docs/decisions/2026-07-04-content-entity-field-mapping.md):
+    the canonical client↔server field mapping, fixed once so the write slice packs
+    via its inverse. No server schema change — every rich field has a column or a
+    JSONB home.
+  - Tests: hydrateBundle.test.jsx extended (prod maps asset/threat/eval rows +
+    matrix on/off + link count; demo fires no fetch). make test: 250 server-unit /
+    156 client green (integration not run — no TEST_DATABASE_URL; slice is
+    client-only). Remaining P3 (g): content-entity WRITES + §2 Facility Info
+    structured-form decision.
+
 2026-07-03 — P3 (g) reads + §8: prod list/bundle hydration + Conclusion save
   Continued the client flip (user picked "reads + narrative writes"). Two surfaces
   now read live data in prod; demo keeps fixtures (fetch-spy proven).

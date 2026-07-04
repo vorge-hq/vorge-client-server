@@ -106,7 +106,7 @@ function CollapsedAssetRow({ asset, onClick, readOnly }) {
   );
 }
 
-function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly }) {
+function ExpandedAssetRow({ asset, onFieldChange, onFieldBlur, onCollapse, onRemove, readOnly }) {
   const { message, acknowledged, ackReason, acknowledge } = useAnomalyAcknowledgement(asset);
   const [ackOpen, setAckOpen] = useState(false);
 
@@ -132,6 +132,7 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
             <input
               value={asset.type || ""}
               onChange={(e) => onFieldChange("type", e.target.value)}
+              onBlur={() => onFieldBlur()}
               disabled={readOnly}
               placeholder="e.g. Process Unit, Storage, Control System"
               className="field-control"
@@ -143,6 +144,7 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
             <input
               value={asset.dependencies || ""}
               onChange={(e) => onFieldChange("dependencies", e.target.value)}
+              onBlur={() => onFieldBlur()}
               disabled={readOnly}
               placeholder="Which other assets does this depend on?"
               className="field-control"
@@ -155,6 +157,7 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
           <textarea
             value={asset.description || ""}
             onChange={(e) => onFieldChange("description", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             rows={3}
             placeholder="Describe the asset, its function, and physical characteristics..."
@@ -167,6 +170,7 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
           <textarea
             value={asset.consequences || ""}
             onChange={(e) => onFieldChange("consequences", e.target.value)}
+            onBlur={() => onFieldBlur()}
             disabled={readOnly}
             rows={3}
             placeholder="What happens if this asset is compromised or lost?"
@@ -185,7 +189,12 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
           <label className="field-label">Criticality</label>
           <CriticalityToggle
             value={asset.criticality}
-            onChange={(level) => onFieldChange("criticality", level)}
+            onChange={(level) => {
+              onFieldChange("criticality", level);
+              // Discrete change: the setState above hasn't flushed to the ref yet,
+              // so pass the new value as an override to persist correctly.
+              onFieldBlur({ criticality: level });
+            }}
             disabled={readOnly}
           />
         </div>
@@ -218,8 +227,10 @@ function ExpandedAssetRow({ asset, onFieldChange, onCollapse, onRemove, readOnly
 
 export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
-  const { assets, updateAsset, addAsset, removeAsset } = useWorkspace();
+  const { assets, updateAsset, addAsset, persistAsset, removeAsset, showToast } = useWorkspace();
   const [expandedId, setExpandedId] = useState(null);
+  const [conflict, setConflict] = useState(null);
+  const actingRole = session.actingRole;
 
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
@@ -228,22 +239,46 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
 
   const completeCount = assets.filter(isAssetComplete).length;
 
+  /* Surface a mutation result: a lost lock_version race shows the reload banner;
+     any other error toasts; success clears the banner. In demo mode results are
+     always { ok } so this is a no-op. */
+  function surface(result) {
+    if (result?.conflict) setConflict(result.error);
+    else if (result?.error) showToast(result.error, { tone: "error" });
+    else setConflict(null);
+  }
+
+  // Per-keystroke local update (optimistic; no network). Persistence happens on
+  // blur / discrete change via handlePersist.
   function handleField(assetId, field, value) {
     updateAsset(assetId, { [field]: value });
   }
 
-  function handleAdd() {
+  async function handlePersist(assetId, overrides) {
+    surface(await persistAsset(assetId, actingRole, overrides));
+  }
+
+  async function handleAdd() {
     const id = `a${assets.length + 1}-${Date.now()}`;
-    addAsset({
-      id,
-      name: `Asset ${assets.length + 1}`,
-      type: "",
-      description: "",
-      dependencies: "",
-      consequences: "",
-      criticality: "Medium"
-    });
-    setExpandedId(id);
+    const result = await addAsset(
+      {
+        id,
+        name: `Asset ${assets.length + 1}`,
+        type: "",
+        description: "",
+        dependencies: "",
+        consequences: "",
+        criticality: "Medium"
+      },
+      actingRole
+    );
+    if (result?.asset) setExpandedId(result.asset.id);
+    surface(result);
+  }
+
+  async function handleRemove(assetId) {
+    if (expandedId === assetId) setExpandedId(null);
+    surface(await removeAsset(assetId, actingRole));
   }
 
   return (
@@ -278,6 +313,14 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
       }
     >
       <ValidationSummary errors={errors} />
+      {conflict ? (
+        <Banner tone="error" title="Changes not saved">
+          {conflict}{" "}
+          <button type="button" onClick={() => window.location.reload()} className="underline font-medium">
+            Reload
+          </button>
+        </Banner>
+      ) : null}
       <Banner tone="info" title="Single source of truth">
         Edits here update the asset list across Sections 5, 6, and 7. Deleting an asset will warn before
         removing dependent evaluations and mitigations.
@@ -317,8 +360,9 @@ export function AssetDisaggregationSection({ assessment, readOnly, errors }) {
                 asset={asset}
                 readOnly={readOnly}
                 onFieldChange={(field, value) => handleField(asset.id, field, value)}
+                onFieldBlur={(overrides) => handlePersist(asset.id, overrides)}
                 onCollapse={() => setExpandedId(null)}
-                onRemove={removeAsset}
+                onRemove={handleRemove}
               />
             ) : (
               <CollapsedAssetRow

@@ -10,8 +10,35 @@ import { WorkspaceProvider, useWorkspace } from "./WorkspaceContext";
 const BUNDLE = {
   assessment: { id: "srv-1", name: "Live — 2028 SRA", facilityId: "f1", facilityName: "F1", state: "Draft", lockVersion: 7, leadAuthorUserId: "u", contributors: [] },
   sectionTexts: { "1": "Exec text from server", "8": "Conclusion from server" },
-  assets: [],
-  threats: []
+  assets: [
+    {
+      id: "as-1",
+      name: "Server Asset",
+      assetType: "Process Unit",
+      criticality: "Very High",
+      details: { description: "desc from server", dependencies: "dep", consequences: "cons" }
+    }
+  ],
+  threats: [
+    { id: "th-1", name: "Server Threat", likelihood: 3, details: { short: "Srv", classification: "Criminality", rating: "High" } }
+  ],
+  links: [
+    { assetId: "as-1", threatId: "th-1", enabled: true },
+    { assetId: "as-1", threatId: "th-2", enabled: false }
+  ],
+  evaluations: [
+    {
+      id: "ev-1",
+      assetId: "as-1",
+      threatId: "th-1",
+      scenario: "Server scenario",
+      controls: "Server controls",
+      vulnerabilities: "Server vulns",
+      proposedMitigation: "Server mit",
+      r1: { consequence: 5, likelihood: 4 },
+      r2: { consequence: 2, likelihood: 1 }
+    }
+  ]
 };
 
 function Probe({ assessmentId }) {
@@ -22,12 +49,22 @@ function Probe({ assessmentId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const a = ws.assessmentsById[assessmentId];
+  const asset = ws.assets[0];
+  const threat = ws.threats[0];
+  const evaluation = ws.evaluations[0];
   return (
     <div>
       <span>done:{String(done)}</span>
       <span>exec:{a?.executiveSummary || ""}</span>
       <span>concl:{a?.conclusion || ""}</span>
       <span>lock:{a?.lockVersion ?? ""}</span>
+      <span>assets:{ws.assets.length}</span>
+      <span>asset:{asset ? `${asset.name}|${asset.type}|${asset.description}|${asset.criticality}` : ""}</span>
+      <span>threat:{threat ? `${threat.name}|${threat.short}|${threat.rating}` : ""}</span>
+      <span>eval:{evaluation ? `${evaluation.existingControls}|${evaluation.consequenceR1}|${evaluation.likelihoodR2}` : ""}</span>
+      <span>matrixOn:{String(Boolean(ws.matrix["as-1|th-1"]))}</span>
+      <span>matrixOff:{String(Boolean(ws.matrix["as-1|th-2"]))}</span>
+      <span>links:{ws.links.length}</span>
     </div>
   );
 }
@@ -60,6 +97,27 @@ describe("prod mode", () => {
     expect(screen.getByText("lock:7")).toBeTruthy();
     const [url] = fetchFn.mock.calls[0];
     expect(url).toContain("/api/assessments/srv-1");
+  });
+
+  test("hydrates child entities (assets/threats/evaluations/links) from the bundle", async () => {
+    mockFetch({ ok: true, status: 200, json: async () => BUNDLE });
+    render(
+      <WorkspaceProvider>
+        <Probe assessmentId="srv-1" />
+      </WorkspaceProvider>
+    );
+    expect(await screen.findByText("done:true")).toBeTruthy();
+    // Assets: replaces fixtures with the one server row; details unpacked.
+    expect(screen.getByText("assets:1")).toBeTruthy();
+    expect(screen.getByText("asset:Server Asset|Process Unit|desc from server|Very High")).toBeTruthy();
+    // Threats: name is the column, the rest come out of details.
+    expect(screen.getByText("threat:Server Threat|Srv|High")).toBeTruthy();
+    // Evaluations: controls→existingControls, r1/r2 unpacked.
+    expect(screen.getByText("eval:Server controls|5|1")).toBeTruthy();
+    // Links: enabled pair ticks the matrix; disabled pair is omitted from both.
+    expect(screen.getByText("matrixOn:true")).toBeTruthy();
+    expect(screen.getByText("matrixOff:false")).toBeTruthy();
+    expect(screen.getByText("links:1")).toBeTruthy();
   });
 });
 

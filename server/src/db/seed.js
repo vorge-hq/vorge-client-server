@@ -217,6 +217,20 @@ async function seed() {
       }
     ]);
 
+    // Reset content for the seed's OWN assessments before re-inserting, so
+    // `npm run seed` is idempotent against any prior state. Without this, moving
+    // an evaluation to a different asset/threat pair trips the
+    // evaluations(asset_id, threat_id) unique index during the transitional
+    // upsert. Scoped strictly to these three demo assessment ids — it never
+    // touches another tenant's data (unlike a table-wide TRUNCATE).
+    const SEED_ASSESSMENT_IDS = [IDS.bonny2026, IDS.coral2026, IDS.bonny2025];
+    await trx("mitigation_progress_logs")
+      .whereIn("mitigation_id", trx("mitigations").select("id").whereIn("assessment_id", SEED_ASSESSMENT_IDS))
+      .del();
+    for (const table of ["mitigations", "evaluations", "asset_threat_links", "assessment_sections", "threats", "assets"]) {
+      await trx(table).whereIn("assessment_id", SEED_ASSESSMENT_IDS).del();
+    }
+
     await upsert(trx, "assets", [
       {
         id: IDS.controlRoom,

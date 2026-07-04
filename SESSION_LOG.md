@@ -1,3 +1,17 @@
+2026-07-04 — docs(roadmap): add Platform Console phase (P4.5)
+  Captured a new owner-facing "Platform Console" idea in the roadmaps (no code).
+  Owner/consultant surface SEPARATE from customer Admin: new-tenant provisioning
+  (operator → facility → first Admin, seeded from BL §19), cross-client portfolio
+  dashboard, and audited support access; new PLATFORM_OWNER role + /platform/*
+  namespace that must not weaken tenant isolation. Open decision recorded:
+  impersonate-into-client vs link-only support model.
+  - docs/roadmap.md: new "## P4.5 — Platform Console" phase (after P4, before P5,
+    status NEEDS DECISION) + a linked line under Suggested improvements tying it to
+    the existing Staging onboarding kit backlog item.
+  - docs/strategic-roadmap.md: item #15 under "Later (v1.1+)".
+  Placeholders only — user will flesh out with fable. Key files: docs/roadmap.md,
+  docs/strategic-roadmap.md.
+
 2026-07-04 — chore(seed): populate Bonny 2026 + Pernis test assessments
   Enriched server/src/db/seed.js so the two test assessments carry full content
   for exercising every feature end-to-end in prod mode.
@@ -10,9 +24,16 @@
     collided with the new 2026 marine eval. Gave Bonny 2025 its own marine
     asset/threat/link so it's self-consistent (and its Approved export now has
     real §3/§4/§5 tables). §2 JSON matches the client FacilityInfo form shape.
+  Made the seed self-resetting: it now clears content for its OWN three demo
+  assessment ids (scoped DELETEs, not a table TRUNCATE) before re-inserting, so
+  `npm run seed` is idempotent against any prior state (verified: ran twice over
+  existing data, counts stable) — needed because re-pointing an evaluation trips
+  the evaluations(asset_id,threat_id) unique index on a plain upsert.
   Verified: re-seeded local vantage DB, GET /:id returns all content + parsed
-  section text for both assessments. Seed file only — committable/reproducible;
-  Supabase seeding tracked separately. Key file: server/src/db/seed.js.
+  section text for both assessments. Seed file only — committable/reproducible.
+  Supabase seeding is a user-run prod step (safety guard blocked a table wipe;
+  the scoped-reset seed now runs cleanly against Supabase). Key file:
+  server/src/db/seed.js.
 
 2026-07-04 — fix(client): prod dashboards empty (hydrate list from API)
   Found during P3.5 browser smoke: in prod every role dashboard showed 0

@@ -103,6 +103,86 @@ async function updateLibraryEntry({ id, facilityId, input, trx }) {
   return { entry, diff };
 }
 
+// pgvector text input format: "[a,b,c]". Rejects a non-array or wrong dimension
+// up front so a malformed vector never reaches the DB as a confusing cast error.
+const EMBEDDING_DIMS = 1536;
+function toVectorLiteral(embedding) {
+  if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMS) {
+    throw new DomainError(
+      `Embedding must be a ${EMBEDDING_DIMS}-dim number array (got ${Array.isArray(embedding) ? embedding.length : typeof embedding})`,
+      500,
+      "EMBEDDING_SHAPE_INVALID"
+    );
+  }
+  // Every element must be a finite number — a NaN/Infinity/string element would
+  // pass the length check and then blow up as an opaque pgvector cast error.
+  for (const value of embedding) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new DomainError("Embedding contains a non-finite value", 500, "EMBEDDING_SHAPE_INVALID");
+    }
+  }
+  return `[${embedding.join(",")}]`;
+}
+
+// Store an entry's embedding vector. Scoped by facility_id (RLS + explicit) so
+// the async post-commit pipeline can only ever write within the entry's facility.
+// Does NOT bump updated_at — the embedding is a derived field, not a user edit.
+//
+// Stale-write guard: when title/body are given, the UPDATE also matches on them,
+// so a slower/older concurrent embed (whose text no longer matches the row) hits
+// 0 rows and is skipped — the newer edit's embed stores the fresh vector.
+async function setEmbedding({ id, facilityId, embedding, title, body, conn = activeConn() }) {
+  const literal = toVectorLiteral(embedding);
+  const query = conn("library_entries").where({ id, facility_id: facilityId });
+  if (title !== undefined) {
+    query.where({ title });
+  }
+  if (body !== undefined) {
+    query.where({ body });
+  }
+  const updated = await query.update({ embedding: conn.raw("?::vector", [literal]) });
+  return updated; // rows affected (0 if deleted or superseded by a newer edit)
+}
+
+// Cosine-similarity search within a facility (+ optional type), NULL-embedding
+// rows skipped. Orders by pgvector cosine DISTANCE (<=>) ascending — most
+// similar first — and returns similarity = 1 - distance. Selects explicit
+// columns (never the raw vector) so responses stay lean.
+async function searchByEmbedding({ facilityId, type, embedding, limit = 10, conn = activeConn() }) {
+  const literal = toVectorLiteral(embedding);
+  const query = conn("library_entries")
+    .where({ facility_id: facilityId })
+    .whereNotNull("embedding")
+    .select(
+      "id",
+      "facility_id",
+      "type",
+      "title",
+      "body",
+      "metadata",
+      "created_at",
+      "updated_at",
+      conn.raw("1 - (embedding <=> ?::vector) AS similarity", [literal])
+    )
+    .orderByRaw("embedding <=> ?::vector", [literal])
+    .limit(limit);
+  if (type) {
+    query.where({ type });
+  }
+  const rows = await query;
+  return rows.map((row) => ({ ...mapLibraryEntry(row), similarity: Number(row.similarity) }));
+}
+
+// The re-embedding script's source list: every entry in a facility (id + text),
+// optionally only those still missing an embedding.
+async function listEntriesForEmbedding({ facilityId, onlyMissing = false, conn = activeConn() }) {
+  const query = conn("library_entries").where({ facility_id: facilityId }).select("id", "title", "body");
+  if (onlyMissing) {
+    query.whereNull("embedding");
+  }
+  return query.orderBy("id");
+}
+
 async function deleteLibraryEntry({ id, facilityId, trx }) {
   const existing = await getLibraryEntry({ id, facilityId, conn: trx });
   if (!existing) {
@@ -117,9 +197,14 @@ async function deleteLibraryEntry({ id, facilityId, trx }) {
 
 module.exports = {
   mapLibraryEntry,
+  toVectorLiteral,
+  EMBEDDING_DIMS,
   listLibraryEntries,
   getLibraryEntry,
   createLibraryEntry,
   updateLibraryEntry,
-  deleteLibraryEntry
+  deleteLibraryEntry,
+  setEmbedding,
+  searchByEmbedding,
+  listEntriesForEmbedding
 };

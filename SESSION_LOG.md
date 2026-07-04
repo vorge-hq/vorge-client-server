@@ -1,3 +1,38 @@
+2026-07-04 — feat: P4 O3 — semantic library search (embeddings + pgvector)
+  Feature 1 of the P4 AI features. Gateway mocked in tests; no network in CI.
+  - Migration 202607050004: library_entries.embedding vector(1536) (nullable; no
+    ANN index yet — exact scan is well under the <500ms target at demo scale).
+  - Embedding pipeline (server/src/ai/libraryEmbedding.js): on library create /
+    text-change update the route fires an ASYNC POST-COMMIT embed (registered
+    synchronously in `pending`, work gated on res "finish"/"close" so it runs
+    after the write commits and its own facility scope sees the row). Never
+    blocks or fails the write; re-embeds only when title/body changed; no-op when
+    AI off. drainEmbeddings() test seam.
+  - GET /api/library/search?facilityId=&q=&type= — embeds the query (audited +
+    budgeted; no chat call) then cosine `<=>` ranks the facility's entries
+    (RLS + explicit filter), top 10 + similarity. 404 when AI disabled. Route
+    registered before /:id.
+  - libraryRepository: setEmbedding (facility-scoped, stale-write guard on
+    title/body), searchByEmbedding, listEntriesForEmbedding, toVectorLiteral
+    (dim + finite-number validation). scripts/reembed-library.js backfill
+    (`npm run reembed`; scopes its read so it works under the non-owner role).
+  - Client: LibraryModal wired through the prod↔demo seam — WorkspaceContext
+    searchLibrary (demo ranks fixtures locally, prod hits the endpoint via
+    api/adapters toLibraryPickerEntry), debounced async in the modal. fetch-spy
+    seam test (librarySearch.test.jsx).
+  - Self-review (finder agent) folded in 4 fixes before commit: deterministic
+    drain (sync registration + wait-for-commit), reembed read scoped under RLS,
+    stale-embedding guard on concurrent edits, finite-number vector validation.
+  - Tests: tests/integration/librarySearch.test.js (embedding-on-create/update,
+    metadata-only-no-reembed, cross-facility isolation, deterministic ordering,
+    type filter, per-search audit row, 403, 400) + library.test.js AI-off 404 +
+    tests/aiLibraryEmbedding.test.js unit + client seam test.
+  - Key files: server/migrations/202607050004, server/src/ai/libraryEmbedding.js,
+    server/src/modules/library/{routes,schemas}.js, server/src/repositories/
+    libraryRepository.js, server/scripts/reembed-library.js, client
+    api/assessmentApi + adapters + WorkspaceContext + modals/LibraryModal.
+  - make test: 367 unit / 152 integration / 190 client green.
+
 2026-07-04 — review(F2): Fable gate on P4 O2 — PASSED; 3 open questions resolved
   Reviewed ONLY the O2 diff (c5ca72d) against the F2 checklist. All items verified:
   ceiling boundary math (79/80/100 + once-per-month latch + rollover, pinned in

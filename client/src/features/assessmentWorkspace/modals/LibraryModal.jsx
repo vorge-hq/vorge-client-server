@@ -1,18 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, Search, Tag, X } from "lucide-react";
-import { similarity } from "../../../data/library";
 import { useWorkspace } from "../WorkspaceContext";
+import { useAuth } from "../../../auth/AuthContext";
 
 export function LibraryModal({ onClose, onUse }) {
-  const { libraryScenarios } = useWorkspace();
+  const { searchLibrary } = useWorkspace();
+  const { session } = useAuth();
   const [query, setQuery] = useState("Theft of materials from yard during night shift");
+  const [ranked, setRanked] = useState([]);
 
-  const ranked = useMemo(() => {
-    if (!query) return libraryScenarios.map((entry) => ({ entry, score: 0 }));
-    return libraryScenarios.map((entry) => ({ entry, score: similarity(query, entry.text) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
-  }, [query, libraryScenarios]);
+  // Search through the prod↔demo seam: demo ranks fixtures locally (no fetch),
+  // prod embeds + cosine-ranks server-side. Debounced so typing doesn't fire a
+  // request (or embedding cost) per keystroke; the cancelled flag drops
+  // out-of-order responses.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchLibrary(query, session?.actingRole);
+        if (!cancelled) setRanked(results);
+      } catch {
+        if (!cancelled) setRanked([]);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, searchLibrary, session?.actingRole]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">

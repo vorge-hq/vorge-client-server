@@ -20,6 +20,15 @@ const listLibrarySchema = z.object({
   })
 });
 
+// GET /api/library/search?facilityId=&q=&type= — semantic search (O3).
+const searchLibrarySchema = z.object({
+  query: z.object({
+    facilityId,
+    q: z.string().min(1),
+    type: libraryType.optional()
+  })
+});
+
 // GET /api/library/:id?facilityId=
 const getLibrarySchema = z.object({
   params: entryParams,
@@ -58,6 +67,7 @@ const deleteLibrarySchema = z.object({
 
 module.exports = {
   listLibrarySchema,
+  searchLibrarySchema,
   getLibrarySchema,
   createLibrarySchema,
   updateLibrarySchema,

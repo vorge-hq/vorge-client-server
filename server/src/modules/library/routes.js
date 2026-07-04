@@ -11,6 +11,7 @@ const authorizeRole = require("../../middleware/authorizeRole");
 const requireFacilityAccess = require("../../middleware/requireFacilityAccess");
 const validateRequest = require("../../middleware/validateRequest");
 const { ROLES } = require("../../services/constants");
+const env = require("../../config/env");
 const db = require("../../db/knex");
 const { activeConn } = require("../../db/requestScope");
 const { appendAuditLog } = require("../../repositories/auditRepository");
@@ -20,10 +21,14 @@ const {
   getLibraryEntry,
   createLibraryEntry,
   updateLibraryEntry,
-  deleteLibraryEntry
+  deleteLibraryEntry,
+  searchByEmbedding
 } = require("../../repositories/libraryRepository");
+const { runAiCall } = require("../../ai");
+const { scheduleEmbedding } = require("../../ai/libraryEmbedding");
 const {
   listLibrarySchema,
+  searchLibrarySchema,
   getLibrarySchema,
   createLibrarySchema,
   updateLibrarySchema,
@@ -85,7 +90,32 @@ async function runLibraryMutation({ req, facilityId, actionType, mutate }) {
       },
       trx
     );
-    return entry;
+    return { entry, diff };
+  });
+}
+
+// Fire the semantic-search embedding AFTER the write commits. The job is
+// REGISTERED synchronously here (so drainEmbeddings can't race it), but its work
+// waits on `committed` — res "finish"/"close", which facilityScope emits
+// post-COMMIT — so the embedding's separate transaction sees the committed row.
+// Fire-and-forget: never blocks or fails the write; no-op when AI is disabled.
+function scheduleEntryEmbedding(req, res, facilityId, entry) {
+  if (!env.aiEnabled) {
+    return;
+  }
+  const committed = new Promise((resolve) => {
+    res.on("finish", resolve);
+    res.on("close", resolve); // client abort: still settle so the job never hangs
+  });
+  scheduleEmbedding({
+    entryId: entry.id,
+    facilityId,
+    title: entry.title,
+    body: entry.body,
+    userId: req.user.id,
+    actingRole: req.actingRole,
+    traceId: req.traceId,
+    waitFor: committed
   });
 }
 
@@ -100,6 +130,38 @@ router.get("/", validateRequest(listLibrarySchema), resolveLibraryScope(facility
     next(error);
   }
 });
+
+// Semantic search — MUST be registered before "/:id" so "search" is not parsed
+// as an entry id. Embeds the query (an AI call — audited + budgeted; no LLM/chat
+// call, just an embedding) then cosine-ranks the facility's entries. 404 when AI
+// is off, matching the "features 404 cleanly when disabled" posture.
+router.get(
+  "/search",
+  validateRequest(searchLibrarySchema),
+  resolveLibraryScope(facilityIdFromQuery),
+  requireFacilityAccess(scopeFromRequest),
+  async (req, res, next) => {
+    try {
+      if (!env.aiEnabled) {
+        throw new DomainError("Semantic search is not enabled", 404, "AI_FEATURE_DISABLED");
+      }
+      const { facilityId, q, type } = req.query;
+      const { output } = await runAiCall({
+        feature: "semantic_search",
+        kind: "embedding",
+        facilityId,
+        userId: req.user.id,
+        actingRole: req.actingRole,
+        traceId: req.traceId,
+        value: q
+      });
+      const entries = await searchByEmbedding({ facilityId, type, embedding: output, limit: 10 });
+      res.json({ entries });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.get("/:id", validateRequest(getLibrarySchema), resolveLibraryScope(facilityIdFromQuery), requireFacilityAccess(scopeFromRequest), async (req, res, next) => {
   try {
@@ -122,12 +184,14 @@ router.post(
   async (req, res, next) => {
     try {
       const { facilityId, ...input } = req.body;
-      const entry = await runLibraryMutation({
+      const { entry } = await runLibraryMutation({
         req,
         facilityId,
         actionType: "library-entry-created",
         mutate: (trx) => createLibraryEntry({ facilityId, input, trx })
       });
+      // A new entry always needs an embedding.
+      scheduleEntryEmbedding(req, res, facilityId, entry);
       res.status(201).json({ entry });
     } catch (error) {
       next(error);
@@ -144,12 +208,17 @@ router.put(
   async (req, res, next) => {
     try {
       const { facilityId, ...input } = req.body;
-      const entry = await runLibraryMutation({
+      const { entry, diff } = await runLibraryMutation({
         req,
         facilityId,
         actionType: "library-entry-updated",
         mutate: (trx) => updateLibraryEntry({ id: req.params.id, facilityId, input, trx })
       });
+      // Re-embed only when the embeddable text (title/body) actually changed — a
+      // metadata-only edit must not spend an AI call.
+      if (diff.title || diff.body) {
+        scheduleEntryEmbedding(req, res, facilityId, entry);
+      }
       res.json({ entry });
     } catch (error) {
       next(error);
@@ -166,7 +235,7 @@ router.delete(
   async (req, res, next) => {
     try {
       const { facilityId } = req.body;
-      const entry = await runLibraryMutation({
+      const { entry } = await runLibraryMutation({
         req,
         facilityId,
         actionType: "library-entry-deleted",

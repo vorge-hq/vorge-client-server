@@ -192,3 +192,15 @@ describe("Request validation", () => {
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 });
+
+// O3 — with AI disabled (the default in this suite), semantic search returns a
+// clean 404 rather than attempting an embedding call. (The enabled-path behavior
+// has its own suite: librarySearch.test.js.)
+describe("Semantic search — AI disabled", () => {
+  test("GET /api/library/search -> 404 AI_FEATURE_DISABLED", async () => {
+    const session = await login("adminA", ROLES.ADMIN);
+    const res = await withAuth(request(app).get(`/api/library/search?facilityId=${A1}&q=theft`), session);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("AI_FEATURE_DISABLED");
+  });
+});

@@ -220,3 +220,15 @@ export function parseFacilityInfo(text, fallback = {}) {
     return fallback;
   }
 }
+
+// Server library entry (from GET /api/library/search) → the LibraryModal picker
+// shape { id, text, tags }. The modal renders `text` and `tags` and reports a
+// similarity score; `body` is the prose that was embedded, so it maps to `text`.
+export function toLibraryPickerEntry(server) {
+  return {
+    id: server.id,
+    text: server.body || server.title || "",
+    tags: (server.metadata && server.metadata.tags) || [],
+    similarity: server.similarity
+  };
+}

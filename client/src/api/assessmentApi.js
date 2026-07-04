@@ -20,6 +20,18 @@ export function getAssessmentBundle(assessmentId, actingRole) {
   return apiRequest(`/api/assessments/${assessmentId}`, { actingRole });
 }
 
+// --- Semantic library search (P4 O3) ----------------------------------------
+// Embeds the query server-side and returns cosine-ranked entries (with a
+// `similarity` score) scoped to the facility. PROD only — the demo/prod branch
+// lives in the WorkspaceContext seam.
+export function searchLibrary({ facilityId, q, type, actingRole }) {
+  const params = new URLSearchParams({ facilityId, q });
+  if (type) {
+    params.set("type", type);
+  }
+  return apiRequest(`/api/library/search?${params.toString()}`, { actingRole });
+}
+
 // --- Section text (Sections 1/2/8) ------------------------------------------
 export function putSection({ assessmentId, sectionNumber, contentText, lockVersion, actingRole }) {
   return mutate(`/api/assessments/${assessmentId}/sections/${sectionNumber}`, "PUT", { lockVersion, contentText }, actingRole);

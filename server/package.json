@@ -10,7 +10,8 @@
     "test": "jest",
     "test:integration": "jest --config jest.integration.config.js --runInBand",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
-    "seed": "node src/db/seed.js"
+    "seed": "node src/db/seed.js",
+    "reembed": "node scripts/reembed-library.js"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.12",

@@ -9,7 +9,7 @@ import { NOTIFICATIONS } from "../../data/notifications";
 import { USERS } from "../../data/users";
 import { ADMIN_USERS, FACILITY_ASSIGNMENTS } from "../../data/admin";
 import { VERSIONS } from "../../data/versions";
-import { LIBRARY_SCENARIOS } from "../../data/library";
+import { LIBRARY_SCENARIOS, similarity } from "../../data/library";
 import { validateMitigationUpdate } from "../mitigationOwner/mitigationRules";
 import { evaluationHasAnyData } from "./assessmentModel";
 import { isDemoEnabled } from "../../auth/demoFlag";
@@ -28,7 +28,8 @@ import {
   putLink as apiPutLink,
   updateEvaluation as apiUpdateEvaluation,
   putContributors as apiPutContributors,
-  exportAssessment as apiExportAssessment
+  exportAssessment as apiExportAssessment,
+  searchLibrary as apiSearchLibrary
 } from "../../api/assessmentApi";
 import { triggerBrowserDownload } from "../../api/download";
 import {
@@ -40,7 +41,8 @@ import {
   toClientLinks,
   toServerAssetPayload,
   toServerThreatPayload,
-  toServerEvaluationPayload
+  toServerEvaluationPayload,
+  toLibraryPickerEntry
 } from "../../api/adapters";
 import {
   WORKFLOW_ACTIONS,
@@ -890,6 +892,40 @@ export function WorkspaceProvider({ children }) {
     }
   }, []);
 
+  /* Library semantic search — the prod↔demo seam for the LibraryModal picker.
+     DEMO: rank the local scenario fixtures with the fixture `similarity` (no
+     fetch), preserving the modal's original behavior. PROD: embed + cosine-rank
+     server-side via GET /api/library/search, scoped to the active assessment's
+     facility, and map results into the picker shape. Returns [{ entry, score }]
+     either way. Empty query → the unranked fixture list (demo) or [] (prod). */
+  const searchLibrary = useCallback(async (query, actingRole) => {
+    const q = (query || "").trim();
+    if (isDemoEnabled()) {
+      const scenarios = stateRef.current.libraryScenarios || [];
+      if (!q) {
+        return scenarios.map((entry) => ({ entry, score: 0 }));
+      }
+      return scenarios
+        .map((entry) => ({ entry, score: similarity(q, entry.text) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+    }
+    if (!q) {
+      return [];
+    }
+    const current = stateRef.current;
+    const assessment = current.assessmentsById[current.activeAssessmentId];
+    const facilityId = assessment?.facilityId;
+    if (!facilityId) {
+      return [];
+    }
+    const { entries } = await apiSearchLibrary({ facilityId, q, type: "Scenarios", actingRole });
+    return (entries || []).map((server) => {
+      const entry = toLibraryPickerEntry(server);
+      return { entry, score: entry.similarity ?? 0 };
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -919,6 +955,7 @@ export function WorkspaceProvider({ children }) {
       hydrateAssessmentBundle,
       hydrateAssessmentsList,
       exportDocument,
+      searchLibrary,
       WORKFLOW_ACTIONS
     }),
     [
@@ -948,7 +985,8 @@ export function WorkspaceProvider({ children }) {
       upsertEvaluation,
       persistEvaluation,
       saveContributors,
-      exportDocument
+      exportDocument,
+      searchLibrary
     ]
   );
 

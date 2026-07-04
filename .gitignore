@@ -1,4 +1,8 @@
+# Secrets — never commit any env file (incl. variants like .env.staging,
+# .env.local); .env.example is a non-secret template and is allowed.
 .env
+.env.*
+!.env.example
 node_modules/
 coverage/
 dist/

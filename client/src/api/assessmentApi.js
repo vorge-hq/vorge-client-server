@@ -69,6 +69,13 @@ export function updateEvaluation({ assessmentId, evaluationId, lockVersion, acti
   return mutate(`/api/assessments/${assessmentId}/evaluations/${evaluationId}`, "PATCH", { lockVersion, ...changes }, actingRole);
 }
 
+// --- Drafted Executive Summary / Conclusion (P4 O5, §9.1) -------------------
+// Returns { draft, sectionNumber }. No lockVersion — generating a draft doesn't
+// mutate the section; the Author edits the returned text and saves via putSection.
+export function generateDraft({ assessmentId, sectionNumber, actingRole }) {
+  return mutate(`/api/assessments/${assessmentId}/sections/${sectionNumber}/generate-draft`, "POST", {}, actingRole);
+}
+
 // --- Smart tagging (P4 O4, §9.6) --------------------------------------------
 // Tags are advisory metadata that fire AFTER the scenario save, so these carry
 // NO lockVersion (they never bump it). suggest-tags returns the AI-suggested

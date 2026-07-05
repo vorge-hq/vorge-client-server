@@ -148,6 +148,17 @@ const assignMitigationOwnerSchema = z.object({
 const evaluationParams = assessmentParams.extend({ evaluationId: z.string().uuid() });
 const tagCategory = z.enum(["threat_type", "asset_class", "region", "consequence_category"]);
 
+// Drafted Executive Summary / Conclusion (§9.1) — n is fixed to {1, 8} (the two
+// AI-draftable narrative sections; §2 Facility Info is structured, not drafted).
+const generateDraftSchema = z.object({
+  params: assessmentParams.extend({
+    n: z.coerce
+      .number()
+      .int()
+      .refine((v) => v === 1 || v === 8, { message: "draft is only available for sections 1 and 8" })
+  })
+});
+
 const suggestTagsSchema = z.object({ params: evaluationParams });
 const getTagsSchema = z.object({ params: evaluationParams });
 const confirmTagsSchema = z.object({
@@ -166,6 +177,7 @@ const confirmTagsSchema = z.object({
 });
 
 module.exports = {
+  generateDraftSchema,
   suggestTagsSchema,
   getTagsSchema,
   confirmTagsSchema,

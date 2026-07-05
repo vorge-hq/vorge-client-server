@@ -1,39 +1,19 @@
-import { useMemo, useState } from "react";
+// P4 · O5 — presentational AI-draft modal (§9.1). The section component owns the
+// generate flow (it holds the editor's text state) and passes the draft + loading
+// state in through the prod↔demo seam; this modal just previews the draft, offers
+// Regenerate, and hands the accepted text back via onAccept. Accepting drops the
+// draft into the section editor where the Author edits and saves — the AI original
+// is already retained server-side in the audit at generate time.
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles, X } from "lucide-react";
 
-function buildDraft(assets = [], evaluations = []) {
-  const counts = {
-    veryHigh: 0,
-    high: 0,
-    medium: 0,
-    low: 0
-  };
-  evaluations.forEach((e) => {
-    const score = (e.consequenceR1 || 0) * (e.likelihoodR1 || 0);
-    if (score >= 16) counts.veryHigh += 1;
-    else if (score >= 10) counts.high += 1;
-    else if (score >= 5) counts.medium += 1;
-    else counts.low += 1;
-  });
-  const topAsset = assets[0]?.name || "Asset 1";
-  const topThreat = evaluations[0]
-    ? `${evaluations[0].assetId.toUpperCase()} × ${evaluations[0].threatId.toUpperCase()}`
-    : "Asset × Threat";
-  return [
-    `This Security Risk Assessment evaluates ${assets.length} primary assets across 8 threat categories. The cross-reference matrix produced ${evaluations.length} formal evaluations.`,
-    `Pre-mitigation risk distribution: ${counts.veryHigh} Very High, ${counts.high} High, ${counts.medium} Medium, ${counts.low} Low. The most material exposure relates to ${topAsset} (${topThreat}), where consequence severity warrants targeted mitigation.`,
-    "Proposed mitigations focus on access control hardening, detection coverage, vendor cyber controls, and operational drill cadence. When agreed and tracked, residual risk is reduced to within tolerance bands across the assessed scenarios.",
-    "Approval should be conditioned on confirmation of mitigation owners and target dates. Section 7 will be tracked through the platform's mitigation workflow once the assessment is approved."
-  ].join("\n\n");
-}
+export function AIDraftModal({ draft = "", loading = false, target = "Section 1 — Executive Summary", onRegenerate, onClose, onAccept }) {
+  const [text, setText] = useState(draft);
 
-export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = "Section 1 — Executive Summary" }) {
-  const [stage, setStage] = useState("loading");
-  const draft = useMemo(() => buildDraft(assets, evaluations), [assets, evaluations]);
-
-  if (stage === "loading") {
-    setTimeout(() => setStage("ready"), 700);
-  }
+  // Keep the editable preview in sync when a (re)generated draft arrives.
+  useEffect(() => {
+    setText(draft);
+  }, [draft]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
@@ -54,24 +34,23 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {stage === "loading" ? (
+          {loading ? (
             <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-muted px-4 py-6 text-[13px] text-text-muted">
               <Loader2 size={14} className="animate-spin" />
-              Drafting from assets and evaluations…
+              Drafting from the assessment's structured data…
             </div>
           ) : (
             <>
               <div className="mb-3 rounded-lg border bg-[var(--semantic-info-bg)] px-3 py-2 text-[11px] text-[var(--semantic-info-text)] border-[var(--semantic-info-text)]">
-                AI generated draft — clearly labelled and audit-logged. Review and edit before saving.
+                AI-generated, requires human review — clearly labelled and audit-logged. Review and edit before saving.
               </div>
               <textarea
-                defaultValue={draft}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                aria-label="AI draft"
                 rows={14}
                 className="field-control resize-y text-[13px] leading-relaxed"
               />
-              <p className="mt-2 text-[10px] text-text-disabled">
-                Tokens: 612 · Latency 0.7s · Audit entry will record AI usage.
-              </p>
             </>
           )}
         </div>
@@ -80,13 +59,18 @@ export function AIDraftModal({ assets, evaluations, onClose, onAccept, target = 
           <button type="button" onClick={onClose} className="btn-secondary">
             Cancel
           </button>
+          {onRegenerate ? (
+            <button type="button" onClick={onRegenerate} disabled={loading} className="btn-secondary disabled:opacity-60">
+              Regenerate
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
-              if (onAccept) onAccept(draft);
+              if (onAccept) onAccept(text);
               onClose?.();
             }}
-            disabled={stage !== "ready"}
+            disabled={loading}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
             Accept draft

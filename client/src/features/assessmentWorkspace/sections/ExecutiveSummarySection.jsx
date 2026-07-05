@@ -1,18 +1,36 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
+import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
 import { getCommentPermission } from "../assessmentModel";
 import { useWorkspace } from "../WorkspaceContext";
+import { AIDraftModal } from "../modals";
 import { SectionShell } from "./SectionShell";
 import { ValidationSummary } from "./ValidationSummary";
 
-export function ExecutiveSummarySection({ assessment, readOnly, onOpenAIDraft, errors }) {
+export function ExecutiveSummarySection({ assessment, readOnly, errors }) {
   const { session } = useAuth();
-  const { saveSectionText, showToast } = useWorkspace();
+  const { saveSectionText, generateSectionDraft, showToast } = useWorkspace();
   const [text, setText] = useState(assessment?.executiveSummary || "");
   const [conflict, setConflict] = useState(null);
+  const [aiDraft, setAiDraft] = useState(null);
+
+  // Only an Author on an editable section sees "Draft with AI" (§9.1); the
+  // endpoint enforces the same regardless of the UI.
+  const canDraft = !readOnly && session.actingRole === ROLES.AUTHOR;
+
+  async function openDraft() {
+    setAiDraft({ text: "", loading: true });
+    try {
+      const draft = await generateSectionDraft(1, session.actingRole);
+      setAiDraft({ text: draft, loading: false });
+    } catch (error) {
+      setAiDraft(null);
+      showToast(error.message || "Could not generate a draft", { tone: "error" });
+    }
+  }
   const wordCount = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
   const commentKind = getCommentPermission({
     actingRole: session.actingRole,
@@ -55,15 +73,15 @@ export function ExecutiveSummarySection({ assessment, readOnly, onOpenAIDraft, e
               kind={commentKind}
             />
           ) : null}
-          {readOnly ? null : (
+          {canDraft ? (
             <button
               type="button"
-              onClick={onOpenAIDraft}
+              onClick={openDraft}
               className="btn-accent inline-flex items-center gap-1.5"
             >
               <Sparkles size={12} aria-hidden /> Draft with AI
             </button>
-          )}
+          ) : null}
         </>
       }
       footer={
@@ -101,6 +119,17 @@ export function ExecutiveSummarySection({ assessment, readOnly, onOpenAIDraft, e
           placeholder="Draft an executive summary aligned to the methodology used."
         />
       )}
+
+      {aiDraft ? (
+        <AIDraftModal
+          target="Section 1 — Executive Summary"
+          draft={aiDraft.text}
+          loading={aiDraft.loading}
+          onRegenerate={openDraft}
+          onAccept={(draftText) => setText(draftText)}
+          onClose={() => setAiDraft(null)}
+        />
+      ) : null}
     </SectionShell>
   );
 }

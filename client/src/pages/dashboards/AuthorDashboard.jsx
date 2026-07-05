@@ -18,7 +18,6 @@ import { ROLES } from "../../auth/session";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
 import {
-  AIDraftModal,
   AuditLogPanel,
   FieldModeModal,
   NewAssessmentModal
@@ -115,7 +114,6 @@ export function AuthorDashboard() {
   const { session } = useAuth();
   const navigate = useNavigate();
   const workspace = useWorkspace();
-  const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [newAssessmentOpen, setNewAssessmentOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [fieldModeOpen, setFieldModeOpen] = useState(false);
@@ -166,13 +164,6 @@ export function AuthorDashboard() {
             className="btn-secondary inline-flex items-center gap-1.5"
           >
             <Smartphone size={13} aria-hidden /> Field app
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiDraftOpen(true)}
-            className="btn-accent inline-flex items-center gap-1.5"
-          >
-            <Sparkles size={13} aria-hidden /> AI-draft summary
           </button>
           <button
             type="button"
@@ -392,13 +383,6 @@ export function AuthorDashboard() {
         </div>
       </section>
 
-      {aiDraftOpen ? (
-        <AIDraftModal
-          assets={workspace.assets}
-          evaluations={workspace.evaluations}
-          onClose={() => setAiDraftOpen(false)}
-        />
-      ) : null}
       {newAssessmentOpen ? (
         <NewAssessmentModal
           onClose={() => setNewAssessmentOpen(false)}

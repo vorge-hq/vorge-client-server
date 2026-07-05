@@ -74,6 +74,10 @@ const REPO_SCOPED_ALLOWLIST = {
   "POST /api/assessments/:assessmentId/evaluations/:evaluationId/tags/confirm": "loadWritableAssessment → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/contributors": "runContentMutation → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/sections/:n": "runContentMutation → getAssessmentForUser → null → 404",
+  // P4 O5 drafted summary: repo-scoped — getAssessmentBundleForUser loads via the
+  // user-scoped getter → null → 404 before any AI call. draftedSummary.test.js is
+  // the cross-tenant proof.
+  "POST /api/assessments/:assessmentId/sections/:n/generate-draft": "getAssessmentBundleForUser → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/lead-author": "getAssessmentForUser → null → 404 (reassignment guard chain)",
   "PUT /api/assessments/:assessmentId/mitigations/:mitigationId/owner": "runContentMutation → getAssessmentForUser → null → 404",
   "GET /api/mitigations/mine": "listMine — scoped to the acting Mitigation Owner's assignments",

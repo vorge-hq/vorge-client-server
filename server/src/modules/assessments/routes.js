@@ -42,6 +42,7 @@ const { runContentMutation, loadWritableAssessment } = require("./contentWriteGu
 const { rejectMitigationOwner } = require("../../middleware/rejectMitigationOwner");
 const { runAiCall, buildPromptContext } = require("../../ai");
 const { buildTaggingPrompt, TAG_OUTPUT_SCHEMA } = require("../../ai/prompts/smartTagging");
+const { buildDraftPrompt } = require("../../ai/prompts/draftedSummary");
 const { validateTags, normalize: normalizeTag } = require("../../services/tagVocabularyService");
 const env = require("../../config/env");
 const {
@@ -57,6 +58,7 @@ const {
   putSectionSchema,
   reassignLeadAuthorSchema,
   assignMitigationOwnerSchema,
+  generateDraftSchema,
   suggestTagsSchema,
   getTagsSchema,
   confirmTagsSchema
@@ -656,6 +658,98 @@ router.put(
         mutate: (trx, { assessment }) => setSectionText({ assessment, sectionNumber, contentText, trx })
       });
       res.json({ section: result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// --- AI-drafted Executive Summary (§1) / Conclusion (§8) — §9.1 --------------
+// Gathers the assessment's Sections 2–7 structured data, asks the model for a
+// 3–5 paragraph draft, and RETAINS the AI original in an `ai-draft-generated`
+// audit row (metadata.draftText). The draft is NOT written to the section — the
+// Author edits it and saves via the normal PUT /sections/:n path, so the Approver
+// can compare the AI original against the edited final. Guard (§9.1): acting role
+// Author AND state != Approved; rejectMitigationOwner for the AI-endpoint matrix.
+// No lock_version bump — generating a draft doesn't mutate assessment content.
+router.post(
+  "/:assessmentId/sections/:n/generate-draft",
+  rejectMitigationOwner,
+  validateRequest(generateDraftSchema),
+  async (req, res, next) => {
+    try {
+      if (!env.aiEnabled) {
+        throw new DomainError("AI drafting is not enabled", 404, "AI_FEATURE_DISABLED");
+      }
+      const sectionNumber = req.validated.params.n;
+      const bundle = await getAssessmentBundleForUser({
+        assessmentId: req.params.assessmentId,
+        user: req.user,
+        actingRole: req.actingRole
+      });
+      if (!bundle) {
+        throw new DomainError("Assessment not found or outside facility scope", 404, "ASSESSMENT_NOT_FOUND");
+      }
+      const { assessment } = bundle;
+
+      if (req.actingRole !== ROLES.AUTHOR) {
+        throw new DomainError("Only the Author can generate a draft", 403, "ROLE_NOT_ALLOWED", {
+          requiredRole: ROLES.AUTHOR,
+          actualRole: req.actingRole
+        });
+      }
+      if (assessment.state === ASSESSMENT_STATES.APPROVED) {
+        throw new DomainError("An approved assessment cannot be re-drafted", 409, "INVALID_ASSESSMENT_STATE", {
+          actualState: assessment.state
+        });
+      }
+
+      // Facility-scope invariant by construction: every entity fed to the prompt
+      // must belong to the request's facility, else buildPromptContext throws.
+      buildPromptContext({
+        facilityId: assessment.facilityId,
+        entities: [assessment, ...bundle.assets, ...bundle.threats, ...bundle.evaluations, ...bundle.mitigations]
+      });
+
+      const { output } = await runAiCall({
+        feature: "drafted_summary",
+        kind: "text",
+        facilityId: assessment.facilityId,
+        userId: req.user.id,
+        actingRole: req.actingRole,
+        traceId: req.traceId,
+        prompt: buildDraftPrompt({
+          sectionNumber,
+          assessment,
+          assets: bundle.assets,
+          threats: bundle.threats,
+          evaluations: bundle.evaluations,
+          mitigations: bundle.mitigations,
+          sectionTexts: bundle.sectionTexts
+        })
+      });
+
+      // Retain the AI original alongside the eventual edited final (§9.1). No
+      // section write, no lock bump — just the audit trail.
+      await activeConn().transaction(async (trx) => {
+        await appendAuditLog(
+          {
+            actionType: "ai-draft-generated",
+            userId: req.user.id,
+            actingRole: req.actingRole,
+            facilityId: assessment.facilityId,
+            assessmentId: assessment.id,
+            entityType: "assessment_section",
+            entityId: assessment.id,
+            diff: null,
+            metadata: { sectionNumber, draftText: output },
+            traceId: req.traceId
+          },
+          trx
+        );
+      });
+
+      res.json({ draft: output, sectionNumber });
     } catch (error) {
       next(error);
     }

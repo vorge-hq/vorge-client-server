@@ -1,3 +1,40 @@
+2026-07-04 — feat: P4 O5 — AI-drafted Executive Summary / Conclusion (§9.1)
+  Feature 3 of the P4 AI features. Gateway mocked in tests; no network in CI.
+  - POST /api/assessments/:id/sections/:n/generate-draft (n ∈ {1,8}, fixed by
+    generateDraftSchema). Guard (§9.1): AI-off → 404; load bundle
+    (getAssessmentBundleForUser) → null → 404; acting role != Author → 403;
+    state == Approved → 409 (Draft / In-Review / Changes-Requested all proceed);
+    rejectMitigationOwner for the AI-endpoint matrix. No lock_version bump.
+  - src/ai/prompts/draftedSummary.js: buildDraftPrompt gathers Sections 2–7
+    structured data (assets/threats/evaluations/mitigations + §2 facility JSON),
+    3–5 paragraph instruction differing for §1 (Executive Summary) vs §8
+    (Conclusion). Risk distribution + top scenarios are DERIVED from the stored
+    { consequence, likelihood } shape via riskMatrixService.getBand (score/band
+    are never persisted) — a self-review finding: the first cut read a
+    non-existent r1.band/score and always emitted an all-zero distribution.
+  - runAiCall({feature:'drafted_summary', kind:'text'}); buildPromptContext
+    asserts every prompt entity is in-facility. The AI ORIGINAL is retained in an
+    ai-draft-generated audit row (metadata.draftText + sectionNumber) — NOT
+    written to the section — so it sits beside the edited final the Author saves
+    through the normal §P3 PUT /sections/:n path (Approver can compare).
+  - Client: the "Draft with AI" flow moved OUT of the page-level modal INTO the
+    §1/§8 section editors (ExecutiveSummarySection / ConclusionSection), where the
+    editor text state lives — button shows only for an Author on an editable
+    section; openDraft → generateSectionDraft seam → AIDraftModal (now
+    presentational: preview / regenerate / accept → setText). WorkspaceContext
+    seam generateSectionDraft (prod POSTs, demo derives buildDemoDraft locally, no
+    fetch) + assessmentApi.generateDraft (no lockVersion). Removed the dead
+    page-level + AuthorDashboard AIDraftModal wiring (a self-review finding: the
+    dashboard button opened a gutted modal after the presentational refactor).
+  - Tests: draftedSummary.test.js integration (role/state/section-number/
+    Mitigation-Owner/cross-tenant gating, no gateway call on reject; AI original
+    beside edited final; prompt derives a real risk distribution) +
+    draftedSummaryPrompt.test.js unit (band derivation) + draftedSummary.test.jsx
+    seam fetch-spy + section RTL. 386 unit / 172 integration / 202 client
+    (was 379/163/198). Self-review: 2 finder agents → 2 real fixes folded in.
+  Verification: end-to-end via supertest against real Postgres with the gateway
+  mocked (live gateway needs AI_ENABLED + a real key). Next: O6.
+
 2026-07-04 — feat: P4 O4 — smart tagging (structured output + controlled vocabulary)
   Feature 2 of the P4 AI features. Gateway mocked in tests; no network in CI.
   - Migration 202607050005: tag_vocabulary (facility-scoped controlled vocabulary

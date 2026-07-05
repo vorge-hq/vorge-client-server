@@ -15,7 +15,6 @@ import {
   validateAssessment
 } from "../../features/assessmentWorkspace/sectionValidation";
 import {
-  AIDraftModal,
   AuditLogPanel,
   DecisionModal,
   ExportModal,
@@ -59,7 +58,6 @@ function renderSection({ sectionId, assessment, readOnly, modalOpeners, errors }
         <ExecutiveSummarySection
           assessment={assessment}
           readOnly={readOnly}
-          onOpenAIDraft={modalOpeners.openAIDraft}
           errors={errors}
         />
       );
@@ -86,7 +84,6 @@ function renderSection({ sectionId, assessment, readOnly, modalOpeners, errors }
         <ConclusionSection
           assessment={assessment}
           readOnly={readOnly}
-          onOpenAIDraft={modalOpeners.openAIDraft}
           errors={errors}
         />
       );
@@ -104,7 +101,6 @@ export function AssessmentWorkspacePage() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [recallMode, setRecallMode] = useState(null);
   const [decisionKind, setDecisionKind] = useState(null);
-  const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditFilter, setAuditFilter] = useState(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -286,7 +282,6 @@ export function AssessmentWorkspacePage() {
   }
 
   const modalOpeners = {
-    openAIDraft: () => setAiDraftOpen(true),
     openLibrary: () => setLibraryOpen(true),
     openVersions: () => setVersionsOpen(true),
     openAudit: () => {
@@ -401,21 +396,6 @@ export function AssessmentWorkspacePage() {
             };
             workspace.showResultToast(result, successMessages[decisionKind]);
           }}
-        />
-      ) : null}
-
-      {aiDraftOpen ? (
-        <AIDraftModal
-          assets={workspace.assets}
-          evaluations={workspace.evaluations}
-          target={
-            sectionId === 1
-              ? "Section 1 — Executive Summary"
-              : sectionId === 8
-                ? "Section 8 — Conclusion"
-                : "AI draft"
-          }
-          onClose={() => setAiDraftOpen(false)}
         />
       ) : null}
 

@@ -32,7 +32,8 @@ import {
   searchLibrary as apiSearchLibrary,
   suggestTags as apiSuggestTags,
   getTags as apiGetTags,
-  confirmTags as apiConfirmTags
+  confirmTags as apiConfirmTags,
+  generateDraft as apiGenerateDraft
 } from "../../api/assessmentApi";
 import { triggerBrowserDownload } from "../../api/download";
 import {
@@ -64,6 +65,33 @@ const DEMO_SUGGESTED_TAGS = Object.freeze([
   { category: "threat_type", value: "Insider", source: "ai", status: "suggested" },
   { category: "consequence_category", value: "People", source: "ai", status: "suggested" }
 ]);
+
+// Demo-mode drafted summary/conclusion (§9.1): a plausible 3–4 paragraph draft
+// derived from the local fixtures so the flow is visible without a gateway call.
+function buildDemoDraft(sectionNumber, assets = [], evaluations = []) {
+  const counts = { veryHigh: 0, high: 0, medium: 0, low: 0 };
+  evaluations.forEach((e) => {
+    const score = (e.consequenceR1 || 0) * (e.likelihoodR1 || 0);
+    if (score >= 16) counts.veryHigh += 1;
+    else if (score >= 10) counts.high += 1;
+    else if (score >= 5) counts.medium += 1;
+    else counts.low += 1;
+  });
+  const topAsset = assets[0]?.name || "the primary asset";
+  const distribution = `${counts.veryHigh} Very High, ${counts.high} High, ${counts.medium} Medium, ${counts.low} Low`;
+  if (sectionNumber === 8) {
+    return [
+      `Following mitigation of the ${evaluations.length} assessed scenarios, the facility's residual risk profile is assessed as manageable, with the most material exposure concentrated around ${topAsset}.`,
+      "Approval should be conditioned on confirmation of mitigation owners and target dates; Section 7 will be tracked through the platform's mitigation workflow once the assessment is approved.",
+      "This assessment should be reviewed annually or on any material change to the threat environment or facility configuration."
+    ].join("\n\n");
+  }
+  return [
+    `This Security Risk Assessment evaluates ${assets.length} primary assets across the facility, producing ${evaluations.length} formal risk evaluations against the recognised threat categories.`,
+    `The pre-mitigation risk distribution is ${distribution}. The most material exposure relates to ${topAsset}, where consequence severity warrants targeted mitigation.`,
+    "Proposed mitigations focus on access-control hardening, detection coverage, vendor cyber controls, and operational drill cadence. When agreed and tracked, residual risk is reduced to within tolerance across the assessed scenarios."
+  ].join("\n\n");
+}
 
 // Server-assigned ids are UUIDs; client-created stub ids are not. Used to tell a
 // persistable (server-backed) row from a client-only stub — see persistEvaluation.
@@ -974,6 +1002,22 @@ export function WorkspaceProvider({ children }) {
     return { ok: true, tags: confirmed || [] };
   }, []);
 
+  /* Drafted Executive Summary / Conclusion (§9.1) — the prod↔demo seam for the
+     "Draft with AI" flow on §1/§8. DEMO: derive a draft from the local fixtures,
+     no fetch. PROD: POST generate-draft (the server retains the AI original in
+     the audit) and return the draft text for the Author to edit + save via the
+     normal section path. Returns the draft string. */
+  const generateSectionDraft = useCallback(async (sectionNumber, actingRole) => {
+    const current = stateRef.current;
+    if (isDemoEnabled()) {
+      return buildDemoDraft(sectionNumber, current.assets, current.evaluations);
+    }
+    const assessmentId = current.activeAssessmentId;
+    if (!assessmentId) return "";
+    const { draft } = await apiGenerateDraft({ assessmentId, sectionNumber, actingRole });
+    return draft || "";
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -1007,6 +1051,7 @@ export function WorkspaceProvider({ children }) {
       loadScenarioTags,
       suggestScenarioTags,
       confirmScenarioTags,
+      generateSectionDraft,
       WORKFLOW_ACTIONS
     }),
     [
@@ -1040,7 +1085,8 @@ export function WorkspaceProvider({ children }) {
       searchLibrary,
       loadScenarioTags,
       suggestScenarioTags,
-      confirmScenarioTags
+      confirmScenarioTags,
+      generateSectionDraft
     ]
   );
 

@@ -17,7 +17,7 @@ This plan was deliberately authored by a stronger model so that build sessions c
 4. **Two review gates are mandatory:** after O2 and after O8, STOP — do not build the next block on top until the Fable review gate (F2/F3) has run on the diff. Tick the roadmap + append SESSION_LOG as usual.
 5. Per CLAUDE.md: never edit `docs/api-contract.md` unless the user explicitly instructs it.
 
-**Model routing (Solo's sessions only):** build sessions (O1–O9) run on **Opus** (`/model opus`). Gates F2/F3 run on **Fable** (`/model fable`) and review ONLY the diff since the previous gate. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget; **Wahab plans his own model usage** — the rest of this document (architecture, session order, specs, gates, escalation rule) binds regardless of who runs a block or on which model.
+**Model routing (Solo's sessions only):** build sessions (O1–O9) run on **Opus** (`/model opus`). Gates F2/F3 run on **Fable** (`/model fable`) and review ONLY the diff since the previous gate. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget — the rest of this document (architecture, session order, specs, gates, escalation rule) binds regardless of which model a block runs on.
 
 ---
 

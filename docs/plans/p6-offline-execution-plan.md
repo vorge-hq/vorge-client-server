@@ -18,7 +18,7 @@ This plan was deliberately authored by a stronger model so that build sessions c
 5. Per CLAUDE.md: never edit `docs/api-contract.md` unless the user explicitly instructs it. The API sketch below is the contract source until then.
 6. **Do not enable `offline_mode` for any real facility until F5 passes.** O4 ships the local store before encryption lands in O6; the feature is dark until the final gate.
 
-**Model routing (Solo's sessions only):** build sessions (O1–O6) run on **Opus** (`/model opus`). Gates F4/F5 run on **Fable** (`/model fable`) and review ONLY the diff since the previous gate. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget; **Wahab plans his own model usage** — the rest of this document binds regardless of who runs a block or on which model.
+**Model routing (Solo's sessions only):** build sessions (O1–O6) run on **Opus** (`/model opus`). Gates F4/F5 run on **Fable** (`/model fable`) and review ONLY the diff since the previous gate. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget — the rest of this document binds regardless of which model a block runs on.
 
 **Hard dependency:** the `facility_entitlements` table + `entitlementsRepository` from P4 (p4-execution-plan migration 3, block O2). O2 of THIS plan must not start before that migration is on `main`. O1 has no P4 dependency and may run any time.
 

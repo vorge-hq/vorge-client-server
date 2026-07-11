@@ -268,13 +268,12 @@ describe("Wrong role -> 403 (within own tenant)", () => {
   });
 
   test("Requesting an acting role the user is NOT assigned -> 403 ROLE_NOT_ASSIGNED", async () => {
-    // authorA1 holds only Author; forcing X-Acting-Role: Approver must be rejected.
-    const session = await login("authorA1", ROLES.AUTHOR);
-    const res = await withAuth(
-      request(app).get("/api/assessments"),
-      session,
-      ROLES.APPROVER
-    );
+    // authorA1 holds only Author; a token whose actingRole CLAIM is Approver
+    // must be rejected. (The acting role is bound to the signed claim — the
+    // server ignores any X-Acting-Role header — so the unassigned role is
+    // injected into the claim itself, which is the real enforcement point.)
+    const session = await login("authorA1", ROLES.APPROVER);
+    const res = await withAuth(request(app).get("/api/assessments"), session);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("ROLE_NOT_ASSIGNED");
   });

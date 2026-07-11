@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const express = require("express");
+const helmet = require("helmet");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const env = require("./config/env");
@@ -12,6 +13,14 @@ const { DomainError } = require("./services/domainError");
 
 const app = express();
 
+// Behind Render/Vercel the client IP is in X-Forwarded-For; without this the
+// per-IP rate limiters key on the proxy address and collapse all users into one
+// bucket. One proxy hop.
+app.set("trust proxy", 1);
+
+// Security headers (CSP, HSTS, X-Frame-Options, nosniff, etc.). The API serves
+// JSON only, so helmet's defaults apply cleanly.
+app.use(helmet());
 app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());

@@ -108,15 +108,34 @@ const env = {
   }
 })(env.cookieSameSite);
 
-if (env.nodeEnv === "production") {
+// A non-local DATABASE_URL means we're pointed at a real deployment (staging /
+// preview / prod) even when NODE_ENV isn't "production" — a box in that state
+// must not run the publicly-known placeholder JWT secret (forgeable tokens) or
+// the all-zero MFA key. Treat "hardened" as production OR non-local DB.
+function isLocalDbHost(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "db";
+  } catch (_e) {
+    return true; // unparseable → assume local, don't over-block dev
+  }
+}
+const requiresRealSecrets = env.nodeEnv === "production" || !isLocalDbHost(env.databaseUrl);
+
+if (requiresRealSecrets) {
   if (env.jwtSecret === "replace_me_with_a_strong_secret") {
-    throw new Error("JWT_SECRET must be changed for production");
+    throw new Error(
+      "JWT_SECRET must be changed for any non-local deployment (production or a remote DATABASE_URL)"
+    );
   }
   if (env.mfaEncryptionKey === DEV_PLACEHOLDER_MFA_KEY) {
     throw new Error(
-      "MFA_ENCRYPTION_KEY must be changed for production. Generate with: openssl rand -base64 32"
+      "MFA_ENCRYPTION_KEY must be changed for any non-local deployment. Generate with: openssl rand -base64 32"
     );
   }
+}
+
+if (env.nodeEnv === "production") {
   if (process.env.__MFA_TEST_MODE__ === "1") {
     throw new Error("__MFA_TEST_MODE__ MUST NOT be set in production");
   }

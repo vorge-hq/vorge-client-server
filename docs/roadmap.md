@@ -141,6 +141,16 @@ Living review of every major feature area: what exists / what's partial / what's
 | **Mobile UX** | Mobile-first shells, demo mobile gate, whole-row tap target on Author dashboard | Same tap-target fix pending on Reviewer/Approver/HQ/MitOwner dashboards; §5 grid virtualization | [P1/S] replicate row tap-target fix (pattern proven) — **BACKLOG** · [P2/M] virtualization at real data scale — **BACKLOG** |
 | **Dark mode** | ~52%; auth pages tokenized; login brand treatment | Toggle on auth routes; `prefers-color-scheme`; shared components; dashboards | **SCHEDULED (side-quest)** — [P1/S] chunks, any time |
 
+### Security audit follow-ups (AUDIT-BRIEF pass, 2026-07-10)
+
+Landed on branch `security/audit-hardening-2026-07-10` (awaiting owner review): auth rate limiting + `trust proxy` (H1/M5), helmet (M6), acting-role from token claim not header (M4), recovery-code lockout (M7), RLS-role boot guard (M2), admin-reset ADMIN gate (L1), non-local secret guard (L2), JWT alg pin (L5), mitigation-log validation (L7), server `npm audit fix` + client react-router 6.30.4. **Confirmed already-deferred, left for P5:** DB TLS CA-pinning + Redis rate-limit/replay caches (single-instance deploy). Remaining un-fixed gaps:
+
+- [P1/M] **Access token moved out of localStorage** (M3) — hold the access JWT in memory, rehydrate via the httpOnly `/refresh` cookie on load; XSS-exfiltration hardening. Client rearchitecture + minor flow change; no live XSS sink today. — **BACKLOG**
+- [P2/S] **Single-use-token check-then-act races** (L6) — recovery-code / password-reset / promotePending ignore the update row count; assert count==1 or `FOR UPDATE`. Low risk on single-instance. — **BACKLOG**
+- [P2/S] **Mitigation-owner assignment role check** (L8) — verify the assignee holds Mitigation Owner at the facility (mirror the lead-author `userHasFacilityRole` guard); data-integrity, not IDOR. Needs an integration fixture update. — **BACKLOG**
+- [P2/S] **AI prompt-delimiter neutralisation + facility-id assertion** (L9/L11) — strip `"""` from interpolated user text; throw (not skip) when a prompt entity lacks `facility_id`. Contained today by the scope invariant. — **BACKLOG**
+- [P2/S] **appendAuditLog GUC restore** (L10) — nested `SET LOCAL` narrows the request txn's facility scope; latent false-deny for a future multi-facility-in-one-txn handler. — **BACKLOG**
+
 ### New feature suggestions (not in any current phase)
 
 - [P1/M] **Annual clone / carry-forward** — already specced (§6.10) but in no phase; natural P3 follow-on reusing the write API; the yearly-SRA cadence is the core usage loop, so this is the retention feature. — **NEEDS DECISION** (which phase)

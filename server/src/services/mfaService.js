@@ -209,7 +209,9 @@ async function verifyRecovery({ user, sessionId, code }, trx = db) {
   const hashes = codes.map((c) => c.codeHash);
   const matchIdx = await recoveryCodeService.findMatch(code, hashes);
   if (matchIdx < 0) {
-    throw invalidTotpError();
+    // Advance the lockout state machine on a wrong recovery code, exactly as
+    // verifyTotp does — otherwise recovery-code guessing bypasses the lockout.
+    return _recordFailure({ user, trx });
   }
   await mfaRecoveryCodeRepository.markUsed(codes[matchIdx].id, new Date(), trx);
   await userRepository.updateMfaFailureState(user.id, lockoutService.clearedState(), trx);

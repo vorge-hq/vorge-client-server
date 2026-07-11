@@ -12,6 +12,33 @@ When in doubt, defer to these files rather than restating their contents:
 
 Do **not** edit those four files without an explicit instruction. They are decision artifacts, not implementation notes.
 
+## Working with the user (operating style)
+
+How the owner likes to collaborate — applies to every task.
+
+- **Every question to the user MUST include a recommendation**, labeled as such: put the
+  recommended option **first** with a one-line rationale, then the alternatives. Never present a
+  bare list of options. Open questions get **asked** (interactively) when the answer changes what
+  you do next — not silently parked in a plan doc.
+- **Work autonomously between gates.** For reversible actions that clearly follow from the request,
+  proceed without pausing for permission — don't narrate options you won't take or re-litigate a
+  settled decision. Stop only for: a destructive/irreversible action, a genuine scope change, or a
+  playbook **gate** (see *Authoring execution plans*). Don't stop just because a task is long.
+- **When the user is thinking out loud or asking a question** (not requesting a change), the
+  deliverable is your assessment — report findings and stop; don't start editing until they ask.
+- **Confirm before anything hard to undo:** applying migrations to a shared/staging/prod DB,
+  `git push`, opening a PR, deleting data, anything outward-facing. Approval for one such action
+  does not extend to the next.
+- **Branching (hybrid — matches this repo's stage).** Routine small changes may land on `main` per
+  the existing flow. **Branch for risky or hard-to-revert work** — migrations, auth/security changes,
+  large multi-file features — so it's isolated and revertable. Either way `make test` must be green
+  (the pre-commit hook enforces it) and there is no push/PR without owner approval. Once `main`
+  auto-deploys to a live environment, tighten this to strict branch-per-change.
+- **Verify by driving the real flow, not just green tests.** `make test` is the gate, but for a
+  behavior change also exercise the actual endpoint/UI path and observe it before calling it done.
+- Commits show the **human author only** — never a `Co-Authored-By:` / AI-attribution line (also
+  under *Before committing* §6). Never deploy or push without explicit owner approval.
+
 ## Architecture quick-ref
 
 Mobile-first, multi-tenant Security Risk Assessment platform.
@@ -100,6 +127,30 @@ Keep plans current; **do not rewrite them.** `docs/roadmap.md` and `docs/product
 | `CLAUDE.md` → **Current focus** | Sync when direction or phase status changes | — |
 
 Decision records (`docs/decisions/*`), `docs/strategic-roadmap.md`, and canonical docs (`businesslogic.md`, `api-contract.md`) are out of scope unless the user explicitly requests them.
+
+## Authoring execution plans (house style)
+
+Multi-step work runs from a **binding execution playbook** under `docs/plans/` (the live example is
+`docs/plans/p4-execution-plan.md`), written so a weaker executor can run it **almost autonomously
+without improvising**. When you author or extend one, follow this shape:
+
+- **Numbered, ordered sub-deliverables** (D1, D2 … / the O-blocks already used in the P4 playbook).
+  Implement **one at a time** and run its **named test battery** — the `docs/test-specs.md` §Px
+  acceptance tests — before moving to the next. Green battery is the definition of done for the step.
+- **The spec is literal — no paraphrase-improvisation.** If something is ambiguous, or you would
+  need to deviate, add it to the playbook's **Open questions** section and **STOP**. Never guess and
+  never invent scope; the escalation rule (deviations → Open questions, never improvised) is binding.
+- **Pin the verified fact base** at the top (exact files + line anchors, the seams/invariants
+  touched) so the executor doesn't re-derive it, and add **tripwires** — concrete `rg`/grep checks or
+  invariants that must stay true (e.g. "no data route without `requireFacilityAccess`, proven by
+  `server/tests/middlewareCoverage.test.js`").
+- **Gates are real STOP points.** The F-gates (Fable specs/gates, Opus builds) are explicit
+  checkpoints — at one, stop and ask the user to switch models; a gate is a checkpoint, not a
+  formality. State the **Definition of Done** = the `docs/test-specs.md` section that must pass.
+- **Migrations and irreversible steps are called out in-slice** with the confirm-first rule from
+  *Working with the user*.
+- Every plan must be **weaker-executor-executable**: numbered steps · test after each · literal spec ·
+  ambiguity → Open questions → STOP · fact base + tripwires pinned.
 
 ## Before committing
 

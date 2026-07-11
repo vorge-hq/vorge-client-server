@@ -1,3 +1,59 @@
+2026-07-10 — security: audit-brief hardening pass (branch security/audit-hardening-2026-07-10)
+  Ran the 5-agent read-only audit from AUDIT-BRIEF.md (auth/MFA, routes/IDOR,
+  SQL/RLS, AI surface, client/config/infra). Core posture verified strong: no
+  SQLi, IDOR-proof tenancy (target facility always derived from the DB row +
+  canAccessFacility, RLS underneath), sound state machine + lockVersion, correct
+  AI scope invariant + §9.1 gate, solid crypto. Cross-checked every finding vs
+  the plan: TLS CA-pinning (knex rejectUnauthorized:false) and Redis-backed
+  rate-limit/replay caches are DELIBERATELY deferred to P5 (single-instance
+  deploy) — left untouched. The rest were unplanned gaps and were fixed:
+  - H1 (HIGH): no rate limit on /login /refresh /forgot-password /reset-password
+    — added per-IP + per-(IP,email) express-rate-limit bundles (rateLimit.js);
+    removed the stale forgot-password TODO. + M5: app.set("trust proxy", 1) so
+    the limiters key on the real client IP behind Render/Vercel.
+  - M6: helmet() security headers (CSP/HSTS/X-Frame-Options/nosniff) on app.js.
+  - M4: authenticate.js no longer honours the X-Acting-Role header — acting role
+    is bound to the signed token claim (audited /switch-role flow only). Updated
+    the tenantIsolation ROLE_NOT_ASSIGNED test to inject the bad role into the
+    CLAIM (stronger) + session.js helper comment.
+  - M7: verifyRecovery now advances the MFA lockout state machine on a wrong
+    recovery code (was the one verify path that skipped _recordFailure).
+  - M2: server.js RLS boot guard — queries current_user/rolbypassrls, refuses to
+    start in production if the app connects as an RLS-bypassing role (warns else).
+  - L1: /mfa/admin-reset now carries authorizeRole(ADMIN) (was service-only,
+    acting-role-agnostic). L2: placeholder JWT/MFA secrets now rejected for any
+    non-local DATABASE_URL, not just NODE_ENV=production. L5: jwt.verify pinned to
+    HS256. L7: validateRequest on POST /mitigations/:id/log (bounded free-text).
+  - Deps: server `npm audit fix` → 0 vulns (qs/form-data). client react-router
+    6.30.3→6.30.4 (open-redirect cleared). Breaking vitest/vite/esbuild/ws chain
+    is dev-only — left as a separate decision.
+  - Deferred + reported (not fixed): M3 access-token-in-localStorage (client
+    rearchitecture + flow change; no live XSS sink), L6 single-use-token races,
+    L8 mitigation-owner role check (would break A2-owner fixture), L9–L11 AI
+    low-sev. Flow-changing fixes flagged: H1 (429s), M4 (token-claim role).
+  Verify: make test — 386 server unit + 202 client green; coverage gates held.
+  Integration (172) NOT run here (no local Docker/Postgres) — needs
+  TEST_DATABASE_URL. Key files: server/src/{app,server}.js,
+  middleware/{authenticate,rateLimit}.js, config/env.js, services/mfaService.js,
+  modules/auth/routes.js, modules/mitigations/{routes,schemas}.js. Not pushed;
+  awaiting owner review.
+
+2026-07-10 — docs: import owner operating rules from the Throughline workflow
+  Governance only — no code. Added two sections to AGENTS.md:
+  - "Working with the user (operating style)": every question carries a labeled
+    recommendation (recommended-first + rationale); work autonomously between
+    gates (proceed on reversible actions, stop only for destructive/scope/gate);
+    thinking-out-loud → assessment not edits; confirm before hard-to-undo
+    (migrations/push/PR/delete); verify by driving the real flow, not just green
+    tests; reinforced human-author-only commits + no push without approval.
+  - "Authoring execution plans (house style)": codified the weaker-executor-
+    hardened playbook doctrine already practiced in docs/plans/p4-execution-plan.md
+    (numbered sub-deliverables, named test battery after each, literal spec,
+    ambiguity → Open questions → STOP, pinned fact base + rg tripwires, F-gates as
+    real STOP points, migrations called out in-slice).
+  Key files: AGENTS.md. No tests run (docs only). Also staged AUDIT-BRIEF.md at
+  repo root for the pending functionality+security review (delete after use).
+
 2026-07-04 — feat: P4 O5 — AI-drafted Executive Summary / Conclusion (§9.1)
   Feature 3 of the P4 AI features. Gateway mocked in tests; no network in CI.
   - POST /api/assessments/:id/sections/:n/generate-draft (n ∈ {1,8}, fixed by

@@ -1,6 +1,8 @@
 const express = require("express");
 const authenticate = require("../../middleware/authenticate");
+const validateRequest = require("../../middleware/validateRequest");
 const facilityScope = require("../../middleware/facilityScope");
+const { logMitigationSchema } = require("./schemas");
 const { transitionMitigation } = require("../../services/mitigationWorkflowService");
 const { ROLES } = require("../../services/constants");
 const { canAccessFacility } = require("../../services/facilityAccessService");
@@ -30,7 +32,7 @@ router.get("/mine", async (req, res, next) => {
   }
 });
 
-router.post("/:mitigationId/log", async (req, res, next) => {
+router.post("/:mitigationId/log", validateRequest(logMitigationSchema), async (req, res, next) => {
   try {
     const mitigation = await getMitigationForUser({
       mitigationId: req.params.mitigationId,

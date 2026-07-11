@@ -38,10 +38,13 @@ async function login(userKey, actingRole) {
   return { token, actingRole, user };
 }
 
-// Attach Authorization + X-Acting-Role to a supertest request builder.
-// `session` may be null to send an unauthenticated request. Passing
-// `overrideRole` forces a specific X-Acting-Role header (used to prove the
-// ROLE_NOT_ASSIGNED guard rejects a role the user does not hold).
+// Attach the Authorization bearer to a supertest request builder. `session`
+// may be null to send an unauthenticated request.
+//
+// NOTE: the acting role is bound to the signed token claim; the server ignores
+// any X-Acting-Role header. The header is still set here for backward-compat but
+// has no effect. To exercise an unassigned/other role, mint the token with that
+// role via login(userKey, role) rather than passing `overrideRole`.
 function withAuth(reqBuilder, session, overrideRole) {
   if (!session) {
     return reqBuilder;

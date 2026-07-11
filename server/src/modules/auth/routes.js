@@ -4,7 +4,14 @@ const jwt = require("jsonwebtoken");
 const env = require("../../config/env");
 const db = require("../../db/knex");
 const authenticate = require("../../middleware/authenticate");
-const { mfaRateLimit } = require("../../middleware/rateLimit");
+const authorizeRole = require("../../middleware/authorizeRole");
+const { ROLES } = require("../../services/constants");
+const {
+  mfaRateLimit,
+  loginRateLimit,
+  passwordResetRateLimit,
+  refreshRateLimit
+} = require("../../middleware/rateLimit");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const sessionService = require("../../services/sessionService");
 const refreshTokenService = require("../../services/refreshTokenService");
@@ -103,7 +110,7 @@ async function auditAuthEvent({ user, actionType, actingRole, req, metadata = {}
 
 // ─── LOGIN ─────────────────────────────────────────────────────────────────
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", ...loginRateLimit, async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
@@ -349,7 +356,7 @@ router.post("/logout", authenticate, async (req, res, next) => {
 
 // ─── REFRESH ──────────────────────────────────────────────────────────────
 
-router.post("/refresh", async (req, res, next) => {
+router.post("/refresh", ...refreshRateLimit, async (req, res, next) => {
   const presentedRefresh =
     req.cookies[env.refreshCookieName] || req.cookies[env.legacyRefreshCookieName];
 
@@ -455,8 +462,7 @@ router.post("/refresh", async (req, res, next) => {
 
 // ─── PASSWORD RESET ───────────────────────────────────────────────────────
 
-// TODO: rate-limit POST /forgot-password (see chunk 3 plan §Out of scope).
-router.post("/forgot-password", async (req, res, next) => {
+router.post("/forgot-password", ...passwordResetRateLimit, async (req, res, next) => {
   const { email } = req.body || {};
 
   try {
@@ -482,7 +488,7 @@ router.post("/forgot-password", async (req, res, next) => {
   }
 });
 
-router.post("/reset-password", async (req, res, next) => {
+router.post("/reset-password", ...passwordResetRateLimit, async (req, res, next) => {
   const { token, password } = req.body || {};
 
   try {
@@ -686,7 +692,7 @@ mfaRouter.post("/regen-recovery-codes", authenticate, async (req, res, next) => 
   }
 });
 
-mfaRouter.post("/admin-reset", authenticate, async (req, res, next) => {
+mfaRouter.post("/admin-reset", authenticate, authorizeRole(ROLES.ADMIN), async (req, res, next) => {
   const { targetUserId } = req.body || {};
   try {
     const { target } = await db.transaction(async (trx) => {

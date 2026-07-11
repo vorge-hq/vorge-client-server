@@ -24,7 +24,7 @@ async function authenticate(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, env.jwtSecret);
+    const payload = jwt.verify(token, env.jwtSecret, { algorithms: ["HS256"] });
 
     if (!payload.sid) {
       return res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });
@@ -49,7 +49,11 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired token" } });
     }
 
-    const actingRole = req.headers["x-acting-role"] || payload.actingRole || user.roleAssignments[0]?.role || null;
+    // Acting role is bound to the signed token claim (set at login / rotated by
+    // /switch-role). It is NOT taken from a request header — an untrusted header
+    // would let a user act under any assigned role outside the audited
+    // switch-role flow.
+    const actingRole = payload.actingRole || user.roleAssignments[0]?.role || null;
 
     if (!actingRole || !hasAssignedRole(user, actingRole)) {
       return res.status(403).json({

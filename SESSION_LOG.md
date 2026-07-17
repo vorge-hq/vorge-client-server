@@ -1,3 +1,30 @@
+2026-07-16 — O7 job connection: elevated env var + loud RLS-exemption guard
+  Found while answering "how do I create the Render cron": the O7 job's documented
+  cron recipe was WRONG and would have produced a silent nightly no-op.
+  The bug: the job runs outside any request → sets no `app.current_facility_ids`
+  GUC → RLS default-denies its `facility_entitlements` read. Staging's DATABASE_URL
+  has pointed at the non-owner `vorge_app` role since 2026-07-03 (P2 RLS go-live),
+  so the job would find 0 entitled facilities, log "skipped", exit 0 — green cron,
+  zero work, no error. The job header said "when P2's non-owner switch lands" —
+  wrong tense; it landed months before O7. The F2 binding (b) already required this
+  elevated connection; O7 shipped without wiring it.
+  Fix: `CONSISTENCY_JOB_DATABASE_URL` (env.js + .env.example, mirroring knexfile's
+  MIGRATE_DATABASE_URL precedent) opens the job's own pool; unset falls back to
+  DATABASE_URL (correct for local dev, where the base pool IS the owner).
+  `assertRlsExempt()` runs on EVERY runConsistencyFlagging call and throws unless
+  current_user owns facility_entitlements or has BYPASSRLS — the error names the
+  env var that fixes it. main() logs which connection it used and destroys its own
+  pool. Silent no-op → loud refusal.
+  Tests (integration, against the harness's REAL non-owner `vorge_app_rls` role —
+  the same posture as staging): refuses + names the env var; the same connection
+  demonstrably sees 0 entitled facilities (the failure the guard prevents); owner
+  connection still runs. Key files: `src/jobs/consistencyFlagging.js`,
+  `src/config/env.js`, `.env.example`, `tests/integration/consistencyFlagging.test.js`.
+  SESSION_LOG's O7 cron recipe corrected in place. 429 unit / 234 integration / 209 client.
+  **Ops:** create the Render cron only AFTER O9 (nothing is entitled until the
+  toggle ships, so the job legitimately no-ops today) and set
+  CONSISTENCY_JOB_DATABASE_URL to a Supabase owner/direct connection when you do.
+
 2026-07-16 — O6/O7 sweep (owner-requested): 3 independent reviews → 6 fixes
   Three parallel reviewers (security/tenancy, spec-compliance vs §9.2/§9.3/§P4,
   line-level correctness) over the O6+O7 diff (793e135..6fb6e83). Verdict:
@@ -66,22 +93,17 @@
   restored. The created_at-tie regression test was separately verified failing against
   the old query (2 rows vs 1).
 
-  ── RENDER CRON SETUP (do this when the job goes live; no scheduler is built) ──
+  ── RENDER CRON SETUP (see the 2026-07-16 correction entry above — the env list
+     below is superseded: the job needs CONSISTENCY_JOB_DATABASE_URL, not the
+     API's DATABASE_URL) ──
   Render Dashboard → New → Cron Job, same repo/Dockerfile as `vorge-api-staging`:
     Schedule: `15 0 * * *`  (00:15 UTC — §9.3 "after midnight UTC")
     Command:  `npm --prefix server run job:consistency`
-    Env:      DATABASE_URL, AI_ENABLED=true, AI_GATEWAY_API_KEY, NODE_ENV=production,
-              DATABASE_SSL=true  (same values as the API service)
+    Env:      CONSISTENCY_JOB_DATABASE_URL (owner/BYPASSRLS — NOT the API's
+              non-owner DATABASE_URL), AI_ENABLED=true, AI_GATEWAY_API_KEY,
+              NODE_ENV=production, DATABASE_SSL=true
   The job is idempotent — a re-run refreshes flags rather than duplicating them — so a
   retried or double-fired cron is safe.
-
-  ── DB CONNECTION (F2 binding (b), required session-log note) ──
-  The job runs on the BASE POOL (the DB owner today, RLS-exempt) and is deliberately NOT
-  wrapped in runInFacilityScope: it writes operator-scoped `ai_call_log`/`ai_budgets` rows
-  which carry no facility_id and therefore no GUC to set, and facility RLS denies those
-  rows to the request-path app role BY DESIGN. **When P2's non-owner switch lands
-  (`vorge_app`), this job silently writes nothing unless it gets its own documented
-  elevated connection (own env var).** Flagged in the job's header comment too.
 
   Decisions baked in (call out at review):
   - Cluster key = threats.details.classification, falling back to threats.name.

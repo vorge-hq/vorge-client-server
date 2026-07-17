@@ -6,14 +6,20 @@
 // Render cron invokes it nightly after midnight UTC. This file does NOT build a
 // scheduler (the plan is explicit) — the cron setup is documented in SESSION_LOG.
 //
-// ── DB connection (F2 binding (b), 2026-07-04) ────────────────────────────────
-// The job reads/writes OPERATOR-scoped ai_call_log / ai_budgets rows, which the
-// facility RLS predicate denies to the request-path app role BY DESIGN. So it
-// runs on the base pool — the DB owner today, which is RLS-exempt — and is
-// deliberately NOT wrapped in runInFacilityScope: an operator-scoped ai_call_log
-// row carries no facility_id and therefore no GUC to set. When P2's non-owner
-// switch lands, this job needs an explicitly documented elevated connection (its
-// own env var) or it will silently write nothing.
+// ── DB connection (F2 binding (b), 2026-07-04; wired 2026-07-16) ─────────────
+// The job runs outside any request, so it sets no `app.current_facility_ids` GUC
+// and RLS default-denies it every facility-scoped table — including the
+// facility_entitlements read that decides which facilities to cluster, and the
+// operator-scoped ai_call_log/ai_budgets writes (those rows carry no facility_id,
+// so there is no GUC to set even in principle). It therefore needs an RLS-exempt
+// role and is deliberately NOT wrapped in runInFacilityScope.
+//
+// P2's non-owner switch ALREADY LANDED on staging (2026-07-03: DATABASE_URL →
+// `vorge_app`). Running this job on that connection would find 0 entitled
+// facilities, log "skipped", and exit 0 — a green cron doing nothing, nightly.
+// So: `CONSISTENCY_JOB_DATABASE_URL` supplies the elevated connection, and
+// assertRlsExempt() FAILS LOUDLY at startup when the role cannot bypass RLS.
+// Unset falls back to DATABASE_URL, which is correct for local dev (owner).
 //
 // ── Entitlement (F2 resolution 1, 2026-07-04) ────────────────────────────────
 // consistency_flagging is the one gated feature allowed to run operator-scoped,
@@ -21,7 +27,9 @@
 // listEntitledFacilities selects ONLY entitled facilities into the portfolio, so
 // a non-entitled facility's data never reaches a cluster, a peer norm, or a
 // prompt. There is no second gate downstream — this query IS the enforcement.
+const knex = require("knex");
 const db = require("../db/knex");
+const env = require("../config/env");
 const { runAiCall, buildOperatorPromptContext } = require("../ai");
 const { findOutliers, clusterKeyFor } = require("../services/consistencyService");
 const { buildConsistencyPrompt } = require("../ai/prompts/consistencyFlagging");
@@ -31,6 +39,52 @@ const {
   upsertFlag,
   expirePendingFlags
 } = require("../repositories/consistencyRepository");
+
+// Opens the job's own elevated pool when CONSISTENCY_JOB_DATABASE_URL is set;
+// otherwise reuses the app's base pool (local dev, where it is the owner). The
+// caller owns destroying whatever this returns — `ownsConnection` says whether
+// there is a separate pool to close.
+function openJobConnection() {
+  if (!env.consistencyJobDatabaseUrl) {
+    return { conn: db, ownsConnection: false };
+  }
+  return {
+    conn: knex({
+      client: "pg",
+      connection: {
+        connectionString: env.consistencyJobDatabaseUrl,
+        ssl: env.databaseSsl ? { rejectUnauthorized: false } : false
+      },
+      pool: { min: 0, max: 2 }
+    }),
+    ownsConnection: true
+  };
+}
+
+// The guard that makes a misconfigured cron IMPOSSIBLE TO MISS. A non-exempt
+// role does not error on its own — RLS simply returns no rows, so the job would
+// report "0 entitled facilities" forever. Postgres exempts a role from RLS two
+// ways: it OWNS the table (we deliberately do not FORCE RLS, so ownership
+// bypasses), or it has the BYPASSRLS attribute. Anything else is a
+// misconfiguration and must stop the run.
+async function assertRlsExempt(conn) {
+  const { rows } = await conn.raw(`
+    SELECT current_user AS role,
+           COALESCE((SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user), false) AS bypass_rls,
+           (SELECT tableowner FROM pg_tables WHERE schemaname = 'public' AND tablename = 'facility_entitlements') AS owner
+  `);
+  const { role, bypass_rls: bypassRls, owner } = rows[0];
+
+  if (role === owner || bypassRls === true) {
+    return;
+  }
+
+  throw new Error(
+    `[consistency] refusing to run: DB role "${role}" is not RLS-exempt (facility_entitlements owner is "${owner}").\n` +
+      `Row-level security would hide every entitled facility and this job would silently flag nothing.\n` +
+      `Set CONSISTENCY_JOB_DATABASE_URL to an owner/BYPASSRLS connection (see SESSION_LOG 2026-07-16, O7 "DB CONNECTION").`
+  );
+}
 
 // A portfolio needs peers to have a norm at all (consistencyService.MIN_PEERS + 1).
 // Below it the job skips the operator entirely rather than spending a single
@@ -147,8 +201,12 @@ async function runForOperator({ operator, conn, now }) {
 }
 
 // `conn` and `now` are injectable so the integration suite can drive the job
-// directly against its own transaction/clock without the process shell below.
+// against its own connection/clock. The RLS-exemption assertion runs for EVERY
+// caller, including tests — a suite driving this on a non-exempt connection is
+// itself a bug worth failing on.
 async function runConsistencyFlagging({ conn = db, now = new Date() } = {}) {
+  await assertRlsExempt(conn);
+
   const operators = await conn("operators").select("id", "name").orderBy("name");
   const summaries = [];
 
@@ -166,7 +224,18 @@ async function runConsistencyFlagging({ conn = db, now = new Date() } = {}) {
 }
 
 async function main() {
-  const summaries = await runConsistencyFlagging();
+  const { conn, ownsConnection } = openJobConnection();
+  console.log(
+    `[consistency] connection: ${env.consistencyJobDatabaseUrl ? "CONSISTENCY_JOB_DATABASE_URL" : "DATABASE_URL (fallback — local/owner only)"}`
+  );
+  let summaries;
+  try {
+    summaries = await runConsistencyFlagging({ conn });
+  } finally {
+    if (ownsConnection) {
+      await conn.destroy();
+    }
+  }
   for (const s of summaries) {
     if (s.error) {
       console.error(`[consistency] ${s.operatorId} — ERROR ${s.error}`);

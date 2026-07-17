@@ -50,6 +50,7 @@ Dashboard → **Database → Extensions** → search `vector` → enable (schema
 | `NODE_ENV` | `production` | Activates boot guards (rejects placeholder secrets). |
 | `SERVER_PORT` | `4000` | Dockerfile EXPOSEs 4000; set Render port accordingly. |
 | `DATABASE_URL` | Supabase **transaction-pooler** string (port 6543) | App runtime. |
+| `CONSISTENCY_JOB_DATABASE_URL` | Supabase **direct/session** string as an **owner** role (same shape as `MIGRATE_DATABASE_URL`) | **Render Cron Job only** (P4 O7 nightly consistency job), not the web service. The job runs outside any request so it sets no RLS facility context; on the non-owner `vorge_app` role RLS hides every entitled facility and the job silently flags nothing. It refuses to start unless the role is owner/BYPASSRLS. Create the cron only after O9 ships the entitlement toggle. |
 | `JWT_SECRET` | fresh `openssl rand -base64 32` | Never reuse dev values. |
 | `MFA_ENCRYPTION_KEY` | fresh `openssl rand -base64 32` | Must decode to exactly 32 bytes (boot guard enforces). |
 | `JWT_EXPIRES_IN` | `15m` (default) | |

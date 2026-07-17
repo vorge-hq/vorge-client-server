@@ -23,6 +23,17 @@ const env = {
   databaseUrl:
     process.env.DATABASE_URL ||
     "postgresql://postgres:postgres@localhost:5432/vantage",
+  // P4 · O7 — the nightly consistency job's OWN connection (F2 binding (b),
+  // 2026-07-04). The job runs outside any request, so it sets no facility GUC and
+  // RLS default-denies it every facility-scoped read/write — including the
+  // entitlement read that decides which facilities to cluster. It therefore needs
+  // an RLS-exempt (table-owner or BYPASSRLS) role, which the app's runtime
+  // DATABASE_URL deliberately is NOT on staging/prod (non-owner `vorge_app` since
+  // 2026-07-03). Unset falls back to DATABASE_URL — correct for local dev, where
+  // the base pool IS the owner; the job asserts the role is actually exempt at
+  // startup rather than silently finding nothing. Same shape as knexfile.js's
+  // MIGRATE_DATABASE_URL, which needs an owner connection for the same reason.
+  consistencyJobDatabaseUrl: process.env.CONSISTENCY_JOB_DATABASE_URL || undefined,
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS || 12),
   cookieSecure:
     process.env.COOKIE_SECURE !== undefined

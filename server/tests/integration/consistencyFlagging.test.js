@@ -18,6 +18,7 @@ process.env.AI_ENABLED = "true";
 
 const request = require("supertest");
 const crypto = require("crypto");
+const knexLib = require("knex");
 const app = require("../../src/app");
 const db = require("../../src/db/knex");
 const gateway = require("../../src/ai/gateway");
@@ -411,6 +412,48 @@ describe("the nightly job — outlier detection over a synthetic portfolio (§9.
     await db("evaluations")
       .where({ id: ids.P0.evaluationId })
       .update({ r1: JSON.stringify({ consequence: 2, likelihood: 2 }) });
+  });
+});
+
+describe("the nightly job — DB connection posture (F2 binding (b))", () => {
+  // The exact staging failure mode this guard exists for: DATABASE_URL there has
+  // pointed at the non-owner `vorge_app` role since 2026-07-03 (RLS live). Run on
+  // such a role, the job sets no facility GUC, so RLS hides every
+  // facility_entitlements row — it would find "0 entitled facilities", log
+  // "skipped", and exit 0 forever. `vorge_app_rls` (global-setup) is the same
+  // posture: LOGIN, not the table owner, no BYPASSRLS.
+  const testDbUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+  const nonOwnerUrl = testDbUrl && testDbUrl.replace(/\/\/[^@]+@/, "//vorge_app_rls:vorge_app_rls@");
+  let nonOwnerDb;
+
+  beforeAll(() => {
+    nonOwnerDb = knexLib({ client: "pg", connection: { connectionString: nonOwnerUrl, ssl: false } });
+  });
+
+  afterAll(async () => {
+    if (nonOwnerDb) {
+      await nonOwnerDb.destroy();
+    }
+  });
+
+  test("REFUSES to run on a non-RLS-exempt role — fails loudly instead of silently flagging nothing", async () => {
+    await expect(runConsistencyFlagging({ conn: nonOwnerDb })).rejects.toThrow(/not RLS-exempt/);
+
+    // The point of the guard: without it this connection produces a clean,
+    // green, entirely empty run.
+    const entitled = await nonOwnerDb("facilities as f")
+      .join("facility_entitlements as e", "e.facility_id", "f.id")
+      .where("e.enabled", true)
+      .select("f.id");
+    expect(entitled).toHaveLength(0);
+  });
+
+  test("the error names the env var that fixes it", async () => {
+    await expect(runConsistencyFlagging({ conn: nonOwnerDb })).rejects.toThrow(/CONSISTENCY_JOB_DATABASE_URL/);
+  });
+
+  test("runs normally on an RLS-exempt (owner) connection", async () => {
+    await expect(runConsistencyFlagging({ conn: db })).resolves.toBeDefined();
   });
 });
 

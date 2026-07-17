@@ -144,7 +144,7 @@ Living review of every major feature area: what exists / what's partial / what's
 
 ### Security audit follow-ups (AUDIT-BRIEF pass, 2026-07-10)
 
-Landed on branch `security/audit-hardening-2026-07-10` (awaiting owner review): auth rate limiting + `trust proxy` (H1/M5), helmet (M6), acting-role from token claim not header (M4), recovery-code lockout (M7), RLS-role boot guard (M2), admin-reset ADMIN gate (L1), non-local secret guard (L2), JWT alg pin (L5), mitigation-log validation (L7), server `npm audit fix` + client react-router 6.30.4. **Confirmed already-deferred, left for P5:** DB TLS CA-pinning + Redis rate-limit/replay caches (single-instance deploy). Remaining un-fixed gaps:
+Landed on `security/audit-hardening-2026-07-10`, ✅ merged to main at 6bf33cf (pre-O6): auth rate limiting + `trust proxy` (H1/M5), helmet (M6), acting-role from token claim not header (M4), recovery-code lockout (M7), RLS-role boot guard (M2), admin-reset ADMIN gate (L1), non-local secret guard (L2), JWT alg pin (L5), mitigation-log validation (L7), server `npm audit fix` + client react-router 6.30.4. **Confirmed already-deferred, left for P5:** DB TLS CA-pinning + Redis rate-limit/replay caches (single-instance deploy). Remaining un-fixed gaps:
 
 - [P1/M] **Access token moved out of localStorage** (M3) — hold the access JWT in memory, rehydrate via the httpOnly `/refresh` cookie on load; XSS-exfiltration hardening. Client rearchitecture + minor flow change; no live XSS sink today. — **BACKLOG**
 - [P2/S] **Single-use-token check-then-act races** (L6) — recovery-code / password-reset / promotePending ignore the update row count; assert count==1 or `FOR UPDATE`. Low risk on single-instance. — **BACKLOG**

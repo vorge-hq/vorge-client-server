@@ -332,6 +332,48 @@ describe("POST anomaly-acknowledgements — suppression is per-Author per-assess
     expect(audit[1].diff).toEqual({ reason: ["false_positive", "will_address"] });
   });
 
+  test("an entityId that is not in this assessment → 404 ENTITY_NOT_FOUND, no row (sweep fix 2026-07-16)", async () => {
+    const session = await login("authorA2", ROLES.AUTHOR);
+
+    // A random uuid and a REAL entity from another tenant's assessment — both
+    // must be refused: entity_id has no FK, so this route is the referential
+    // integrity check, and without it any uuid mints a durable ack + audit row.
+    for (const entityId of [crypto.randomUUID(), CHILD.B2.asset]) {
+      const res = await withAuth(request(app).post(ackUrl(A2_ASSESSMENT)), session).send({
+        ...ackBody,
+        entityId
+      });
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("ENTITY_NOT_FOUND");
+    }
+    expect(await db("anomaly_acknowledgements").where({ assessment_id: A2_ASSESSMENT })).toHaveLength(0);
+    expect(await db("audit_log_entries").where({ action_type: "anomaly-acknowledged" })).toHaveLength(0);
+  });
+
+  test("acknowledgements per Author per assessment are capped (429 ACK_LIMIT_EXCEEDED)", async () => {
+    // Fill to the cap directly (real POSTs would need 500 distinct rule keys —
+    // the write path is already covered above).
+    await db("anomaly_acknowledgements").insert(
+      Array.from({ length: 500 }, (_, i) => ({
+        id: crypto.randomUUID(),
+        facility_id: A2,
+        assessment_id: A2_ASSESSMENT,
+        author_user_id: USERS.authorA2.id,
+        rule_key: `synthetic-rule-${i}`,
+        entity_type: "asset",
+        entity_id: A2_ASSET,
+        reason: "false_positive"
+      }))
+    );
+
+    const session = await login("authorA2", ROLES.AUTHOR);
+    const res = await withAuth(request(app).post(ackUrl(A2_ASSESSMENT)), session).send(ackBody);
+
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("ACK_LIMIT_EXCEEDED");
+    expect(await db("anomaly_acknowledgements").where({ assessment_id: A2_ASSESSMENT })).toHaveLength(500);
+  });
+
   test("reason 'other' without reasonText → 400 (Zod), nothing persisted", async () => {
     const session = await login("authorA2", ROLES.AUTHOR);
     const res = await withAuth(request(app).post(ackUrl(A2_ASSESSMENT)), session).send({ ...ackBody, reason: "other" });

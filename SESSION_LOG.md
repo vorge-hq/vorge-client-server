@@ -1,3 +1,47 @@
+2026-07-16 — O6/O7 sweep (owner-requested): 3 independent reviews → 6 fixes
+  Three parallel reviewers (security/tenancy, spec-compliance vs §9.2/§9.3/§P4,
+  line-level correctness) over the O6+O7 diff (793e135..6fb6e83). Verdict:
+  tenancy/RLS/injection/acting-role CLEAN; spec-faithful server-side with the two
+  known documented client gaps; every §P4 clause has a named test. No criticals.
+  Fixed this session (each guard red-checked — test fails with the guard removed):
+  1. HIGH consistencyRepository.loadPortfolioRows: Number(null)=0 made unrated
+     evaluations cluster as rating 0 (client writes {consequence:null}); also
+     consequence 0 ("no consequence" per riskMatrixService) now → rating null,
+     matching O6's reading. Missing data could previously manufacture a ~4.5σ flag.
+  2. HIGH upsertFlag: an `expired` flag whose divergence re-emerged stayed expired
+     forever (merge never touched status). Now CASE-revives expired→pending;
+     dismissed/sent_back (human statuses) still survive re-runs — tested both ways.
+  3. MEDIUM (security F1) anomaly-acknowledgements: entityId now must belong to the
+     assessment (entity_id has no FK — 404 ENTITY_NOT_FOUND otherwise) + a 500-row
+     cap per (assessment, Author) → 429 ACK_LIMIT_EXCEEDED. Closes unbounded
+     ack/audit row amplification.
+  4. MEDIUM rationale prompt: peers were cluster ROWS not facilities (a facility
+     with 3 evaluations read as 3 peers → wrong counts in HQ-visible prose) and
+     unrated rows leaked into peer lines. Now one line per facility (its cluster
+     mean), null-rated rows excluded; outlier rating presented as the mean it is.
+  5. MEDIUM HQExecutiveDashboard: flagsError latched forever and could render next
+     to rows; now reset on success, rows hidden under the banner. Flag "Review →"
+     now drills into flag.assessmentId (the flagged document) with facility fallback.
+  6. Defense-in-depth (security F4): updateFlagStatus re-applies the caller's §17.5
+     scope in its own WHERE (flags carry operator_id+facility_id, no join needed) —
+     a future caller passing a raw id cannot reach another operator's row.
+  Lenient readings now recorded (spec reviewer flagged as undocumented):
+  - "similar asset class" = exact normalized equality on asset_type (no similarity
+    measure); degrades silently if asset-type free text diverges across facilities.
+  - severity-vs-criticality fires ONLY on (consequence 5, criticality Low) — the
+    under-flag posture applied to §9.2's worked example; softer pairings skipped.
+  - suppressed-but-still-firing anomaly flags are not re-audited per check, which
+    thins the §9.2 dismissal-rate tuning signal (dismissals themselves are audited).
+  Noted, not fixed: AI rate limiter is per-facility not per-user (co-author
+  starvation; in-memory ceiling multiplies per instance — fold into P5 Redis swap;
+  backlog line added); llmAvailable=true when zero evaluations exist (LLM never
+  ran); severity band uses unrounded sigma vs 3dp stored value (cosmetic); LLM
+  rationale is XSS-safe (React text child) — residual content-steering risk only.
+  Outstanding ops step re-surfaced: the Render cron for job:consistency does not
+  exist yet — until created, §9.3's "nightly" is a manual run.
+  Tests: 429 unit / 231 integration (+5) / 209 client. Local commit only (stop-
+  before-push rule) — O6/O7 base commits were pushed before the rule existed.
+
 2026-07-16 — Owner rule: every stage stops before merge/push
   Standing rule added after O6/O7 were pushed straight to main: a build session ends
   at a local commit + summary; the owner reviews, then merges/pushes (or explicitly

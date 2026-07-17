@@ -131,11 +131,18 @@ export function HQExecutiveDashboard() {
     let cancelled = false;
     loadConsistencyFlags(actingRole, "pending")
       .then((rows) => {
-        if (!cancelled) setFlags(rows);
+        if (cancelled) return;
+        // Clear a previous failure: the effect re-runs (e.g. once actingRole
+        // resolves), and a stale latched error must not render next to rows.
+        setFlagsError(false);
+        setFlags(rows);
       })
       .catch(() => {
-        // Advisory panel: a failed read must not take the dashboard down.
-        if (!cancelled) setFlagsError(true);
+        // Advisory panel: a failed read must not take the dashboard down —
+        // and stale rows must not render under the error banner.
+        if (cancelled) return;
+        setFlagsError(true);
+        setFlags([]);
       });
     return () => {
       cancelled = true;
@@ -308,11 +315,16 @@ export function HQExecutiveDashboard() {
                 No outliers flagged across the portfolio.
               </p>
             ) : null}
-            {flags.map((flag) => {
+            {!flagsError && flags.map((flag) => {
               // Join on facilityId, not on the facility NAME: the nightly job
               // returns real ids, and two facilities may share a display name.
               const flagFacilityId = flag.facilityId;
-              const drillable = flagFacilityId ? hasAssessment(flagFacilityId) : false;
+              // The flag names the exact assessment it was raised on — drill
+              // there, not to the facility's newest assessment, which can be a
+              // different document. Facility drill is the demo/missing-id
+              // fallback.
+              const flagAssessment = flag.assessmentId && workspace.assessmentsById[flag.assessmentId];
+              const drillable = Boolean(flagAssessment) || (flagFacilityId ? hasAssessment(flagFacilityId) : false);
               return (
                 <div key={flag.id} className="px-4 py-2.5 hover:bg-surface-muted/40">
                   <div className="flex items-start gap-2">
@@ -328,7 +340,11 @@ export function HQExecutiveDashboard() {
                       {drillable ? (
                         <button
                           type="button"
-                          onClick={() => drillIntoFacility(flagFacilityId)}
+                          onClick={() =>
+                            flagAssessment
+                              ? navigate(`/assessments/${flagAssessment.id}/sections/6`)
+                              : drillIntoFacility(flagFacilityId)
+                          }
                           className="mt-1 text-[11px] font-medium text-primary hover:text-primary-600"
                         >
                           Review →

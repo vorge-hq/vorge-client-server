@@ -44,7 +44,9 @@ function buildConsistencyPrompt({ flag, subject, peers = [] }) {
     `- asset class: ${flag.assetClass || "unspecified"}`,
     "",
     `Outlier — ${subject.facilityName}:`,
-    `- risk rating: ${flag.rating} (consequence x likelihood, 1-25 scale)`,
+    // flag.rating is the facility's cluster MEAN, so it can be fractional —
+    // present it as one, not as a single evaluation's product.
+    `- risk rating: ${Math.round(flag.rating * 10) / 10} (mean of its evaluations here; consequence x likelihood, 1-25 scale)`,
     `- its stated rationale: ${truncate(subject.scenario) || "(none given)"}`,
     subject.vulnerabilities ? `- stated vulnerabilities: ${truncate(subject.vulnerabilities, 200)}` : "",
     "",

@@ -106,11 +106,26 @@ async function loadPortfolioRows({ operatorId, facilityIds, conn = activeConn() 
       "t.details as threat_details"
     );
 
+  // A 1-5 matrix axis, or null. Number(null)/Number("") are 0, so the empty
+  // forms must be rejected BEFORE coercion — the client writes unrated rows as
+  // { consequence: null, likelihood: null } (adapters.js), and an unrated
+  // evaluation clustering as rating 0 would drag its facility toward a
+  // manufactured outlier. Consequence 0/"0" is the matrix's explicit "no
+  // consequence" (riskMatrixService: score null, NOT zero) — also unrated here,
+  // matching O6's r1MathConsistency reading of the same convention.
+  const axis = (raw) => {
+    if (raw === null || raw === undefined || raw === "") {
+      return null;
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+
   return rows.map((row) => {
     const r1 = row.r1 || {};
-    const consequence = Number(r1.consequence);
-    const likelihood = Number(r1.likelihood);
-    const rating = Number.isFinite(consequence) && Number.isFinite(likelihood) ? consequence * likelihood : null;
+    const consequence = axis(r1.consequence);
+    const likelihood = axis(r1.likelihood);
+    const rating = consequence !== null && consequence !== 0 && likelihood !== null ? consequence * likelihood : null;
     const details = row.threat_details || {};
     // Cluster key source, DECIDED 2026-07-16: the free-text `classification`
     // (what §19.1's vocabulary is meant to populate), falling back to the threat
@@ -132,10 +147,13 @@ async function loadPortfolioRows({ operatorId, facilityIds, conn = activeConn() 
 }
 
 // Upsert on the natural key (evaluation, cluster). The nightly re-run refreshes
-// the statistics and the rationale but NEVER resets `status` or
-// `dismissed_reason`: an HQ Executive's dismissal is a human decision and must
-// survive tonight's job. `updated_at` moves so the read surface can show that a
-// dismissed divergence is still live.
+// the statistics and the rationale but never overrides a HUMAN status:
+// `dismissed` and `sent_back` are HQ decisions and survive tonight's job.
+// `expired` is MACHINE-set (the divergence went away), so a re-emerging
+// divergence flips it back to `pending` — without that, a flag that expired
+// once could never be seen again no matter how far the facility diverges.
+// `updated_at` moves so the read surface can show a dismissed divergence is
+// still live.
 async function upsertFlag({ flag, conn = activeConn() }) {
   const [row] = await conn("consistency_flags")
     .insert({
@@ -155,6 +173,9 @@ async function upsertFlag({ flag, conn = activeConn() }) {
       severity: flag.severity,
       divergence_sigma: flag.divergenceSigma,
       rationale: flag.rationale || null,
+      status: conn.raw(
+        "CASE WHEN consistency_flags.status = 'expired' THEN 'pending' ELSE consistency_flags.status END"
+      ),
       updated_at: conn.fn.now()
     })
     .returning("*");
@@ -218,9 +239,26 @@ async function getFlagForUser({ flagId, user, actingRole, conn = activeConn() })
   return row ? mapFlag(row) : null;
 }
 
-async function updateFlagStatus({ flagId, status, dismissedReason = null, userId, trx }) {
+// Defense-in-depth: the route already resolves the flag through getFlagForUser
+// (scoped getter → 404), but this update re-applies the caller's §17.5 scope in
+// its own WHERE — flags carry both operator_id and facility_id, so no join is
+// needed. A future caller passing a raw client-supplied id therefore cannot
+// reach another operator's row even if it skips the getter.
+async function updateFlagStatus({ flagId, status, dismissedReason = null, userId, user, actingRole, trx }) {
+  const { facilityIds, operatorIds } = facilityScopeFor({ user, actingRole });
+  if (facilityIds.length === 0 && operatorIds.length === 0) {
+    return null;
+  }
   const [row] = await trx("consistency_flags")
     .where({ id: flagId })
+    .andWhere((builder) => {
+      if (facilityIds.length > 0) {
+        builder.orWhereIn("facility_id", facilityIds);
+      }
+      if (operatorIds.length > 0) {
+        builder.orWhereIn("operator_id", operatorIds);
+      }
+    })
     .update({
       status,
       dismissed_reason: dismissedReason,

@@ -286,6 +286,87 @@ describe("the nightly job — outlier detection over a synthetic portfolio (§9.
     await db.raw("UPDATE assessments SET created_at = now() WHERE id = ?", [ids.P1.assessmentId]);
   });
 
+  test("unrated and consequence-0 evaluations carry rating null — never a clustered 0 (sweep fix 2026-07-16)", async () => {
+    // The client writes unrated rows as { consequence: null, likelihood: null }
+    // (adapters.js), and consequence 0 is the matrix's explicit "no consequence"
+    // (riskMatrixService → score null). Number(null) is 0, so without the axis
+    // guard these cluster as rating 0 and manufacture a 4.5σ outlier out of
+    // missing data.
+    const extra = [
+      { r1: { consequence: null, likelihood: null } },
+      { r1: { consequence: 0, likelihood: 3 } }
+    ].map((e) => ({ ...e, evaluationId: nextId(), assetId: nextId(), threatId: nextId() }));
+
+    for (const e of extra) {
+      await db("assets").insert({
+        id: e.assetId, facility_id: ids.P1.facilityId, assessment_id: ids.P1.assessmentId,
+        name: "extra jetty", asset_type: "Jetty", criticality: "High", details: JSON.stringify({})
+      });
+      await db("threats").insert({
+        id: e.threatId, facility_id: ids.P1.facilityId, assessment_id: ids.P1.assessmentId,
+        name: "Maritime", likelihood: 3, details: JSON.stringify({ classification: "Maritime" })
+      });
+      await db("evaluations").insert({
+        id: e.evaluationId, facility_id: ids.P1.facilityId, assessment_id: ids.P1.assessmentId,
+        asset_id: e.assetId, threat_id: e.threatId, scenario: "unrated row", controls: "c",
+        vulnerabilities: "v", proposed_mitigation: "m", r1: JSON.stringify(e.r1), r2: JSON.stringify({})
+      });
+    }
+
+    const rows = await loadPortfolioRows({
+      operatorId: OPERATORS.A.id,
+      facilityIds: [ids.P1.facilityId],
+      conn: db
+    });
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.rating).sort()).toEqual([12, null, null]);
+
+    // End to end: Peer Alpha's cluster value stays 12 (mean of RATED rows only),
+    // so the peer norm and the outlier verdict are unchanged.
+    await runConsistencyFlagging({ conn: db });
+    expect(prompts[0]).toContain("mean rating 12.0");
+
+    for (const e of extra) {
+      await db("evaluations").where({ id: e.evaluationId }).del();
+      await db("threats").where({ id: e.threatId }).del();
+      await db("assets").where({ id: e.assetId }).del();
+    }
+  });
+
+  test("an expired flag whose divergence RE-EMERGES returns to pending (never stuck invisible)", async () => {
+    await runConsistencyFlagging({ conn: db });
+
+    // Night 2: the Author re-rates in line with peers → the flag expires.
+    await db("evaluations")
+      .where({ id: ids.P0.evaluationId })
+      .update({ r1: JSON.stringify({ consequence: 3, likelihood: 4 }) });
+    await runConsistencyFlagging({ conn: db });
+    expect((await db("consistency_flags").where({ operator_id: OPERATORS.A.id }).first()).status).toBe("expired");
+
+    // Night 3: the Author reverts — the divergence is real again and the SAME
+    // row (natural key) must come back to pending, or it is invisible forever.
+    await db("evaluations")
+      .where({ id: ids.P0.evaluationId })
+      .update({ r1: JSON.stringify({ consequence: 2, likelihood: 2 }) });
+    await runConsistencyFlagging({ conn: db });
+
+    const flags = await db("consistency_flags").where({ operator_id: OPERATORS.A.id });
+    expect(flags).toHaveLength(1);
+    expect(flags[0].status).toBe("pending");
+  });
+
+  test("a re-emerging divergence does NOT revive a HUMAN status (dismissed stays dismissed)", async () => {
+    await runConsistencyFlagging({ conn: db });
+    await db("consistency_flags")
+      .where({ operator_id: OPERATORS.A.id })
+      .update({ status: "dismissed", dismissed_reason: "known local factor" });
+
+    await runConsistencyFlagging({ conn: db });
+
+    const flag = await db("consistency_flags").where({ operator_id: OPERATORS.A.id }).first();
+    expect(flag.status).toBe("dismissed");
+  });
+
   test("re-running the job is idempotent: the flag is refreshed, not duplicated", async () => {
     await runConsistencyFlagging({ conn: db });
     const first = await db("consistency_flags").where({ operator_id: OPERATORS.A.id }).select("*");

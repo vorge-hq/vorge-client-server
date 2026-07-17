@@ -32,6 +32,33 @@ async function listAcknowledgements({ facilityId, assessmentId, authorUserId, co
   return rows.map(mapAcknowledgement);
 }
 
+// entity_id carries no FK (it may point at an asset, threat or evaluation), so
+// referential integrity is enforced here instead: the named entity must exist in
+// THIS assessment. Without this check any uuid would mint a durable row —
+// unbounded junk data and an audit row per POST (security sweep 2026-07-16, F1).
+const ENTITY_TABLES = Object.freeze({ asset: "assets", threat: "threats", evaluation: "evaluations" });
+
+async function entityBelongsToAssessment({ entityType, entityId, assessmentId, conn = activeConn() }) {
+  const table = ENTITY_TABLES[entityType];
+  if (!table) {
+    return false;
+  }
+  const row = await conn(table).where({ id: entityId, assessment_id: assessmentId }).first();
+  return Boolean(row);
+}
+
+// The other half of the same guard: even with real entities, rule_key is free
+// text (deliberately — the rule catalogue must not need a migration), so the row
+// count per (assessment, author) is capped well above any legitimate use
+// (~tens of entities × a handful of rules) but far below abuse.
+async function countAcknowledgements({ facilityId, assessmentId, authorUserId, conn = activeConn() }) {
+  const result = await conn("anomaly_acknowledgements")
+    .where({ facility_id: facilityId, assessment_id: assessmentId, author_user_id: authorUserId })
+    .count({ total: "id" })
+    .first();
+  return Number(result && result.total ? result.total : 0);
+}
+
 // Upsert on the natural key: re-acknowledging the same flag (e.g. the Author
 // changes the reason) updates the row rather than colliding. Returns the stored
 // acknowledgement and whether it replaced an existing one, so the route can put
@@ -77,4 +104,10 @@ async function saveAcknowledgement({
   return { acknowledgement: mapAcknowledgement(row), previous: existing ? mapAcknowledgement(existing) : null };
 }
 
-module.exports = { mapAcknowledgement, listAcknowledgements, saveAcknowledgement };
+module.exports = {
+  mapAcknowledgement,
+  listAcknowledgements,
+  saveAcknowledgement,
+  entityBelongsToAssessment,
+  countAcknowledgements
+};

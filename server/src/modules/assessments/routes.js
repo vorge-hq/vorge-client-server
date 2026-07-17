@@ -48,7 +48,12 @@ const { buildAnomalyPrompt, ANOMALY_OUTPUT_SCHEMA } = require("../../ai/prompts/
 const { validateTags, normalize: normalizeTag } = require("../../services/tagVocabularyService");
 const { runDeterministicRules } = require("../../services/anomalyRulesService");
 const { isFeatureEnabled } = require("../../repositories/entitlementsRepository");
-const { listAcknowledgements, saveAcknowledgement } = require("../../repositories/anomalyRepository");
+const {
+  listAcknowledgements,
+  saveAcknowledgement,
+  entityBelongsToAssessment,
+  countAcknowledgements
+} = require("../../repositories/anomalyRepository");
 const {
   listFlagsForUser,
   getFlagForUser,
@@ -151,8 +156,17 @@ router.patch("/consistency-flags/:flagId", validateRequest(updateConsistencyFlag
         status,
         dismissedReason: dismissedReason || null,
         userId: req.user.id,
+        user: req.user,
+        actingRole: req.actingRole,
         trx
       });
+      // Can only be null if the flag left the caller's scope between the getter
+      // and the update (or the defense-in-depth predicate caught a bad caller);
+      // either way the row is gone as far as this HQ user is concerned — 404,
+      // and the throw rolls the transaction back so no orphan audit row.
+      if (!updated) {
+        throw new DomainError("Consistency flag not found or outside portfolio scope", 404, "FLAG_NOT_FOUND");
+      }
 
       await appendAuditLog(
         {
@@ -974,6 +988,9 @@ router.put(
 // effect on the next check with no deploy.
 const ANOMALY_FEATURE_KEY = "anomaly_detection";
 
+// Ceiling on stored dismissals per (assessment, Author). See the ack route.
+const MAX_ACKS_PER_AUTHOR_PER_ASSESSMENT = 500;
+
 // A flag's identity for suppression + de-duplication. Must match the natural key
 // of anomaly_acknowledgements — an Author's dismissal suppresses exactly this
 // (rule, entity) pair on this assessment, and only for this Author (§9.2).
@@ -1140,6 +1157,30 @@ router.post(
       }
 
       const { ruleKey, entityType, entityId, reason, reasonText } = req.validated.body;
+
+      // entity_id has no FK — enforce here that the acknowledged entity really
+      // lives in this assessment, else any uuid mints a durable row + audit row
+      // (unbounded junk; security sweep 2026-07-16 F1). 404, matching how a
+      // missing evaluation reads on the tagging endpoints.
+      const entityOk = await entityBelongsToAssessment({ entityType, entityId, assessmentId: assessment.id });
+      if (!entityOk) {
+        throw new DomainError("Entity not found in this assessment", 404, "ENTITY_NOT_FOUND", {
+          entityType
+        });
+      }
+
+      // rule_key is deliberately free text (rule curation must not need a
+      // migration), so cap the per-Author-per-assessment row count instead —
+      // generous for real use (tens of entities x a handful of rules), a wall
+      // for a scripted loop.
+      const ackCount = await countAcknowledgements({
+        facilityId: assessment.facilityId,
+        assessmentId: assessment.id,
+        authorUserId: req.user.id
+      });
+      if (ackCount >= MAX_ACKS_PER_AUTHOR_PER_ASSESSMENT) {
+        throw new DomainError("Too many acknowledgements on this assessment", 429, "ACK_LIMIT_EXCEEDED");
+      }
 
       const acknowledgement = await activeConn().transaction(async (trx) => {
         const { acknowledgement: saved, previous } = await saveAcknowledgement({

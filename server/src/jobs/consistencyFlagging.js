@@ -47,14 +47,35 @@ async function rationaleFor({ flag, rows, operatorId, traceId }) {
   // Match on the cluster KEY, not on the raw threat/asset strings: the key is
   // normalized (trim + lowercase), so "Maritime" and "maritime " cluster together
   // in the statistics. Filtering on raw text here would drop those peers from the
-  // prompt and let the model contrast against an incomplete peer set.
+  // prompt and let the model contrast against an incomplete peer set. Unrated
+  // rows (rating null) are excluded exactly as the statistics excluded them.
   const clusterRows = rows.filter(
-    (r) => clusterKeyFor({ threatType: r.threatType, assetClass: r.assetClass }) === flag.clusterKey
+    (r) =>
+      r.rating !== null &&
+      clusterKeyFor({ threatType: r.threatType, assetClass: r.assetClass }) === flag.clusterKey
   );
   const subject = clusterRows.find((r) => r.evaluationId === flag.evaluationId);
-  const peers = clusterRows
-    .filter((r) => r.facilityId !== flag.facilityId)
-    .map((r) => ({ facilityName: r.facilityName, rating: r.rating, scenario: r.scenario }));
+
+  // One peer entry per FACILITY (its cluster mean + a representative scenario),
+  // matching how the statistics counted peers — the prompt tells the model how
+  // many peer facilities there are, and a facility with three evaluations in the
+  // cluster must not read as three peers or the stored rationale asserts wrong
+  // counts to HQ ("5 of 7 peers…").
+  const peersByFacility = new Map();
+  for (const r of clusterRows) {
+    if (r.facilityId === flag.facilityId) {
+      continue;
+    }
+    if (!peersByFacility.has(r.facilityId)) {
+      peersByFacility.set(r.facilityId, { facilityName: r.facilityName, ratings: [], scenario: r.scenario });
+    }
+    peersByFacility.get(r.facilityId).ratings.push(r.rating);
+  }
+  const peers = [...peersByFacility.values()].map((p) => ({
+    facilityName: p.facilityName,
+    rating: Math.round((p.ratings.reduce((s, v) => s + v, 0) / p.ratings.length) * 10) / 10,
+    scenario: p.scenario
+  }));
 
   try {
     const { output } = await runAiCall({

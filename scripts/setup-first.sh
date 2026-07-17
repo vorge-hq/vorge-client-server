@@ -47,12 +47,6 @@ echo "==> Running migrations"
 ./scripts/migrate.sh
 
 echo "==> Running safe seed/init scripts if configured"
-if [[ -d "server" && -f "server/package.json" ]]; then
-  if npm --prefix server run | grep -q "seed"; then
-    npm --prefix server run seed
-  else
-    echo "==> No seed script found; skipping"
-  fi
-fi
+./scripts/seed.sh
 
 echo "==> First-time setup completed successfully"

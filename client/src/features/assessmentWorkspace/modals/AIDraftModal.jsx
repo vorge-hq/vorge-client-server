@@ -1,9 +1,9 @@
 // P4 · O5 — presentational AI-draft modal (§9.1). The section component owns the
 // generate flow (it holds the editor's text state) and passes the draft + loading
 // state in through the prod↔demo seam; this modal just previews the draft, offers
-// Regenerate, and hands the accepted text back via onAccept. Accepting drops the
-// draft into the section editor where the Author edits and saves — the AI original
-// is already retained server-side in the audit at generate time.
+// Regenerate, and hands the accepted text back via onAccept. The section's
+// onAccept persists immediately (blur-save is not enough after the modal closes).
+// The AI original is already retained server-side in the audit at generate time.
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles, X } from "lucide-react";
 
@@ -67,8 +67,10 @@ export function AIDraftModal({ draft = "", loading = false, target = "Section 1 
           <button
             type="button"
             onClick={() => {
+              // Section onAccept closes the modal after persist; fall back to
+              // onClose when a caller only wants the text (tests / older seams).
               if (onAccept) onAccept(text);
-              onClose?.();
+              else onClose?.();
             }}
             disabled={loading}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"

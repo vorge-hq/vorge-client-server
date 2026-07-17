@@ -1,3 +1,54 @@
+2026-07-16 — P4 F-AI gate PASSED (owner sign-off)
+  Live smoke of O3–O5 against real Vercel AI Gateway completed and signed off:
+  semantic library search, smart tagging (§6 Suggest/Confirm), drafted §1/§8 Accept
+  persist + toast, cost/audit rows exercised earlier in the session. UX gaps found
+  during smoke were fixed same day (Accept persist, Library Use entry, inline
+  searchLibrary) plus Docker client rebuild and library embedding backfill.
+  O6 (anomaly AD-2+) is unblocked. Docs: roadmap F-AI ticked; production-status +
+  CLAUDE Current focus → NEXT O6.
+
+2026-07-16 — F-AI smoke unblock: rebuild Docker client + backfill library embeddings
+  :5173 is Docker (`vantage-client`), not host Vite — Accept-persist fix was on disk
+  but the container still served `onAccept → setText` only. Rebuilt client; verified
+  `handleAcceptDraft` in the served module. Local `library_entries` had 15 rows and
+  **0 embeddings** so semantic search always empty — ran
+  `docker exec vantage-server node scripts/reembed-library.js --missing` → 15/0.
+
+2026-07-16 — P4 F-AI UX: Accept draft persists; Library Use entry; inline semantic search
+  Smoke feedback from live O3–O5: (1) Accept draft on §1/§8 only setText — no
+  blur → no save/toast; (2) Library modal had no onUse so Use entry was a no-op;
+  (3) Section 6 inline "Library matches (semantic)" used local fixture similarity,
+  not searchLibrary. Fixed: Accept calls saveSectionText + toast; workspace
+  registerLibraryUseHandler / applyLibraryEntry (EvaluationSection inserts into
+  focused scenario + persist); inline matches debounce through searchLibrary.
+  Client tests: draftedSummary 5, librarySearch 4, ExecutiveSummarySection 3,
+  EvaluationSection.write 3 — all green (targeted vitest, not full make test).
+  Key files: ExecutiveSummarySection.jsx, ConclusionSection.jsx, AIDraftModal.jsx,
+  WorkspaceContext.jsx, EvaluationSection.jsx, AssessmentWorkspacePage.jsx,
+  draftedSummary.test.jsx, librarySearch.test.jsx.
+
+2026-07-16 — tooling: split local .env vs .env.staging (no more dual DATABASE_URL)
+  Root cause of recurring empty assessments list: `.env` had local DATABASE_URL
+  then a second Supabase DATABASE_URL (last wins) so Docker talked to staging
+  while UI chrome still looked fixture-y. Wired a durable split:
+  - `.env` = local Docker only; cleaned staging overrides out of the working copy
+  - `.env.staging` = staging URLs only; never loaded by `make start`
+  - `scripts/lib/load-env.sh` + migrate/seed scripts; local rewrites `@db`→`@localhost`
+  - `make migrate` / `make seed` refuse supabase hosts; `make migrate-staging` /
+    `make seed-staging` load `.env` then `.env.staging` with an explicit confirm
+  - `.env.example` + infrastructure.md §4 updated
+  Key files: Makefile, scripts/migrate.sh, scripts/seed.sh, scripts/lib/load-env.sh,
+  scripts/setup-first.sh, .env.example, docs/infrastructure.md
+
+2026-07-16 — P4: bind F-AI live-smoke gate after O5 (before O6)
+  Added a third mandatory review gate to the P4 playbook so O3–O5 are exercised
+  against a real Vercel AI Gateway key before anomaly work starts. Checklist covers
+  env on/off, semantic search, smart tagging, drafted §1/§8, product quality, cost/
+  audit rows, isolation sanity, owner sign-off. O6 is hard-blocked until F-AI passes
+  (or feedback is parked as backlog). Docs only — no code.
+  Key files: docs/plans/p4-execution-plan.md, docs/roadmap.md, docs/production-status.md,
+  CLAUDE.md Current focus.
+
 2026-07-10 — security: audit-brief hardening pass (branch security/audit-hardening-2026-07-10)
   Ran the 5-agent read-only audit from AUDIT-BRIEF.md (auth/MFA, routes/IDOR,
   SQL/RLS, AI surface, client/config/infra). Core posture verified strong: no

@@ -14,10 +14,10 @@ This plan was deliberately authored by a stronger model so that build sessions c
 1. **Start** by reading this file + `docs/roadmap.md` (P4/P4.5) + the relevant `docs/test-specs.md` section. Do not re-derive design from businesslogic §9 — where §9 and this plan differ, this plan + the gateway decision record govern.
 2. **Execute the session order below** (O1 → O9). One session block per session where possible; small commits, `make test` green before each commit.
 3. **Escalation rule (binding):** if implementing requires deviating from anything specified here (interface, table shape, guard placement, test spec), do NOT improvise. Append the question to the **Open questions** section at the bottom of this file, leave that thread unfinished, and continue with other in-scope work. Deviations are resolved in a short Fable session.
-4. **Two review gates are mandatory:** after O2 and after O8, STOP — do not build the next block on top until the Fable review gate (F2/F3) has run on the diff. Tick the roadmap + append SESSION_LOG as usual.
+4. **Three review gates are mandatory:** after O2 (**F2**), after O5 (**F-AI** — live product smoke of O3–O5), and after O8 (**F3**). STOP — do not build the next block on top until the named gate has passed. Tick the roadmap + append SESSION_LOG as usual.
 5. Per CLAUDE.md: never edit `docs/api-contract.md` unless the user explicitly instructs it.
 
-**Model routing (Solo's sessions only):** build sessions (O1–O9) run on **Opus** (`/model opus`). Gates F2/F3 run on **Fable** (`/model fable`) and review ONLY the diff since the previous gate. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget — the rest of this document (architecture, session order, specs, gates, escalation rule) binds regardless of which model a block runs on.
+**Model routing (Solo's sessions only):** build sessions (O1–O9) run on **Opus** (`/model opus`). Gates F2 / F-AI / F3 run on **Fable** (`/model fable`) — F2 and F3 review ONLY the diff since the previous code gate; **F-AI is a live-smoke + product gate** (owner + Fable) and must pass before O6. If Fable is unavailable at a gate, fallback: `/code-review high` plus the adversarial checklist in the gate description — but prefer waiting for Fable. This routing reflects Solo's token budget — the rest of this document (architecture, session order, specs, gates, escalation rule) binds regardless of which model a block runs on.
 
 ---
 
@@ -29,7 +29,7 @@ This plan was deliberately authored by a stronger model so that build sessions c
 | O2 | AI service module foundation (migrations, `server/src/ai/`, ceilings, audit, entitlements read, `aiImportBoundary` test) | **F2 (Fable) before O3** |
 | O3 | Feature 1 — Semantic library search (embeddings + pgvector) | — |
 | O4 | Feature 2 — Smart tagging (structured output, controlled vocabulary) | — |
-| O5 | Feature 3 — Drafted Executive Summary / Conclusion (§1/§8) | — |
+| O5 | Feature 3 — Drafted Executive Summary / Conclusion (§1/§8) | **F-AI (live smoke) before O6** |
 | O6 | Feature 4 — Anomaly detection server engine (AD-2+) | — |
 | O7 | Feature 5 — Cross-facility consistency flagging (nightly batch) | — |
 | O8 | P4.5 part 1 — `PLATFORM_OWNER` role + provisioning API (`/api/platform/*`) | **F3 (Fable) before O9** |
@@ -229,8 +229,12 @@ completeness, no-fallback, RLS on new tables).
 - Client: "Generate Draft" button on §1/§8 editors (Author + non-Approved only), loading state,
   regenerate; seam + fetch-spy tests (prod fires POST, demo no-fetch).
 - Tests: §P4 spec (role/state gating incl. 403 non-Author; original in audit next to edited final).
+**STOP after O5 — request the F-AI gate** (live smoke of O3–O5 against a real Vercel AI Gateway
+key). Do **not** start O6 until the owner signs off (or parks feedback as roadmap backlog).
 
 ### O6 — Feature 4: Anomaly detection server engine (AD-2+)
+
+Hard dependency: **F-AI passed** ✅ 2026-07-16. Do not begin this block while F-AI is open.
 
 - Migration 6. `POST /api/assessments/:id/anomaly-check` (Author + Draft; client debounces 800ms —
   AD-1 client ack loop shipped 2026-05-29, reuse its UI contract).
@@ -323,7 +327,7 @@ owner-only v1.
 
 ---
 
-## Fable gate checklists (for the F2/F3 sessions)
+## Fable gate checklists (for the F2 / F-AI / F3 sessions)
 
 **F2 (after O2):** ceiling boundary math (79→proceed/no alert, 80→alert once, 100→refuse+audit,
 rollover resumes); month key timezone (bind: UTC); every failure path writes `ai_call_log`
@@ -331,6 +335,32 @@ rollover resumes); month key timezone (bind: UTC); every failure path writes `ai
 RLS on `ai_call_log`/`ai_budgets`/`facility_entitlements`; `aiImportBoundary` scan actually walks
 all of `server/src` (not just modules); cost accrual query correctness (per-facility AND
 per-operator scopes); secrets not logged.
+
+**F-AI (after O5, before O6) — live product smoke + owner sign-off.** Not a code-diff review of
+mocked unit suites — exercise O3–O5 against a **real** gateway. Prerequisites: `AI_ENABLED=true`,
+`AI_GATEWAY_API_KEY` set (Vercel AI Gateway key — not a raw provider key alone), AI migrations
+applied, prod-mode client (or local with demo off), Author on a Draft assessment with enough
+Sections 2–7 content to draft from.
+
+Live-smoke checklist (all must pass or be explicitly parked as backlog before O6):
+- [x] **Env:** AI features return 404 when `AI_ENABLED=false`; with key + enabled, endpoints respond. *(PASSED 2026-07-16)*
+- [x] **O3 Semantic search:** Library picker search returns facility-scoped ranked hits with
+      similarity; empty/garbage query degrades gracefully; create/update of a library entry
+      eventually embeds (null→vector, or reembed script succeeds). *(PASSED 2026-07-16 — reembed backfill + Use entry + inline searchLibrary)*
+- [x] **O4 Smart tagging:** Suggest-tags on a §6 evaluation returns 2–4 in-vocab chips only
+      (out-of-vocab never persist); confirm/remove/add-manual + 30s auto-confirm behave as
+      expected; Mitigation Owner / non-Author / Approved → blocked. *(PASSED 2026-07-16 — suggest/confirm exercised)*
+- [x] **O5 Drafted summary:** §1 and §8 "Draft with AI" produce 3–5 reviewable paragraphs;
+      regenerate works; **Accept persists immediately** (save + toast — smoke UX fix 2026-07-16);
+      `ai-draft-generated` audit retains `metadata.draftText` next to any later edited final. *(PASSED 2026-07-16)*
+- [x] **Product quality (owner judgment):** draft tone/usefulness acceptable for SRA; tags useful;
+      search results feel relevant — park specific prompt/model tweaks as backlog if not blocking. *(PASSED 2026-07-16)*
+- [x] **Cost / audit:** each live call writes `ai_call_log` with §9.7 fields; month-to-date usage
+      moves; no secrets/PII in app logs. *(PASSED 2026-07-16)*
+- [x] **Isolation sanity:** second-facility (or second-operator) content never appears in search /
+      draft context for the acting facility. *(PASSED 2026-07-16 — facility-scoped search verified via Bonny vs seed)*
+- [x] **Sign-off:** owner marks F-AI passed in roadmap + SESSION_LOG (or lists parked feedback);
+      only then may Opus start O6. *(PASSED 2026-07-16 — owner: "everything checked out")*
 
 **F3 (after O8):** existing cross-tenant matrix + RLS suites pass UNCHANGED; `requirePlatformOwner`
 checks role AND allowlist; MFA enforced for the role; provisioning txn truly atomic (spy-throw

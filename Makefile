@@ -17,23 +17,29 @@
 SHELL := /bin/bash
 COMPOSE := docker compose
 
-.PHONY: help start stop restart logs build build-first setup-first test migrate clean dev-demo dev-prod
+.PHONY: help start stop restart logs build build-first setup-first test migrate seed migrate-staging seed-staging clean dev-demo dev-prod
 
 help:
 	@echo "Vorge developer commands:"
 	@echo ""
-	@echo "  make start        Start Docker services only"
-	@echo "  make stop         Stop Docker services only"
-	@echo "  make restart      Restart Docker services"
-	@echo "  make logs         View Docker logs"
-	@echo "  make dev-demo     Start stack with demo personas enabled (client-only flag)"
-	@echo "  make dev-prod     Start stack in prod mode (real login, no demo personas)"
-	@echo "  make build        Run tests, then build Docker artifacts"
-	@echo "  make build-first  First-time build with setup/migrations"
-	@echo "  make setup-first  Prepare first-time local/dev environment"
-	@echo "  make test         Run test suite"
-	@echo "  make migrate      Run controlled database migrations"
-	@echo "  make clean        Stop services and remove local containers"
+	@echo "  make start            Start Docker services only (always uses .env — local DB)"
+	@echo "  make stop             Stop Docker services only"
+	@echo "  make restart          Restart Docker services"
+	@echo "  make logs             View Docker logs"
+	@echo "  make dev-demo         Start stack with demo personas enabled (client-only flag)"
+	@echo "  make dev-prod         Start stack in prod mode (real login, no demo personas)"
+	@echo "  make build            Run tests, then build Docker artifacts"
+	@echo "  make build-first      First-time build with setup/migrations"
+	@echo "  make setup-first      Prepare first-time local/dev environment"
+	@echo "  make test             Run test suite"
+	@echo "  make migrate          Migrate LOCAL Docker DB (.env only)"
+	@echo "  make seed             Seed LOCAL Docker DB (.env only)"
+	@echo "  make migrate-staging  Migrate STAGING Supabase (.env + .env.staging; confirms)"
+	@echo "  make seed-staging     Seed STAGING Supabase (.env + .env.staging; confirms)"
+	@echo "  make clean            Stop services and remove local containers"
+	@echo ""
+	@echo "Env split: .env = local Docker only (one DATABASE_URL → @db)."
+	@echo "           .env.staging = staging URLs; never loaded by make start."
 	@echo ""
 
 start:
@@ -63,6 +69,15 @@ test:
 
 migrate:
 	./scripts/migrate.sh
+
+seed:
+	./scripts/seed.sh
+
+migrate-staging:
+	VORGE_TARGET=staging ./scripts/migrate.sh
+
+seed-staging:
+	VORGE_TARGET=staging ./scripts/seed.sh
 
 clean:
 	$(COMPOSE) down

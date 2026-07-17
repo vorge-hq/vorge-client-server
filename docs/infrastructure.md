@@ -78,27 +78,23 @@ Generate the two secrets locally: `openssl rand -base64 32` (run twice — one v
 
 ## 4. Migrate + seed against Supabase (user, local shell)
 
-From repo root (knexfile/seed changes landed 2026-07-03):
+**Env split (2026-07-16):** repo-root `.env` = local Docker only (one `DATABASE_URL` → Compose `db`). Staging URLs live only in gitignored `.env.staging`. Docker / `make start` never load `.env.staging`. A second `DATABASE_URL` in `.env` overrides the local one and empties the prod-mode assessments list.
 
 ```bash
-export NODE_ENV=production
-# Migrations go over the DIRECT (or session-pooler) string:
-export MIGRATE_DATABASE_URL='postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres'
-make migrate     # runs scripts/migrate.sh → knex migrate:latest
+# Local Docker DB:
+make migrate
+make seed
 
-# Seed connects through the app's knex (DATABASE_URL); pooled string is fine:
-export DATABASE_URL='postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres'
-# You will also need the app boot guards satisfied for NODE_ENV=production:
-export JWT_SECRET='<any non-placeholder value for this one-off>'
-export MFA_ENCRYPTION_KEY="$(openssl rand -base64 32)"   # one-off; Render gets its own
-cd server && npm run seed   # seeds demo users/facilities/assessments (password VorgeDemo123!)
+# Staging Supabase (prompts you to type "staging"; or CONFIRM_STAGING=yes):
+# Put MIGRATE_DATABASE_URL + DATABASE_URL in .env.staging first.
+make migrate-staging
+make seed-staging    # demo password VorgeDemo123!
 ```
-
-SSL is automatic with `NODE_ENV=production` (or force with `DATABASE_SSL=true`).
 
 Notes:
 - Migrations are explicit — nothing runs on app start (AGENTS.md invariant).
 - Seed is upsert-based (idempotent) and creates staging demo data; fine for staging, revisit before real customer data.
+- `make migrate` / `make seed` refuse a `supabase.com` host (guards against a polluted `.env`).
 - Verify in Supabase Table Editor: `operators`, `facilities`, `users` populated; `knex_migrations` lists all migrations.
 
 ## 5. Render web service (user, dashboard)

@@ -37,15 +37,16 @@ export function ExecutiveSummarySection({ assessment, readOnly, errors }) {
     state: assessment?.state
   });
 
-  /* Persist on blur (Sections 1/2/8 are the free-text narrative sections). In
-     prod this fires PUT /sections/1 with the lockVersion the client read; a lost
-     race surfaces the reload affordance. In demo it updates fixtures only. */
-  const handleBlur = async () => {
-    if (readOnly || text === (assessment?.executiveSummary || "")) return;
+  /* Persist §1 narrative. Used on blur and on Accept draft — Accept must not
+     rely on a later textarea blur (easy to miss after closing the modal). */
+  async function persistText(nextText) {
+    if (readOnly) return;
+    const contentText = nextText ?? text;
+    if (contentText === (assessment?.executiveSummary || "")) return;
     const result = await saveSectionText({
       assessmentId: assessment.id,
       sectionNumber: 1,
-      contentText: text,
+      contentText,
       lockVersion: assessment?.lockVersion ?? 1,
       actingRole: session.actingRole
     });
@@ -57,7 +58,17 @@ export function ExecutiveSummarySection({ assessment, readOnly, errors }) {
       setConflict(null);
       showToast("Executive Summary saved.");
     }
+  }
+
+  const handleBlur = () => {
+    void persistText();
   };
+
+  async function handleAcceptDraft(draftText) {
+    setText(draftText);
+    setAiDraft(null);
+    await persistText(draftText);
+  }
 
   return (
     <SectionShell
@@ -126,7 +137,7 @@ export function ExecutiveSummarySection({ assessment, readOnly, errors }) {
           draft={aiDraft.text}
           loading={aiDraft.loading}
           onRegenerate={openDraft}
-          onAccept={(draftText) => setText(draftText)}
+          onAccept={handleAcceptDraft}
           onClose={() => setAiDraft(null)}
         />
       ) : null}

@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# scripts/migrate.sh
+# scripts/seed.sh
 # ------------------------------------------------------------
-# Controlled database migration runner for Vorge.
+# Seed the database (idempotent upsert demo data).
 #
 # Default: local Docker DB via repo-root `.env` only.
-# Staging:  make migrate-staging  (loads `.env` then `.env.staging`)
-#
-# Migrations are explicit. Do not put destructive reset logic here.
+# Staging:  make seed-staging  (loads `.env` then `.env.staging`)
 # ------------------------------------------------------------
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,14 +31,6 @@ fi
 
 assert_db_target "${TARGET}"
 
-echo "==> Running database migrations (target=${TARGET})"
-
-if npm --prefix server run | grep -q "migrate"; then
-  npm --prefix server run migrate
-else
-  echo "ERROR: No server migrate script found in server/package.json"
-  echo "Add a migrate script before running migrations."
-  exit 1
-fi
-
-echo "==> Migrations completed"
+echo "==> Seeding database (target=${TARGET})"
+npm --prefix server run seed
+echo "==> Seed completed"

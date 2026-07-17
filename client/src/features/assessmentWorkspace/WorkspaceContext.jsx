@@ -1018,6 +1018,32 @@ export function WorkspaceProvider({ children }) {
     return draft || "";
   }, []);
 
+  /* Library "Use entry" — Section 6 registers a consumer while mounted so the
+     toolbar Library modal can insert into the focused evaluation's scenario.
+     Outside §6 (or with no focused row) we surface a toast instead of a no-op. */
+  const libraryUseHandlerRef = useRef(null);
+  const registerLibraryUseHandler = useCallback((handler) => {
+    libraryUseHandlerRef.current = handler;
+    return () => {
+      if (libraryUseHandlerRef.current === handler) {
+        libraryUseHandlerRef.current = null;
+      }
+    };
+  }, []);
+  const applyLibraryEntry = useCallback(
+    (entry) => {
+      const handler = libraryUseHandlerRef.current;
+      if (!handler) {
+        showToast("Open Section 6 and select an evaluation to use a library entry.", {
+          tone: "info"
+        });
+        return false;
+      }
+      return handler(entry);
+    },
+    [showToast]
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -1048,6 +1074,8 @@ export function WorkspaceProvider({ children }) {
       hydrateAssessmentsList,
       exportDocument,
       searchLibrary,
+      applyLibraryEntry,
+      registerLibraryUseHandler,
       loadScenarioTags,
       suggestScenarioTags,
       confirmScenarioTags,
@@ -1083,6 +1111,8 @@ export function WorkspaceProvider({ children }) {
       saveContributors,
       exportDocument,
       searchLibrary,
+      applyLibraryEntry,
+      registerLibraryUseHandler,
       loadScenarioTags,
       suggestScenarioTags,
       confirmScenarioTags,

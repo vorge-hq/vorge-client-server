@@ -421,7 +421,15 @@ export function AssessmentWorkspacePage() {
         />
       ) : null}
 
-      {libraryOpen ? <LibraryModal onClose={() => setLibraryOpen(false)} /> : null}
+      {libraryOpen ? (
+        <LibraryModal
+          onClose={() => setLibraryOpen(false)}
+          onUse={(entry) => {
+            workspace.applyLibraryEntry(entry);
+            setLibraryOpen(false);
+          }}
+        />
+      ) : null}
       {versionsOpen ? <VersionsModal onClose={() => setVersionsOpen(false)} /> : null}
       {fieldModeOpen ? <FieldModeModal onClose={() => setFieldModeOpen(false)} /> : null}
       {newAssessmentOpen ? (

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, FileSearch } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ROLES } from "../../../auth/session";
 import { Banner } from "../../../components/Banner";
 import { CommentAffordance } from "../../../components/CommentAffordance";
-import { similarity } from "../../../data/library";
 import { AssetThreatMatrix, MatrixLegend } from "../AssetThreatMatrix";
 import { RemoveFromScopeModal } from "../RemoveFromScopeModal";
 import { useWorkspace } from "../WorkspaceContext";
@@ -218,17 +217,45 @@ function RiskBlock({ label, consequence, likelihood, onChange, rating, canEdit =
 
 function EvaluationEditor({ evaluation, asset, threat, onChange, onFieldBlur, canEdit, commentKind }) {
   const blur = onFieldBlur || (() => {});
-  const { libraryScenarios } = useWorkspace();
+  const { session } = useAuth();
+  const { searchLibrary } = useWorkspace();
   const r1 = calcRisk(evaluation.consequenceR1, evaluation.likelihoodR1);
   const r2 = calcRisk(evaluation.consequenceR2, evaluation.likelihoodR2);
 
-  const suggestions = useMemo(() => {
-    if (!evaluation.scenario || evaluation.scenario.length < 8) return [];
-    return libraryScenarios.map((entry) => ({ ...entry, score: similarity(evaluation.scenario, entry.text) }))
-      .filter((entry) => entry.score > 0.05)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-  }, [evaluation.scenario, libraryScenarios]);
+  // Inline matches use the same prod↔demo searchLibrary seam as the Library
+  // modal (real embeddings in prod; fixture similarity in demo) — not a second
+  // local scorer that only looked semantic.
+  const [suggestions, setSuggestions] = useState([]);
+  useEffect(() => {
+    const q = (evaluation.scenario || "").trim();
+    if (q.length < 8) {
+      setSuggestions([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchLibrary(q, session?.actingRole);
+        if (cancelled) return;
+        setSuggestions(
+          (results || [])
+            .filter((row) => (row.score ?? 0) > 0.05)
+            .slice(0, 3)
+            .map(({ entry, score }) => ({
+              id: entry.id,
+              text: entry.text,
+              score: score ?? 0
+            }))
+        );
+      } catch {
+        if (!cancelled) setSuggestions([]);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [evaluation.scenario, searchLibrary, session?.actingRole]);
 
   const textareaClass =
     "w-full rounded-md border border-border-default bg-surface-base px-3 py-2 text-[13px] focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-border-focus resize-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-default";
@@ -420,7 +447,8 @@ export function EvaluationSection({ assessment, errors }) {
     toggleMatrix,
     upsertEvaluation,
     persistEvaluation,
-    showToast
+    showToast,
+    registerLibraryUseHandler
   } = useWorkspace();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeId, setActiveId] = useState(null);
@@ -538,6 +566,38 @@ export function EvaluationSection({ assessment, errors }) {
   }
 
   const actor = { name: session.user.name, role: session.actingRole };
+
+  /* Toolbar Library modal → insert into the focused evaluation's scenario. */
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const canEditRef = useRef(canEdit);
+  canEditRef.current = canEdit;
+  useEffect(() => {
+    return registerLibraryUseHandler((entry) => {
+      const current = activeRef.current;
+      if (!canEditRef.current) {
+        showToast("Only an Author can apply a library entry while the assessment is in Draft.", {
+          tone: "error"
+        });
+        return false;
+      }
+      if (!current) {
+        showToast("Select an evaluation in Section 6 first.", { tone: "info" });
+        return false;
+      }
+      const text = entry?.text || "";
+      upsertEvaluation({ ...current, scenario: text });
+      void persistEvaluation(current.id, actor.role, { scenario: text }).then(surface);
+      showToast("Library entry applied to scenario.");
+      return true;
+    });
+  }, [
+    registerLibraryUseHandler,
+    upsertEvaluation,
+    persistEvaluation,
+    showToast,
+    actor.role
+  ]);
 
   /* Sidebar matrix click handler. Decision A: tick + create + focus
      editor immediately for the typical "I want to evaluate this"

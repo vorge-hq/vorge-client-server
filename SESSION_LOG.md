@@ -1,3 +1,10 @@
+2026-07-16 — Owner rule: every stage stops before merge/push
+  Standing rule added after O6/O7 were pushed straight to main: a build session ends
+  at a local commit + summary; the owner reviews, then merges/pushes (or explicitly
+  says to). Recorded in docs/roadmap.md (Standing rules) and
+  docs/plans/p4-execution-plan.md (rule 2). Applies to every phase and O-block, on
+  top of the F2/F-AI/F3 gates.
+
 2026-07-16 — P4 O7: cross-facility consistency flagging (nightly batch, §9.3)
   Nightly job + operator-scoped AI rationale + HQ read surface + client panel.
   Job: `src/jobs/consistencyFlagging.js`, `npm --prefix server run job:consistency`.

@@ -12,7 +12,7 @@ This plan was deliberately authored by a stronger model so that build sessions c
 **without architectural judgment calls**. Rules for every build session:
 
 1. **Start** by reading this file + `docs/roadmap.md` (P4/P4.5) + the relevant `docs/test-specs.md` section. Do not re-derive design from businesslogic §9 — where §9 and this plan differ, this plan + the gateway decision record govern.
-2. **Execute the session order below** (O1 → O9). One session block per session where possible; small commits, `make test` green before each commit.
+2. **Execute the session order below** (O1 → O9). One session block per session where possible; small commits, `make test` green before each commit. **Every block STOPS before merge/push (owner rule, 2026-07-16): finish at a local commit + summary and hand back to the owner — never `git push` or merge as part of completing a block. The owner reviews and pushes (or explicitly says to). This is in addition to the named review gates, not instead of them.**
 3. **Escalation rule (binding):** if implementing requires deviating from anything specified here (interface, table shape, guard placement, test spec), do NOT improvise. Append the question to the **Open questions** section at the bottom of this file, leave that thread unfinished, and continue with other in-scope work. Deviations are resolved in a short Fable session.
 4. **Three review gates are mandatory:** after O2 (**F2**), after O5 (**F-AI** — live product smoke of O3–O5), and after O8 (**F3**). STOP — do not build the next block on top until the named gate has passed. Tick the roadmap + append SESSION_LOG as usual.
 5. Per CLAUDE.md: never edit `docs/api-contract.md` unless the user explicitly instructs it.

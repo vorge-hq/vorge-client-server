@@ -10,6 +10,7 @@ const { activeConn } = require("../../db/requestScope");
 const { appendAuditLog } = require("../../repositories/auditRepository");
 const {
   createVersionSnapshot,
+  getAssessmentBundleById,
   getAssessmentBundleForUser,
   getAssessmentForUser,
   listAssessmentsForUser,
@@ -43,7 +44,11 @@ const { rejectMitigationOwner } = require("../../middleware/rejectMitigationOwne
 const { runAiCall, buildPromptContext } = require("../../ai");
 const { buildTaggingPrompt, TAG_OUTPUT_SCHEMA } = require("../../ai/prompts/smartTagging");
 const { buildDraftPrompt } = require("../../ai/prompts/draftedSummary");
+const { buildAnomalyPrompt, ANOMALY_OUTPUT_SCHEMA } = require("../../ai/prompts/anomalyDetection");
 const { validateTags, normalize: normalizeTag } = require("../../services/tagVocabularyService");
+const { runDeterministicRules } = require("../../services/anomalyRulesService");
+const { isFeatureEnabled } = require("../../repositories/entitlementsRepository");
+const { listAcknowledgements, saveAcknowledgement } = require("../../repositories/anomalyRepository");
 const env = require("../../config/env");
 const {
   createAssetSchema,
@@ -59,6 +64,8 @@ const {
   reassignLeadAuthorSchema,
   assignMitigationOwnerSchema,
   generateDraftSchema,
+  anomalyCheckSchema,
+  acknowledgeAnomalySchema,
   suggestTagsSchema,
   getTagsSchema,
   confirmTagsSchema
@@ -858,6 +865,223 @@ router.put(
           })
       });
       res.json({ mitigation: result, lockVersion: newLockVersion });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// --- Anomaly detection (§9.2, P4 · O6) --------------------------------------
+// The hybrid engine: deterministic rules (free, pure) + LLM contextual checks.
+// ADVISORY ONLY — it never blocks a save or a submission, so it also never fails
+// the Author's request over an AI problem (see the degrade branch below).
+//
+// The whole feature is the ADD-ON, deterministic rules included: the entitlement
+// is checked HERE, before any rule runs, because those rules never reach
+// runAiCall's own entitlement gate. Read-time gating means the O9 toggle takes
+// effect on the next check with no deploy.
+const ANOMALY_FEATURE_KEY = "anomaly_detection";
+
+// A flag's identity for suppression + de-duplication. Must match the natural key
+// of anomaly_acknowledgements — an Author's dismissal suppresses exactly this
+// (rule, entity) pair on this assessment, and only for this Author (§9.2).
+function flagKey(flag) {
+  return `${flag.ruleKey}::${flag.entityType}::${flag.entityId}`;
+}
+
+// LLM output is UNTRUSTED, exactly like O4's tag strings: keep only flags naming
+// an evaluation we actually sent (never a cross-row or invented id) and drop any
+// duplicate of a flag the deterministic half already raised. The schema has
+// already constrained ruleKey to the two contextual keys.
+function acceptLlmFlags({ output, evaluations, seen }) {
+  const known = new Set(evaluations.map((e) => e.id));
+  const accepted = [];
+  for (const flag of (output && output.flags) || []) {
+    if (!known.has(flag.evaluationId)) {
+      continue;
+    }
+    const candidate = {
+      ruleKey: flag.ruleKey,
+      entityType: "evaluation",
+      entityId: flag.evaluationId,
+      message: flag.message
+    };
+    const key = flagKey(candidate);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    accepted.push(candidate);
+  }
+  return accepted;
+}
+
+router.post(
+  "/:assessmentId/anomaly-check",
+  rejectMitigationOwner,
+  validateRequest(anomalyCheckSchema),
+  async (req, res, next) => {
+    try {
+      if (!env.aiEnabled) {
+        throw new DomainError("Anomaly detection is not enabled", 404, "AI_FEATURE_DISABLED");
+      }
+
+      // Guard order: scope 404 → Author 403 → Draft 409 (the shared O4 gate),
+      // then the entitlement 403. Nothing — not even a free rule — runs for a
+      // facility without the add-on.
+      const assessment = await loadWritableAssessment({ req, assessmentId: req.params.assessmentId });
+      const entitled = await isFeatureEnabled({ facilityId: assessment.facilityId, featureKey: ANOMALY_FEATURE_KEY });
+      if (!entitled) {
+        throw new DomainError("Anomaly detection is not enabled for this facility", 403, "FEATURE_NOT_ENABLED", {
+          featureKey: ANOMALY_FEATURE_KEY
+        });
+      }
+
+      // ...ById, not ...ForUser: loadWritableAssessment already resolved this
+      // assessment through the user-scoped getter, so re-running that lookup on
+      // a path the client fires every 800ms would just re-prove scope.
+      const bundle = await getAssessmentBundleById({ assessment });
+
+      // Facility-scope invariant by construction (same as O4/O5): every entity
+      // fed to a prompt is checked against the request's facility, so a bleed
+      // throws rather than reaching the model.
+      buildPromptContext({
+        facilityId: assessment.facilityId,
+        entities: [assessment, ...bundle.assets, ...bundle.threats, ...bundle.evaluations]
+      });
+
+      const seen = new Set();
+      const flags = [];
+      for (const flag of runDeterministicRules({ assets: bundle.assets, evaluations: bundle.evaluations })) {
+        seen.add(flagKey(flag));
+        flags.push(flag);
+      }
+
+      // The LLM half is best-effort: an unavailable/over-budget/failed AI call
+      // must NOT cost the Author their deterministic flags or turn an advisory
+      // check into an error — §9.2 "advisory only ... Authors retain full
+      // agency". runAiCall has already written the ai_call_log row for whatever
+      // went wrong, so the failure is not lost; the client just learns the
+      // contextual half was skipped.
+      let llmAvailable = true;
+      if (bundle.evaluations.length > 0) {
+        try {
+          const { output } = await runAiCall({
+            feature: ANOMALY_FEATURE_KEY,
+            kind: "object",
+            facilityId: assessment.facilityId,
+            userId: req.user.id,
+            actingRole: req.actingRole,
+            traceId: req.traceId,
+            schema: ANOMALY_OUTPUT_SCHEMA,
+            prompt: buildAnomalyPrompt({
+              evaluations: bundle.evaluations,
+              assets: bundle.assets,
+              threats: bundle.threats
+            })
+          });
+          flags.push(...acceptLlmFlags({ output, evaluations: bundle.evaluations, seen }));
+        } catch (error) {
+          llmAvailable = false;
+        }
+      }
+
+      // Suppression is applied AFTER the flags are computed, per Author per
+      // assessment: another Author on the same assessment sees them all fresh.
+      const acks = await listAcknowledgements({
+        facilityId: assessment.facilityId,
+        assessmentId: assessment.id,
+        authorUserId: req.user.id
+      });
+      const suppressed = new Set(acks.map(flagKey));
+      const visible = flags.filter((flag) => !suppressed.has(flagKey(flag)));
+
+      // Audited for rule tuning (§9.2: "every flag and dismissal logged"). One
+      // row per check carrying the raised set — per-flag rows would multiply by
+      // the 800ms debounce for no extra signal. A check that raises nothing is
+      // not audited: silence is the steady state.
+      if (visible.length > 0) {
+        await activeConn().transaction(async (trx) => {
+          await appendAuditLog(
+            {
+              actionType: "anomaly-flagged",
+              userId: req.user.id,
+              actingRole: req.actingRole,
+              facilityId: assessment.facilityId,
+              assessmentId: assessment.id,
+              entityType: "assessment",
+              entityId: assessment.id,
+              diff: null,
+              metadata: {
+                llmAvailable,
+                flags: visible.map((f) => ({ ruleKey: f.ruleKey, entityType: f.entityType, entityId: f.entityId }))
+              },
+              traceId: req.traceId
+            },
+            trx
+          );
+        });
+      }
+
+      res.json({ flags: visible, llmAvailable });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/:assessmentId/anomaly-acknowledgements",
+  rejectMitigationOwner,
+  validateRequest(acknowledgeAnomalySchema),
+  async (req, res, next) => {
+    try {
+      // No lockVersion: an acknowledgement is advisory metadata, not
+      // lock-versioned content — dismissing a chip must not push the Author's
+      // next content save into a 409 (same reasoning as O4's tag writes).
+      const assessment = await loadWritableAssessment({ req, assessmentId: req.params.assessmentId });
+      const entitled = await isFeatureEnabled({ facilityId: assessment.facilityId, featureKey: ANOMALY_FEATURE_KEY });
+      if (!entitled) {
+        throw new DomainError("Anomaly detection is not enabled for this facility", 403, "FEATURE_NOT_ENABLED", {
+          featureKey: ANOMALY_FEATURE_KEY
+        });
+      }
+
+      const { ruleKey, entityType, entityId, reason, reasonText } = req.validated.body;
+
+      const acknowledgement = await activeConn().transaction(async (trx) => {
+        const { acknowledgement: saved, previous } = await saveAcknowledgement({
+          facilityId: assessment.facilityId,
+          assessmentId: assessment.id,
+          authorUserId: req.user.id,
+          ruleKey,
+          entityType,
+          entityId,
+          reason,
+          reasonText: reasonText || null,
+          trx
+        });
+
+        await appendAuditLog(
+          {
+            actionType: "anomaly-acknowledged",
+            userId: req.user.id,
+            actingRole: req.actingRole,
+            facilityId: assessment.facilityId,
+            assessmentId: assessment.id,
+            entityType,
+            entityId,
+            diff: previous ? { reason: [previous.reason, saved.reason] } : null,
+            metadata: { ruleKey, reason: saved.reason, reasonText: saved.reasonText },
+            traceId: req.traceId
+          },
+          trx
+        );
+
+        return saved;
+      });
+
+      res.json({ acknowledgement });
     } catch (error) {
       next(error);
     }

@@ -1,3 +1,38 @@
+2026-07-16 — P4 O6: anomaly detection server engine (AD-2+)
+  Hybrid engine per §9.2, server-side only. `POST /api/assessments/:id/anomaly-check`
+  and `POST /api/assessments/:id/anomaly-acknowledgements` (Author + Draft via the
+  shared `loadWritableAssessment` gate, `rejectMitigationOwner`, 404 when AI off).
+  Deterministic rules run first and free in the pure `services/anomalyRulesService.js`
+  (asset-criticality-vs-consequences — the AD-1 rule moved server-side; severity-vs-
+  criticality; R1 math), then the two contextual checks via `runAiCall({kind:'object'})`
+  + `ai/prompts/anomalyDetection.js`. Entitlement (`anomaly_detection`) is checked at
+  the route BEFORE the free rules — the whole feature is the add-on, so a disabled
+  facility gets 403 + zero gateway calls.
+  Key files: migration `202607050006_anomaly_acknowledgements.js` (RLS, denormalized
+  facility_id, unique per assessment×author×rule×entity), `repositories/anomalyRepository.js`,
+  `services/anomalyRulesService.js`, `ai/prompts/anomalyDetection.js`, assessments
+  `routes.js`/`schemas.js`, `tests/anomalyRulesService.test.js`,
+  `tests/integration/anomalyDetection.test.js`, `middlewareCoverage.test.js` (+2 entries).
+  Tests: 408 unit / 196 integration / 205 client — all green.
+  Red-check (test-specs ground rule 1): stubbing the entitlement guard to always-true
+  failed exactly the 4 entitlement tests; restored.
+  Decisions baked in (call out at review):
+  - Migration adds `facility_id` (not in the plan's column list) so the standard GUC
+    RLS predicate applies without a join — same shape as `scenario_tags`.
+  - `rule_key` is free text, not a CHECK: the rule catalogue is curated (§9.2) and a
+    new rule must not need a migration. `reason` IS constrained to the §9.2 picker.
+  - Advisory-only taken literally: an AI failure returns 200 with the deterministic
+    flags + `llmAvailable:false` rather than erroring. runAiCall still logs the failure
+    to `ai_call_log`, so nothing is swallowed.
+  - One `anomaly-flagged` audit row per check that raises flags (not per flag);
+    a check raising nothing is not audited. Volume risk noted in roadmap backlog.
+  - Acks carry no lockVersion (advisory metadata, same reasoning as O4 tag writes).
+  - LLM output is untrusted: flags naming an evaluation we did not send are discarded.
+  Deviations / gaps parked as backlog: client wiring of AD-1's chip+ack to these
+  endpoints (incl. mapping `ACK_REASONS` display strings → snake_case API reasons) is
+  NOT in O6's block and is unbuilt; an R2-exceeds-R1 rule was left out as a fourth rule
+  the plan does not bind. Next: O7.
+
 2026-07-16 — P4 F-AI gate PASSED (owner sign-off)
   Live smoke of O3–O5 against real Vercel AI Gateway completed and signed off:
   semantic library search, smart tagging (§6 Suggest/Confirm), drafted §1/§8 Accept

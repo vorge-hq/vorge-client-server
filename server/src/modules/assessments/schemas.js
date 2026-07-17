@@ -176,8 +176,36 @@ const confirmTagsSchema = z.object({
   })
 });
 
+// --- Anomaly detection (§9.2) — assessment-scoped ---------------------------
+// anomaly-check takes no body: the engine reads the assessment bundle the client
+// just saved (single source of truth, and the facility-scope invariant then
+// follows from the repo-scoped load). The client debounces it 800ms.
+const anomalyCheckSchema = z.object({ params: assessmentParams });
+
+// Acknowledging a flag. `ruleKey` is free text — the rule catalogue is curated
+// and must not need a schema change per rule (the ack is inert if the key stops
+// being produced). `reason` is the fixed §9.2 picker, in the storage vocabulary;
+// `reasonText` is required only for `other`, matching the client's picker.
+const acknowledgeAnomalySchema = z.object({
+  params: assessmentParams,
+  body: z
+    .object({
+      ruleKey: z.string().min(1).max(120),
+      entityType: z.enum(["asset", "threat", "evaluation"]),
+      entityId: z.string().uuid(),
+      reason: z.enum(["not_applicable", "false_positive", "will_address", "other"]),
+      reasonText: z.string().max(2000).optional()
+    })
+    .refine((body) => body.reason !== "other" || Boolean(body.reasonText && body.reasonText.trim()), {
+      message: "reasonText is required when reason is 'other'",
+      path: ["reasonText"]
+    })
+});
+
 module.exports = {
   generateDraftSchema,
+  anomalyCheckSchema,
+  acknowledgeAnomalySchema,
   suggestTagsSchema,
   getTagsSchema,
   confirmTagsSchema,

@@ -78,6 +78,12 @@ const REPO_SCOPED_ALLOWLIST = {
   // user-scoped getter → null → 404 before any AI call. draftedSummary.test.js is
   // the cross-tenant proof.
   "POST /api/assessments/:assessmentId/sections/:n/generate-draft": "getAssessmentBundleForUser → getAssessmentForUser → null → 404",
+  // P4 O6 anomaly detection: repo-scoped — loadWritableAssessment /
+  // getAssessmentForUser loads via the user-scoped getter → null → 404 before any
+  // rule runs, any AI call, or any acknowledgement write.
+  // anomalyDetection.test.js is the cross-tenant proof.
+  "POST /api/assessments/:assessmentId/anomaly-check": "loadWritableAssessment → getAssessmentForUser → null → 404",
+  "POST /api/assessments/:assessmentId/anomaly-acknowledgements": "loadWritableAssessment → getAssessmentForUser → null → 404",
   "PUT /api/assessments/:assessmentId/lead-author": "getAssessmentForUser → null → 404 (reassignment guard chain)",
   "PUT /api/assessments/:assessmentId/mitigations/:mitigationId/owner": "runContentMutation → getAssessmentForUser → null → 404",
   "GET /api/mitigations/mine": "listMine — scoped to the acting Mitigation Owner's assignments",

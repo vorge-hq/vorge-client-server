@@ -49,6 +49,11 @@ const { validateTags, normalize: normalizeTag } = require("../../services/tagVoc
 const { runDeterministicRules } = require("../../services/anomalyRulesService");
 const { isFeatureEnabled } = require("../../repositories/entitlementsRepository");
 const { listAcknowledgements, saveAcknowledgement } = require("../../repositories/anomalyRepository");
+const {
+  listFlagsForUser,
+  getFlagForUser,
+  updateFlagStatus
+} = require("../../repositories/consistencyRepository");
 const env = require("../../config/env");
 const {
   createAssetSchema,
@@ -64,6 +69,8 @@ const {
   reassignLeadAuthorSchema,
   assignMitigationOwnerSchema,
   generateDraftSchema,
+  listConsistencyFlagsSchema,
+  updateConsistencyFlagSchema,
   anomalyCheckSchema,
   acknowledgeAnomalySchema,
   suggestTagsSchema,
@@ -86,6 +93,91 @@ router.get("/", async (req, res, next) => {
     );
 
     res.json({ assessments: visibleAssessments });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// --- Cross-facility consistency flags (§9.3, P4 · O7) ------------------------
+// MUST stay above `GET /:assessmentId` — Express matches in declaration order,
+// so a literal path declared after the param route is swallowed by it (and would
+// 400 on uuid validation instead of 200).
+//
+// Written by the nightly job (src/jobs/consistencyFlagging.js), read here.
+// §9.3 gates the dashboard query on "HQ Executive role and operator-portfolio
+// scope": the role check is explicit below, and the scope is enforced IN SQL by
+// the repo's §17.5 getters (an empty scope returns nothing — default deny).
+const CONSISTENCY_ROLE = ROLES.HQ_EXECUTIVE;
+
+function requireHqExecutive(req) {
+  if (req.actingRole !== CONSISTENCY_ROLE) {
+    throw new DomainError("Only an HQ Executive can review consistency flags", 403, "ROLE_NOT_ALLOWED", {
+      requiredRole: CONSISTENCY_ROLE,
+      actualRole: req.actingRole
+    });
+  }
+}
+
+router.get("/consistency-flags", validateRequest(listConsistencyFlagsSchema), async (req, res, next) => {
+  try {
+    requireHqExecutive(req);
+    const flags = await listFlagsForUser({
+      user: req.user,
+      actingRole: req.actingRole,
+      status: req.validated.query.status
+    });
+    res.json({ flags });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/consistency-flags/:flagId", validateRequest(updateConsistencyFlagSchema), async (req, res, next) => {
+  try {
+    requireHqExecutive(req);
+
+    // Scoped getter first → a flag outside this HQ's portfolio is a 404, not a
+    // 403: never leak that another operator's flag exists (§17.5).
+    const existing = await getFlagForUser({ flagId: req.params.flagId, user: req.user, actingRole: req.actingRole });
+    if (!existing) {
+      throw new DomainError("Consistency flag not found or outside portfolio scope", 404, "FLAG_NOT_FOUND");
+    }
+
+    const { status, dismissedReason } = req.validated.body;
+
+    const flag = await activeConn().transaction(async (trx) => {
+      const updated = await updateFlagStatus({
+        flagId: existing.id,
+        status,
+        dismissedReason: dismissedReason || null,
+        userId: req.user.id,
+        trx
+      });
+
+      await appendAuditLog(
+        {
+          actionType: status === "dismissed" ? "consistency-flag-dismissed" : "consistency-flag-sent-back",
+          userId: req.user.id,
+          actingRole: req.actingRole,
+          facilityId: existing.facilityId,
+          assessmentId: existing.assessmentId,
+          entityType: "consistency_flag",
+          entityId: existing.id,
+          diff: { status: [existing.status, status] },
+          metadata: {
+            clusterKey: existing.clusterKey,
+            divergenceSigma: existing.divergenceSigma,
+            dismissedReason: dismissedReason || null
+          },
+          traceId: req.traceId
+        },
+        trx
+      );
+
+      return updated;
+    });
+
+    res.json({ flag });
   } catch (error) {
     next(error);
   }

@@ -91,6 +91,21 @@ export function confirmTags({ assessmentId, evaluationId, tags, actingRole }) {
   return mutate(`/api/assessments/${assessmentId}/evaluations/${evaluationId}/tags/confirm`, "POST", { tags }, actingRole);
 }
 
+// --- Cross-facility consistency flags (P4 O7, §9.3) -------------------------
+// Written by the nightly job, read by HQ Executives over their operator's
+// portfolio. PROD only — the demo/prod branch lives in the WorkspaceContext seam.
+// Read-only for now: the dismiss / send-back endpoint exists and is tested
+// server-side (PATCH /consistency-flags/:flagId), but no client surface calls it
+// yet — see the roadmap backlog line for the HQ triage UI.
+export function listConsistencyFlags({ status, actingRole } = {}) {
+  const params = new URLSearchParams();
+  if (status) {
+    params.set("status", status);
+  }
+  const query = params.toString();
+  return apiRequest(`/api/assessments/consistency-flags${query ? `?${query}` : ""}`, { actingRole });
+}
+
 // --- Contributors ------------------------------------------------------------
 export function putContributors({ assessmentId, contributors, lockVersion, actingRole }) {
   return mutate(`/api/assessments/${assessmentId}/contributors`, "PUT", { lockVersion, contributors }, actingRole);

@@ -1,3 +1,73 @@
+2026-07-16 — P4 O7: cross-facility consistency flagging (nightly batch, §9.3)
+  Nightly job + operator-scoped AI rationale + HQ read surface + client panel.
+  Job: `src/jobs/consistencyFlagging.js`, `npm --prefix server run job:consistency`.
+  Per operator: entitled facilities only → cluster by (threat type, asset class) →
+  leave-one-out peer mean/σ → flag ≥2σ → prose rationale via runAiCall
+  ({feature:'consistency_flagging', operatorId, userId:'system'}, HQ budget scope).
+  Key files: migration `202607050007_consistency_flags.js`, `services/consistencyService.js`
+  (pure stats), `repositories/consistencyRepository.js`, `ai/prompts/consistencyFlagging.js`,
+  assessments `routes.js`/`schemas.js`, `tests/consistencyService.test.js`,
+  `tests/integration/consistencyFlagging.test.js`, client `HQExecutiveDashboard.jsx` +
+  `.test.jsx`, `WorkspaceContext` seam, `api/assessmentApi.js`.
+  Tests: 429 unit / 226 integration / 209 client — all green.
+  Red-check: removing the entitlement filter from `listEntitledFacilities` failed 8
+  integration tests (non-entitled facility reached prompts AND dragged the peer norm);
+  restored. The created_at-tie regression test was separately verified failing against
+  the old query (2 rows vs 1).
+
+  ── RENDER CRON SETUP (do this when the job goes live; no scheduler is built) ──
+  Render Dashboard → New → Cron Job, same repo/Dockerfile as `vorge-api-staging`:
+    Schedule: `15 0 * * *`  (00:15 UTC — §9.3 "after midnight UTC")
+    Command:  `npm --prefix server run job:consistency`
+    Env:      DATABASE_URL, AI_ENABLED=true, AI_GATEWAY_API_KEY, NODE_ENV=production,
+              DATABASE_SSL=true  (same values as the API service)
+  The job is idempotent — a re-run refreshes flags rather than duplicating them — so a
+  retried or double-fired cron is safe.
+
+  ── DB CONNECTION (F2 binding (b), required session-log note) ──
+  The job runs on the BASE POOL (the DB owner today, RLS-exempt) and is deliberately NOT
+  wrapped in runInFacilityScope: it writes operator-scoped `ai_call_log`/`ai_budgets` rows
+  which carry no facility_id and therefore no GUC to set, and facility RLS denies those
+  rows to the request-path app role BY DESIGN. **When P2's non-owner switch lands
+  (`vorge_app`), this job silently writes nothing unless it gets its own documented
+  elevated connection (own env var).** Flagged in the job's header comment too.
+
+  Decisions baked in (call out at review):
+  - Cluster key = threats.details.classification, falling back to threats.name.
+    OWNER-DECIDED 2026-07-16 (asked, since §9.3 says "threat type" without naming a
+    field and the two disagree in real data). Consequence: the DB seed writes only
+    "Cyber"/"Physical" there vs §19.1's default-8, so seeded/staging data collapses
+    into 2 coarse clusters — roadmap backlog line added to align the seed.
+  - **Sigma floored at 2 rating points** before dividing. Raw leave-one-out σ on the
+    coarse 1-25 product scale manufactures false outliers: peers at 12/12/10/12 (σ=0.87)
+    make a facility at 14 a "2.9σ outlier" off a 2.5-point gap — smaller than one step of
+    the 5×5 matrix, i.e. exactly the noise §9.2 says destroys the feature. The floor also
+    makes the σ=0 unanimous-peers case (§9.3's OWN worked example, "16 of 18 peers rated
+    it High") flag instead of being skipped. This is the most consequential number in the
+    feature and the one most worth a second opinion at F3.
+  - Peers are FACILITIES, not rows: each facility reduces to the mean of its ratings in a
+    cluster, so a facility with 5 evaluations cannot out-vote one with 1 (§9.3 counts
+    peer facilities). Leave-one-out: a candidate is excluded from its own norm.
+  - MIN_PEERS 3 (4 facilities/cluster) and MIN_PORTFOLIO_FACILITIES 4 — under it the
+    operator is skipped with zero AI spend (§9.3: "a consultant operating 1 facility gets
+    nothing from cross-facility flagging").
+  - Latest assessment per facility only, ANY state (a Draft is the live picture, and §9.3's
+    send-back presumes editable targets). Selected with DISTINCT ON, not MAX(created_at):
+    same-transaction inserts tie to the microsecond and an equality join matched BOTH,
+    blending two years of ratings. Real bug, found in self-review, regression-tested.
+  - Migration adds assessment_id/evaluation_id beyond the plan's column list (§9.3 needs a
+    drill-in link + a send-back target) and a unique (evaluation_id, cluster_key) so nightly
+    re-runs upsert instead of duplicating. The upsert never resets `status` — a dismissal is
+    a human decision and survives the next run. Pending flags no longer raised → `expired`,
+    including when an operator drops below the floor (else they strand forever).
+  - Advisory: an AI failure stores the flag with a null rationale (the divergence is the
+    finding); runAiCall still logs the failure to ai_call_log.
+  - severity bands drawn on sigma (≥3 high, ≥2 medium) — the plan names the column, not
+    its vocabulary.
+  Gaps parked as backlog: the HQ triage UI (PATCH dismiss/send-back ships + is tested, but
+  the panel is read-only, so §9.3's review loop is half-built) and the seed-classification
+  alignment. Next: O8 → then the F3 gate.
+
 2026-07-16 — P4 O6: anomaly detection server engine (AD-2+)
   Hybrid engine per §9.2, server-side only. `POST /api/assessments/:id/anomaly-check`
   and `POST /api/assessments/:id/anomaly-acknowledgements` (Author + Draft via the

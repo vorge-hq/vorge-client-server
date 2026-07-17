@@ -33,7 +33,8 @@ import {
   suggestTags as apiSuggestTags,
   getTags as apiGetTags,
   confirmTags as apiConfirmTags,
-  generateDraft as apiGenerateDraft
+  generateDraft as apiGenerateDraft,
+  listConsistencyFlags as apiListConsistencyFlags
 } from "../../api/assessmentApi";
 import { triggerBrowserDownload } from "../../api/download";
 import {
@@ -64,6 +65,50 @@ const SECTION_FIELD = Object.freeze({ 1: "executiveSummary", 2: "facilityInfo", 
 const DEMO_SUGGESTED_TAGS = Object.freeze([
   { category: "threat_type", value: "Insider", source: "ai", status: "suggested" },
   { category: "consequence_category", value: "People", source: "ai", status: "suggested" }
+]);
+
+// Demo-mode cross-facility consistency flags (§9.3). Shaped EXACTLY like the
+// server's GET /api/assessments/consistency-flags rows (the nightly job's output)
+// so the HQ panel renders one way in both modes — these were the dashboard's
+// hardcoded array until O7 gave them a real read surface. facilityId matches
+// HQ_AGGREGATE, so demo drill-in works without name-matching.
+const DEMO_CONSISTENCY_FLAGS = Object.freeze([
+  {
+    id: "flag-demo-1",
+    facilityId: "fac-3",
+    facilityName: "Gulf Horizon Terminal",
+    assessmentId: null,
+    clusterKey: "maritime::jetty",
+    severity: "high",
+    divergenceSigma: 3.2,
+    rationale:
+      "Gulf Horizon Terminal rated Maritime as Low while 4 of 5 peer facilities rated it Medium or High; its rationale references diminishing pirate activity, but peer rationales reference recent escalation. Worth review.",
+    status: "pending"
+  },
+  {
+    id: "flag-demo-2",
+    facilityId: "fac-4",
+    facilityName: "Pernis Refinery Complex",
+    assessmentId: null,
+    clusterKey: "cyber::control system",
+    severity: "medium",
+    divergenceSigma: 2.4,
+    rationale:
+      "Pernis Refinery Complex rated the Cyber consequence at 5 where the peer median is 3; no peer rationale describes comparable exposure. Worth review.",
+    status: "pending"
+  },
+  {
+    id: "flag-demo-3",
+    facilityId: "fac-5",
+    facilityName: "Jurong Storage Terminal",
+    assessmentId: null,
+    clusterKey: "insider::storage",
+    severity: "medium",
+    divergenceSigma: 2.1,
+    rationale:
+      "Jurong Storage Terminal rated Insider as Very Low while 4 of 5 peers rated it Medium; the divergence is unexplained by the stated rationale. Worth review.",
+    status: "pending"
+  }
 ]);
 
 // Demo-mode drafted summary/conclusion (§9.1): a plausible 3–4 paragraph draft
@@ -1018,6 +1063,17 @@ export function WorkspaceProvider({ children }) {
     return draft || "";
   }, []);
 
+  /* Cross-facility consistency flags (§9.3, P4 O7). Read-only in demo: the
+     nightly job has no demo equivalent, so the fixtures stand in for its output
+     and a dismissal is acknowledged locally without a fetch. */
+  const loadConsistencyFlags = useCallback(async (actingRole, status) => {
+    if (isDemoEnabled()) {
+      return DEMO_CONSISTENCY_FLAGS.filter((f) => !status || f.status === status).map((f) => ({ ...f }));
+    }
+    const { flags } = await apiListConsistencyFlags({ status, actingRole });
+    return flags || [];
+  }, []);
+
   /* Library "Use entry" — Section 6 registers a consumer while mounted so the
      toolbar Library modal can insert into the focused evaluation's scenario.
      Outside §6 (or with no focused row) we surface a toast instead of a no-op. */
@@ -1080,6 +1136,7 @@ export function WorkspaceProvider({ children }) {
       suggestScenarioTags,
       confirmScenarioTags,
       generateSectionDraft,
+      loadConsistencyFlags,
       WORKFLOW_ACTIONS
     }),
     [
@@ -1116,7 +1173,8 @@ export function WorkspaceProvider({ children }) {
       loadScenarioTags,
       suggestScenarioTags,
       confirmScenarioTags,
-      generateSectionDraft
+      generateSectionDraft,
+      loadConsistencyFlags
     ]
   );
 

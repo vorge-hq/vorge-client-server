@@ -11,7 +11,8 @@
     "test:integration": "jest --config jest.integration.config.js --runInBand",
     "migrate": "knex migrate:latest --knexfile knexfile.js",
     "seed": "node src/db/seed.js",
-    "reembed": "node scripts/reembed-library.js"
+    "reembed": "node scripts/reembed-library.js",
+    "job:consistency": "node src/jobs/consistencyFlagging.js"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.12",

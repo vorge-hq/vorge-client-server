@@ -78,6 +78,14 @@ const REPO_SCOPED_ALLOWLIST = {
   // user-scoped getter → null → 404 before any AI call. draftedSummary.test.js is
   // the cross-tenant proof.
   "POST /api/assessments/:assessmentId/sections/:n/generate-draft": "getAssessmentBundleForUser → getAssessmentForUser → null → 404",
+  // P4 O7 consistency flags: repo-scoped via the §17.5 portfolio getters —
+  // listFlagsForUser/getFlagForUser scope IN SQL by the caller's facility AND
+  // operator ids (empty scope → no rows), and the route additionally requires the
+  // HQ Executive acting role. No facilityId in the payload to check up front:
+  // the list has no target, and the PATCH's target is resolved by the scoped
+  // getter → null → 404. consistencyFlagging.test.js is the cross-operator proof.
+  "GET /api/assessments/consistency-flags": "listFlagsForUser — SQL operator/facility scope (facilityScopeFor)",
+  "PATCH /api/assessments/consistency-flags/:flagId": "getFlagForUser — scoped getter → null → 404",
   // P4 O6 anomaly detection: repo-scoped — loadWritableAssessment /
   // getAssessmentForUser loads via the user-scoped getter → null → 404 before any
   // rule runs, any AI call, or any acknowledgement write.

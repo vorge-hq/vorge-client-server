@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Lock, Sparkles } from "lucide-react";
 import { useWorkspace } from "../../features/assessmentWorkspace/WorkspaceContext";
+import { useAuth } from "../../auth/AuthContext";
 import { calculateRisk } from "../../features/assessmentWorkspace/riskMatrix";
 
 const BAND_TOKENS = {
@@ -69,6 +70,8 @@ function bandFromScore(score) {
 export function HQExecutiveDashboard() {
   const navigate = useNavigate();
   const workspace = useWorkspace();
+  const { session } = useAuth();
+  const actingRole = session?.actingRole;
   const evaluations = workspace.evaluations;
   const threats = workspace.threats;
 
@@ -117,26 +120,27 @@ export function HQExecutiveDashboard() {
     }));
   }, [allFacilities, evaluations, threats]);
 
-  const flags = [
-    {
-      id: "f1",
-      title: "Maritime threat under-rated",
-      detail: "Gulf Horizon Terminal rated Maritime as Low; 4 of 5 peer facilities rated Medium or High.",
-      facility: "Gulf Horizon Terminal"
-    },
-    {
-      id: "f2",
-      title: "Cyber consequence outlier",
-      detail: "Pernis Refinery Complex rated Cyber consequence at level 5; peer median is 3.",
-      facility: "Pernis Refinery Complex"
-    },
-    {
-      id: "f3",
-      title: "Insider threat divergence",
-      detail: "Jurong Storage Terminal rated Insider as Very Low; 4 of 5 peers rated Medium.",
-      facility: "Jurong Storage Terminal"
-    }
-  ];
+  /* Cross-facility consistency flags (§9.3, P4 O7): the nightly job's output,
+     read through the prod↔demo seam (demo serves fixtures, fires no request).
+     Read-only here — a flag is advisory until an HQ Executive acts on it. */
+  const [flags, setFlags] = useState([]);
+  const [flagsError, setFlagsError] = useState(false);
+  const loadConsistencyFlags = workspace.loadConsistencyFlags;
+
+  useEffect(() => {
+    let cancelled = false;
+    loadConsistencyFlags(actingRole, "pending")
+      .then((rows) => {
+        if (!cancelled) setFlags(rows);
+      })
+      .catch(() => {
+        // Advisory panel: a failed read must not take the dashboard down.
+        if (!cancelled) setFlagsError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadConsistencyFlags, actingRole]);
 
   /* Look up the first assessment for any facility (preferring active
      cycles over historical) so the heatmap and Facilities table can
@@ -211,7 +215,7 @@ export function HQExecutiveDashboard() {
           sub="Action required"
           tone={totalOverdue > 0 ? "warn" : "default"}
         />
-        <KPI label="Inconsistency flags" value="3" sub="Detected by AI" tone="accent" />
+        <KPI label="Inconsistency flags" value={flags.length} sub="Detected by AI" tone="accent" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -296,17 +300,31 @@ export function HQExecutiveDashboard() {
             <p className="mt-0.5 text-[11px] text-text-muted">Statistical outliers in ratings</p>
           </header>
           <div className="divide-y divide-border-subtle">
+            {flagsError ? (
+              <p className="px-4 py-3 text-[11px] text-text-muted">Flags are unavailable right now.</p>
+            ) : null}
+            {!flagsError && flags.length === 0 ? (
+              <p className="px-4 py-3 text-[11px] text-text-muted">
+                No outliers flagged across the portfolio.
+              </p>
+            ) : null}
             {flags.map((flag) => {
-              const flagFacility = allFacilities.find((f) => f.name === flag.facility);
-              const flagFacilityId = flagFacility?.facilityId;
+              // Join on facilityId, not on the facility NAME: the nightly job
+              // returns real ids, and two facilities may share a display name.
+              const flagFacilityId = flag.facilityId;
               const drillable = flagFacilityId ? hasAssessment(flagFacilityId) : false;
               return (
                 <div key={flag.id} className="px-4 py-2.5 hover:bg-surface-muted/40">
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-600" />
                     <div className="min-w-0 flex-1">
-                      <div className="mb-0.5 text-[12px] font-medium text-text-primary">{flag.title}</div>
-                      <div className="text-[11px] leading-snug text-text-muted">{flag.detail}</div>
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <span className="text-[12px] font-medium text-text-primary">{flag.facilityName}</span>
+                        <span className="text-[10px] text-text-muted">
+                          {flag.divergenceSigma}σ from peers
+                        </span>
+                      </div>
+                      <div className="text-[11px] leading-snug text-text-muted">{flag.rationale}</div>
                       {drillable ? (
                         <button
                           type="button"

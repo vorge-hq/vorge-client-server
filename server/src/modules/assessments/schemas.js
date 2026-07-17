@@ -176,6 +176,31 @@ const confirmTagsSchema = z.object({
   })
 });
 
+// --- Cross-facility consistency flags (§9.3) — operator-portfolio scoped -----
+// The nightly job writes the flags; HQ reads them and sets their lifecycle.
+// `status` filter is optional (default: everything in the portfolio).
+const listConsistencyFlagsSchema = z.object({
+  query: z.object({
+    status: z.enum(["pending", "dismissed", "sent_back", "expired"]).optional()
+  })
+});
+
+// §9.3 gives HQ two actions: dismiss with reason, or send back to the Author.
+// `expired` is a job-only transition (the divergence went away) and `pending` is
+// the job's initial state — neither is settable by hand, so neither appears here.
+const updateConsistencyFlagSchema = z.object({
+  params: z.object({ flagId: z.string().uuid() }),
+  body: z
+    .object({
+      status: z.enum(["dismissed", "sent_back"]),
+      dismissedReason: z.string().max(2000).optional()
+    })
+    .refine((body) => body.status !== "dismissed" || Boolean(body.dismissedReason && body.dismissedReason.trim()), {
+      message: "dismissedReason is required when dismissing a flag",
+      path: ["dismissedReason"]
+    })
+});
+
 // --- Anomaly detection (§9.2) — assessment-scoped ---------------------------
 // anomaly-check takes no body: the engine reads the assessment bundle the client
 // just saved (single source of truth, and the facility-scope invariant then
@@ -204,6 +229,8 @@ const acknowledgeAnomalySchema = z.object({
 
 module.exports = {
   generateDraftSchema,
+  listConsistencyFlagsSchema,
+  updateConsistencyFlagSchema,
   anomalyCheckSchema,
   acknowledgeAnomalySchema,
   suggestTagsSchema,

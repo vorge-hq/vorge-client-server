@@ -5,6 +5,7 @@ const env = require("../../config/env");
 const db = require("../../db/knex");
 const authenticate = require("../../middleware/authenticate");
 const authorizeRole = require("../../middleware/authorizeRole");
+const { rejectGuest } = require("../../middleware/rejectGuest");
 const { ROLES } = require("../../services/constants");
 const {
   mfaRateLimit,
@@ -523,7 +524,12 @@ const mfaRouter = express.Router();
 // 100/min/IP). The user limiter falls back to IP when no user is attached.
 mfaRouter.use(...mfaRateLimit);
 
-mfaRouter.post("/enroll-start", authenticate, async (req, res, next) => {
+// Guest side-quest · G3 — a shared read-only guest must never enroll MFA on the
+// shared account (it would lock out every other guest). rejectGuest runs after
+// authenticate (which sets req.actingRole) so a Guest gets 403 before any TOTP
+// secret is minted. mfa/verify, disable, regen are inert on a never-enrolled
+// account and need no guard.
+mfaRouter.post("/enroll-start", authenticate, rejectGuest, async (req, res, next) => {
   try {
     const out = await db.transaction((trx) => mfaService.enrollStart({ user: req.user }, trx));
     return res.json(out);
@@ -532,7 +538,7 @@ mfaRouter.post("/enroll-start", authenticate, async (req, res, next) => {
   }
 });
 
-mfaRouter.post("/enroll-verify", authenticate, async (req, res, next) => {
+mfaRouter.post("/enroll-verify", authenticate, rejectGuest, async (req, res, next) => {
   const { code } = req.body || {};
   try {
     const result = await db.transaction(async (trx) => {

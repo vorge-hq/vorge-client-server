@@ -4,7 +4,8 @@ const ROLES = Object.freeze({
   APPROVER: "Approver",
   HQ_EXECUTIVE: "HQ Executive",
   ADMIN: "Admin",
-  MITIGATION_OWNER: "Mitigation Owner"
+  MITIGATION_OWNER: "Mitigation Owner",
+  GUEST: "Guest"
 });
 
 const ASSESSMENT_STATES = Object.freeze({

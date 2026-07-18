@@ -3,7 +3,7 @@ const authenticate = require("../../middleware/authenticate");
 const facilityScope = require("../../middleware/facilityScope");
 const { transitionAssessment, listAllowedWorkflowActions } = require("../../services/assessmentStateMachine");
 const { ASSESSMENT_STATES, ROLES } = require("../../services/constants");
-const { getAssessmentPermissions, canAccessAssessmentSections } = require("../../services/permissionService");
+const { getAssessmentPermissions, canExportAssessment } = require("../../services/permissionService");
 const { loadExportBundle, getExportFrontMatter } = require("../../repositories/exportRepository");
 const { FORMATS } = require("../../services/exportService");
 const { activeConn } = require("../../db/requestScope");
@@ -330,7 +330,7 @@ router.get("/:assessmentId/export", async (req, res, next) => {
       throw new DomainError("Assessment not found or outside facility scope", 404, "ASSESSMENT_NOT_FOUND");
     }
 
-    if (!canAccessAssessmentSections({ actingRole: req.actingRole })) {
+    if (!canExportAssessment({ actingRole: req.actingRole })) {
       throw new DomainError("The acting role cannot export assessments", 403, "ROLE_NOT_ALLOWED");
     }
 

@@ -10,12 +10,22 @@ function canReadAssessment({ actingRole }) {
     ROLES.REVIEWER,
     ROLES.APPROVER,
     ROLES.HQ_EXECUTIVE,
-    ROLES.ADMIN
+    ROLES.ADMIN,
+    ROLES.GUEST
   ].includes(actingRole);
 }
 
 function canAccessAssessmentSections({ actingRole }) {
   return actingRole !== ROLES.MITIGATION_OWNER && canReadAssessment({ actingRole });
+}
+
+// Export packages an entire assessment into a portable document. On the
+// non-attributable shared Guest credential that is a bulk-exfil affordance the
+// read-only evaluation use-case does not need, so Guest is excluded here even
+// though it can otherwise read sections. For every non-Guest role this is
+// identical to canAccessAssessmentSections (see the G-U2 regression table).
+function canExportAssessment({ actingRole }) {
+  return canAccessAssessmentSections({ actingRole }) && actingRole !== ROLES.GUEST;
 }
 
 function canComment({ actingRole, assessmentState, commentScope = "inline" }) {
@@ -50,6 +60,7 @@ function getAssessmentPermissions({ actingRole, assessmentState, isLocked = fals
   return {
     canRead: canReadAssessment({ actingRole }),
     canAccessSections: canAccessAssessmentSections({ actingRole }),
+    canExport: canExportAssessment({ actingRole }),
     canEditContent: canEditAssessmentContent({ actingRole, assessmentState, isLocked }),
     canInlineComment: canComment({ actingRole, assessmentState, commentScope: "inline" }),
     canAssessmentComment: canComment({ actingRole, assessmentState, commentScope: "assessment" }),
@@ -63,6 +74,7 @@ module.exports = {
   canEditAssessmentContent,
   canReadAssessment,
   canAccessAssessmentSections,
+  canExportAssessment,
   canComment,
   canViewAudit,
   getAssessmentPermissions

@@ -111,7 +111,7 @@ Battery (must be green before ticking): §Guest **G-U1…G-U5** (unit). Run `cd 
 Files + exact changes:
 1. `server/src/db/seed.js` —
    - Read `process.env.SEED_GUEST_PASSWORD`. If unset/empty: `console.warn("[seed] SEED_GUEST_PASSWORD not set — guest user NOT seeded")` and skip the guest entirely (D5). No fallback password, ever.
-   - When set: upsert user `id: "00000000-0000-4000-8000-000000000107"` (follow the existing users' stable-UUID convention — confirm the exact `IDS` pattern in-file and take the next free slot), `email: "guest@operator-a.example"`, `name: "Vorge Guest"`, own bcrypt hash of `SEED_GUEST_PASSWORD` (existing `env.bcryptRounds`), `mfa_enabled: false`, all MFA columns null/0 (re-running seed therefore RESETS any hostile MFA enrollment — self-healing, note in runbook).
+   - When set: upsert user `id: "00000000-0000-4000-8000-000000000207"` (next free slot in the 20x user block — omar…james are 201–206; the earlier `…107` placeholder was in the facility 10x block and is superseded per G2's "confirm the exact `IDS` pattern in-file and take the next free slot" instruction), `email: "guest@operator-a.example"`, `name: "Vorge Guest"`, own bcrypt hash of `SEED_GUEST_PASSWORD` (existing `env.bcryptRounds`), `mfa_enabled: false`, all MFA columns null/0 (re-running seed therefore RESETS any hostile MFA enrollment — self-healing, note in runbook).
    - Role assignment: stable UUID `"00000000-0000-4000-8000-000000001012"`, role `ROLES.GUEST`, facility `IDS.bonny` ONLY (D4). No coral row.
 2. `server/tests/integration/fixtures.js` — add one guest user + Guest role assignment on Op-A/facility-1 (deterministic UUIDs matching the fixture's convention) so every G3 matrix test has a guest to log in as. Do not touch existing fixture rows.
 
@@ -193,7 +193,7 @@ Battery: §Guest **G-RTL4…G-RTL7**.
 1. **Create/refresh:** owner sets `SEED_GUEST_PASSWORD` in the Render (server) environment — value generated in and stored ONLY in the owner's password manager (1Password entry "Vorge staging guest"). Then run the seed against staging (existing ceremony: `npm run seed` with staging `DATABASE_URL`, owner-confirmed in the moment — agents never run this). Seed is idempotent; re-runs update the hash + reset MFA columns.
 2. **Hand-out:** share `guest@operator-a.example` + the current passphrase through the owner's normal secret channel (password-manager share link — never email/Slack plaintext, never a doc in this repo).
 3. **Rotate** (after each evaluation round, or on suspicion): change `SEED_GUEST_PASSWORD`, re-run seed, update the password-manager entry. Active guest sessions die at refresh-token expiry; for immediate kill, also delete the guest's rows in `sessions` (SQL snippet in the owner's staging notes).
-4. **Revoke entirely:** unset `SEED_GUEST_PASSWORD` and delete the guest `users` + `role_assignments` + `sessions` rows (ids are deterministic: user `…-000000000107`, assignment `…-000000001012`).
+4. **Revoke entirely:** unset `SEED_GUEST_PASSWORD` and delete the guest `users` + `role_assignments` + `sessions` rows (ids are deterministic: user `…-000000000207`, assignment `…-000000001012`).
 5. **Never:** commit the passphrase, put it in `.env.example`, or seed the guest into any production tenant DB.
 
 ---

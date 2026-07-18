@@ -15,6 +15,9 @@ const IDS = Object.freeze({
   elena: "00000000-0000-4000-8000-000000000204",
   priya: "00000000-0000-4000-8000-000000000205",
   james: "00000000-0000-4000-8000-000000000206",
+  // Shared read-only guest (side-quest). Next free user slot (20x block). Only
+  // seeded when SEED_GUEST_PASSWORD is set — see seed() below.
+  guest: "00000000-0000-4000-8000-000000000207",
   bonny2026: "00000000-0000-4000-8000-000000000301",
   coral2026: "00000000-0000-4000-8000-000000000302",
   bonny2025: "00000000-0000-4000-8000-000000000303",
@@ -161,6 +164,15 @@ async function upsert(trx, table, rows) {
 async function seed() {
   const passwordHash = await bcrypt.hash("VorgeDemo123!", env.bcryptRounds);
 
+  // The shared read-only guest is OPT-IN: seeded only when SEED_GUEST_PASSWORD is
+  // provided, so no guessable default guest credential can ever land on staging.
+  // Unset → warn loudly and skip the guest entirely (D5 in the execution plan).
+  const guestPassword = process.env.SEED_GUEST_PASSWORD;
+  const guestHash = guestPassword ? await bcrypt.hash(guestPassword, env.bcryptRounds) : null;
+  if (!guestHash) {
+    console.warn("[seed] SEED_GUEST_PASSWORD not set — guest user NOT seeded");
+  }
+
   await db.transaction(async (trx) => {
     await upsert(trx, "operators", [
       { id: IDS.northstar, name: "Operator A" }
@@ -189,16 +201,15 @@ async function seed() {
       }
     ]);
 
-    await upsert(trx, "users", [
+    const users = [
       { id: IDS.omar, email: "adaeze.okeke@operator-a.example", password_hash: passwordHash, name: "Adaeze Okeke", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
       { id: IDS.sarah, email: "meilin.tanaka@operator-a.example", password_hash: passwordHash, name: "Mei-Lin Tanaka", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
       { id: IDS.marcus, email: "rafael.castellanos@operator-a.example", password_hash: passwordHash, name: "Rafael Castellanos", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
       { id: IDS.elena, email: "sarah.chen@operator-a.example", password_hash: passwordHash, name: "Sarah Chen", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
       { id: IDS.priya, email: "olivia.bennett@operator-a.example", password_hash: passwordHash, name: "Olivia Bennett", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null },
       { id: IDS.james, email: "marcus.johnson@operator-a.example", password_hash: passwordHash, name: "Marcus Johnson", mfa_enabled: false, mfa_enrolled_at: null, mfa_failed_attempts: 0, mfa_last_failure_at: null, mfa_locked_until: null }
-    ]);
-
-    await upsert(trx, "role_assignments", [
+    ];
+    const roleAssignments = [
       roleAssignment("00000000-0000-4000-8000-000000001001", IDS.omar, ROLES.AUTHOR, IDS.bonny),
       roleAssignment("00000000-0000-4000-8000-000000001002", IDS.omar, ROLES.AUTHOR, IDS.coral),
       roleAssignment("00000000-0000-4000-8000-000000001003", IDS.sarah, ROLES.REVIEWER, IDS.bonny),
@@ -210,7 +221,30 @@ async function seed() {
       roleAssignment("00000000-0000-4000-8000-000000001009", IDS.priya, ROLES.ADMIN, IDS.coral, true),
       roleAssignment("00000000-0000-4000-8000-000000001010", IDS.james, ROLES.MITIGATION_OWNER, IDS.bonny),
       roleAssignment("00000000-0000-4000-8000-000000001011", IDS.james, ROLES.MITIGATION_OWNER, IDS.coral)
-    ]);
+    ];
+
+    // Guest: one user, one Guest assignment at Bonny only (D4). Present only when
+    // SEED_GUEST_PASSWORD is set. MFA columns null/0 so a re-seed also RESETS any
+    // hostile TOTP enrollment on the shared account (self-healing, see runbook).
+    if (guestHash) {
+      users.push({
+        id: IDS.guest,
+        email: "guest@operator-a.example",
+        password_hash: guestHash,
+        name: "Vorge Guest",
+        mfa_enabled: false,
+        mfa_enrolled_at: null,
+        mfa_failed_attempts: 0,
+        mfa_last_failure_at: null,
+        mfa_locked_until: null
+      });
+      roleAssignments.push(
+        roleAssignment("00000000-0000-4000-8000-000000001012", IDS.guest, ROLES.GUEST, IDS.bonny)
+      );
+    }
+
+    await upsert(trx, "users", users);
+    await upsert(trx, "role_assignments", roleAssignments);
 
     await upsert(trx, "assessments", [
       {
@@ -689,9 +723,17 @@ async function seed() {
   console.log("Seeded Vorge demo data.");
 }
 
-seed()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(() => db.destroy());
+// Only auto-run (and tear down the pool) when invoked as a script — `node
+// src/db/seed.js` / `npm run seed`. Requiring this module (e.g. from the G-S
+// integration battery) exports `seed` WITHOUT running it or closing the shared
+// knex pool.
+if (require.main === module) {
+  seed()
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(() => db.destroy());
+}
+
+module.exports = { seed, IDS };

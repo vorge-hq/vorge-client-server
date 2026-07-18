@@ -1,3 +1,25 @@
+2026-07-18 — Guest read-only side-quest: Phase 0 plan (Fable-authored, plan-only)
+  Owner side-quest: a self-serve, shared, READ-ONLY guest login on the REAL client
+  (`VITE_ENABLE_DEMO=false`) + real API/DB — server-enforced, not client-faked, NOT
+  the fixture demo. Phase 0 = plan only; no code/tests/migrations touched.
+  Fact base pinned by two Explore passes (server auth/security seams + client role
+  gating/prod-demo seam), then a Fable session authored three deliverables:
+  `docs/plans/guest-viewer-execution-plan.md` (G1–G6, tripwires, threat notes,
+  runbook, gate F-G), a new `docs/test-specs.md` §Guest read-only access battery
+  (G-U/G-C/G-I/G-S/G-RTL/G-R), and one SCHEDULED roadmap line.
+  Decisions (all one-file-reversible, none STOP-blocking): role name **Guest**;
+  MFA **exempt** + block Guest MFA self-enroll (shared-account hijack fix); export
+  **BLOCKED** for Guest (new `canExportAssessment`); scope **bonny only**; seed
+  password from `SEED_GUEST_PASSWORD` (unset → not seeded + warn); audit/comments
+  **denied**. Material brief correction (verified): the 5 AI endpoints are NOT open
+  to a Guest today — each already Author-gated behind `rejectMitigationOwner`; G3
+  makes the deny by-construction (`rejectGuest` + mechanical deny-manifest test)
+  rather than incidental. Server already denies all content writes via
+  `contentWriteGuard` (Author-only); the real work is read allowances, AI belt-and-
+  braces, the coverage tripwire, and honest client read-only UX (no false "saved").
+  Branch: feature/guest-readonly. STOP for owner review; Opus builds G1→G6 next,
+  then the F-G Fable gate before anything touches staging. No tests run this session.
+
 2026-07-16 — O7 job connection: elevated env var + loud RLS-exemption guard
   Found while answering "how do I create the Render cron": the O7 job's documented
   cron recipe was WRONG and would have produced a silent nightly no-op.

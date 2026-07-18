@@ -36,6 +36,9 @@ const USERS = {
   // direct per-facility role row (facility_id null). Exercises canAccessFacility's
   // operator-wide branch — the path library reads must not wrongly 403.
   hqOpOnlyA: { id: id(209), email: "hq.oponly.a@a.example", operator: "A", assignments: [{ role: ROLES.HQ_EXECUTIVE }] },
+  // Shared read-only guest, scoped to a single facility (A1) — the fixture
+  // counterpart of the seed guest. Used by the §Guest deny/access battery (G3).
+  guestA1: { id: id(210), email: "guest.a1@a.example", assignments: [{ role: ROLES.GUEST, facility: "A1" }] },
 
   authorB1: { id: id(211), email: "author.b1@b.example", assignments: [{ role: ROLES.AUTHOR, facility: "B1" }] },
   reviewerB1: { id: id(212), email: "reviewer.b1@b.example", assignments: [{ role: ROLES.REVIEWER, facility: "B1" }] },

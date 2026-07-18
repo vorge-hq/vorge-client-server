@@ -41,6 +41,7 @@ const {
 } = require("../../repositories/tagRepository");
 const { runContentMutation, loadWritableAssessment } = require("./contentWriteGuard");
 const { rejectMitigationOwner } = require("../../middleware/rejectMitigationOwner");
+const { rejectGuest } = require("../../middleware/rejectGuest");
 const { runAiCall, buildPromptContext } = require("../../ai");
 const { buildTaggingPrompt, TAG_OUTPUT_SCHEMA } = require("../../ai/prompts/smartTagging");
 const { buildDraftPrompt } = require("../../ai/prompts/draftedSummary");
@@ -576,6 +577,7 @@ async function loadEvaluationForTags({ assessment, evaluationId }) {
 router.post(
   "/:assessmentId/evaluations/:evaluationId/suggest-tags",
   rejectMitigationOwner,
+  rejectGuest,
   validateRequest(suggestTagsSchema),
   async (req, res, next) => {
     try {
@@ -674,6 +676,7 @@ router.get(
 router.post(
   "/:assessmentId/evaluations/:evaluationId/tags/confirm",
   rejectMitigationOwner,
+  rejectGuest,
   validateRequest(confirmTagsSchema),
   async (req, res, next) => {
     try {
@@ -788,6 +791,7 @@ router.put(
 router.post(
   "/:assessmentId/sections/:n/generate-draft",
   rejectMitigationOwner,
+  rejectGuest,
   validateRequest(generateDraftSchema),
   async (req, res, next) => {
     try {
@@ -1028,6 +1032,7 @@ function acceptLlmFlags({ output, evaluations, seen }) {
 router.post(
   "/:assessmentId/anomaly-check",
   rejectMitigationOwner,
+  rejectGuest,
   validateRequest(anomalyCheckSchema),
   async (req, res, next) => {
     try {
@@ -1142,6 +1147,7 @@ router.post(
 router.post(
   "/:assessmentId/anomaly-acknowledgements",
   rejectMitigationOwner,
+  rejectGuest,
   validateRequest(acknowledgeAnomalySchema),
   async (req, res, next) => {
     try {

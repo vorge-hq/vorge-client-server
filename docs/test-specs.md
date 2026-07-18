@@ -195,6 +195,63 @@ Decisions bound 2026-07-04 (`docs/decisions/2026-07-04-offline-mode-architecture
 - 5th failed attempt → `checkouts` + `opQueue` cleared, wipe marker `{checkoutId, wipedAt}` persisted; next online session POSTs wipe-report → exactly one `offline-cache-wiped` audit row; checkout status unchanged (Admin decides).
 - Window expiry locks the offline sign-in but PRESERVES the queue (lockout ≠ data loss).
 
+## Side-quest — Guest read-only access
+
+Plan: `docs/plans/guest-viewer-execution-plan.md` (G1–G6, gate F-G). Decisions bound there: role name **Guest**; MFA **exempt** + Guest MFA-enroll blocked; export **BLOCKED** for Guest; guest scoped to **one facility** (seed: bonny; integration fixtures: Op-A/facility-1); seed password from `SEED_GUEST_PASSWORD` (unset → guest not seeded). Deny expectations below are exact-code assertions — a test passing on "some 4xx" is a spec violation.
+
+**Unit — permissions & policy (`server/src/services/permissionService.test.js` additions or `server/tests/guestPermissions.test.js`, G1):**
+- **G-U1** `canReadAssessment({actingRole: Guest})` → true; `canAccessAssessmentSections` → true; `canComment` (both scopes, all states) → false; `canViewAudit` (inline/summary/full) → false.
+- **G-U2** `canExportAssessment({actingRole: Guest})` → false; for EACH of the six pre-existing roles, `canExportAssessment` equals the old `canAccessAssessmentSections` result (regression table — proves the export-route swap changes Guest only).
+- **G-U3** `getAssessmentPermissions({actingRole: Guest, …})` → `canRead: true`, `canAccessSections: true`, `canExport: false`, every write/comment/audit flag false. Assert the FULL returned object (vacuous-green guard).
+- **G-U4** `mfaPolicy`: `requiresMfa(user with only a Guest assignment)` → false; `roleRequiresMfa("Guest")` → false; `MFA_REQUIRED_ROLES` still has exactly {Approver, HQ Executive, Admin} (size + members — fails loudly if someone "helpfully" adds Guest).
+- **G-U5** `canEditAssessmentContent({actingRole: Guest, assessmentState: Draft})` → false (Guest is not Author even in Draft).
+
+**Unit — mechanical coverage tripwire (`server/tests/guestDenyCoverage.test.js`, G3):**
+- **G-C1** Router introspection (walker pattern from `middlewareCoverage.test.js`): the set of every non-GET route under `/api/assessments`, `/api/mitigations`, `/api/admin`, `/api/library` plus `/api/auth/switch-role`, `/api/auth/mfa/enroll-start`, `/api/auth/mfa/enroll-verify` equals `GUEST_DENY_MANIFEST` (from `server/tests/guestDenyManifest.js`) — set equality both directions, so a new mutating route without a manifest entry (and thus without a Guest-deny integration case) fails CI. Auth flow routes a guest legitimately uses sit in an in-test `AUTH_ALLOWED` list, each entry carrying a justification comment.
+- **G-C2** All five AI endpoints (`suggest-tags`, `tags/confirm`, `generate-draft`, `anomaly-check`, `anomaly-acknowledgements`) carry `rejectGuest` middleware in their stack (introspect the layer names, same technique the coverage test uses for `authenticate`).
+- **G-C3** `rejectGuest` unit: acting role Guest → DomainError 403 `ROLE_NOT_ALLOWED`; every other role → `next()` with no error.
+
+**Integration — access & isolation (`server/tests/integration/guestAccess.test.js`, G3; real DB, fixture guest on Op-A/facility-1):**
+- **G-I1** Guest login: `POST /api/auth/login` → 200, token, `mfaRequired` falsy; an authed `GET /api/auth/me` works with no MFA step (self-serve proven).
+- **G-I2** `GET /api/assessments` → 200; body contains ONLY the guest facility's assessment ids; assert the sibling-facility and Op-B known ids are ABSENT (explicit id list, not just length).
+- **G-I3** `GET /api/assessments/:id` (in-scope) → 200; `permissions.canRead === true`, `canEditContent === false`, `canExport === false`; `allowedWorkflowActions` is empty; bundle contains sections/assets/threats/evaluations (reads genuinely work).
+- **G-I4** `GET /api/library?facilityId=<in-scope>` → 200 rows (guest reads library); `GET /api/mitigations/mine` → 403 `ROLE_NOT_ALLOWED`; `GET /api/assessments/consistency-flags` → 403 `ROLE_NOT_ALLOWED`; every `/api/admin` GET → 403 `ROLE_NOT_ALLOWED`.
+- **G-I5** Sibling-facility probe (same operator, no guest assignment): `GET /api/assessments/:coralId` → 404 `ASSESSMENT_NOT_FOUND` (not 403 — no existence leak).
+- **G-I6** Cross-tenant probe: `GET` an Op-B assessment id → 404; Op-B ids absent from every list the guest can call.
+- **G-I7** Export decision enforced: `GET /api/assessments/:id/export?format=docx` (in-scope) → **403 `ROLE_NOT_ALLOWED`** AND no `export` audit row is written (query `audit_log_entries` after).
+- **G-I8** No escalation via switch-role: `POST /api/auth/switch-role {role:"Author"}` → 403 `ROLE_NOT_ASSIGNED`; same for every other role name.
+- **G-I9** Forged claim: sign a token with the test `JWT_SECRET`, guest `sub`/`sid`, `actingRole:"Author"` → any data request → 403 `ROLE_NOT_ASSIGNED` (rejected by `hasAssignedRole`, proving the claim alone grants nothing).
+- **G-I10** MFA-enroll block: guest `POST /api/auth/mfa/enroll-start` → 403 `ROLE_NOT_ALLOWED`; `enroll-verify` → 403; guest's `mfa_enabled` still false in DB (shared-account hijack closed).
+
+**Integration — the write-deny matrix (`server/tests/integration/guestWriteDenial.test.js`, G3):**
+- **G-I11** Drive EVERY `GUEST_DENY_MANIFEST` entry as the guest with a VALID payload (per-route payload map beside the manifest — the request must reach the role gate, never die at Zod 400). Expected results, exact codes:
+  - Content writes via `contentWriteGuard` (assets POST/PATCH/DELETE, threats POST/PATCH/DELETE, `PUT /links/:a/:t`, evaluations PATCH, `PUT /sections/:n`, contributors PUT, `PUT /lead-author`, `PUT /:id/mitigations/:mid/owner`) → 403 `ROLE_NOT_ALLOWED` (in-scope Draft assessment, so role — not scope/state — is what's proven).
+  - `POST /:id/workflow` with an action valid for the current state → 403 `ROLE_NOT_ALLOWED`.
+  - AI: `suggest-tags`, `tags/confirm`, `generate-draft`, `anomaly-check`, `anomaly-acknowledgements` → 403 `ROLE_NOT_ALLOWED` (via `rejectGuest`; passes with `AI_ENABLED` unset because the guard outranks the 404 env check — assert 403 specifically).
+  - `PATCH /consistency-flags/:flagId` → 403; library POST/PUT/DELETE → 403; every `/api/admin` mutation → 403; `POST /api/mitigations/:mid/log` → denied (403 or 404 per assignment scope — assert the actual code AND that no progress-log row was written).
+- **G-I12** DB-unchanged proof: for one representative per content family, snapshot the target row (or count) before, assert identical after the deny; assessment `lock_version` unchanged after the whole matrix run.
+
+**Integration — seed (`server/tests/integration/guestSeed.test.js` or extend the existing seed suite, G2):**
+- **G-S1** With `SEED_GUEST_PASSWORD` set: run seed → guest user exists with deterministic id, `mfa_enabled false`, and exactly ONE Guest role assignment (facility bonny, deterministic id).
+- **G-S2** Idempotency: run seed twice → still exactly one user row + one assignment row; password hash updated to the current env value (rotate-by-reseed works).
+- **G-S3** With `SEED_GUEST_PASSWORD` unset: seed completes, guest user ABSENT, and the warning line was emitted (spy on console.warn).
+
+**Client RTL (colocated, G4/G5 — use the `mfa.test.jsx` `authedSession` factory + the `*.write.test.jsx` fetch-spy pattern, `vi.stubEnv("VITE_ENABLE_DEMO","false")`):**
+- **G-RTL1** (`navigation.js` test) `getNavigationForRole(GUEST)` non-empty, links to `/dashboard`; `getHomeRouteForRole(GUEST)` → `/dashboard`; `isRoleMfaRequired(GUEST)` → false.
+- **G-RTL2** (`GuestDashboard.test.jsx`) Guest session renders the dashboard: hydrated assessment rows visible and navigable; NO create/submit/queue-action buttons (assert by accessible-name queries returning null).
+- **G-RTL3** (`GuestDashboard.test.jsx` or workspace test) prod-mode hydration fires the reads (`GET /api/assessments`) — fetch spy asserts reads DO happen (guest is not demo).
+- **G-RTL4** (workspace guest test, e.g. `AssessmentShell` or `AssessmentWorkspacePage` suite) Guest opens a section: the exact banner copy "You're exploring Vorge as a read-only guest — changes aren't saved." renders; all section inputs disabled/read-only; NO Save/workflow/export affordances (export hidden because `permissions.canExport` false).
+- **G-RTL5** Attempted interaction fires ZERO mutating fetches: type/click through a section as Guest → fetch spy shows no POST/PUT/PATCH/DELETE (`callsMatching` on method), only reads.
+- **G-RTL6** Clean 403: force a mutating call path (simulate a stale/handcrafted state that fires a write) with fetch mocked to 403 → the `READ_ONLY_MESSAGE` copy ("Your role can't make changes here — nothing was saved.") renders, optimistic state reverts, and NO success/"saved" indicator appears.
+- **G-RTL7** `isAssessmentReadOnly({state:"Draft", actingRole: GUEST})` → true (net-new role→readOnly assertion; also pins the existing non-Author rule).
+
+**Negative / regression:**
+- **G-R1** Author still writes: one representative content write (e.g. `PUT /sections/1`) as the fixture Author → 200, lockVersion bump, audit row (proves G-blocks broke nothing).
+- **G-R2** Mitigation Owner AI matrix unchanged: MitOwner × each AI endpoint → 403 (existing suite passes untouched).
+- **G-R3** Export still works for permitted roles: Author (or Reviewer) export → 200 `%PDF`/docx magic + audit row (the `canExportAssessment` swap changed Guest only).
+- **G-R4** Existing suites pass UNCHANGED: `middlewareCoverage`, `tenantIsolation`, `rls*`, unit route tests — counts are floors; no allowlist additions.
+- **G-R5** Demo untouched: demo role-picker renders exactly the six pre-existing roles (no Guest option); `canDemoSwitchToRole(GUEST)` false even in a demo session; demo workspace still fires zero fetches.
+
 ## Side-quest — dark mode
 
 Visual work: no new unit gates. Keep the existing rule — token classes only (assert no `zinc-*` in changed files via grep in the session, not a test), tests unaffected.

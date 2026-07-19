@@ -7,6 +7,7 @@ import { ApproverDashboard } from "./ApproverDashboard";
 import { AuthorDashboard } from "./AuthorDashboard";
 import { HQExecutiveDashboard } from "./HQExecutiveDashboard";
 import { ReviewerDashboard } from "./ReviewerDashboard";
+import { GuestDashboard } from "./GuestDashboard";
 import { Banner } from "../../components/Banner";
 
 export function DashboardPage() {
@@ -25,6 +26,8 @@ export function DashboardPage() {
       return <AdminDashboard />;
     case ROLES.MITIGATION_OWNER:
       return <Navigate to={getHomeRouteForRole(ROLES.MITIGATION_OWNER)} replace />;
+    case ROLES.GUEST:
+      return <GuestDashboard />;
     default:
       return (
         <Banner tone="info" title="Dashboard unavailable">

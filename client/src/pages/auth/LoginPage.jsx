@@ -204,7 +204,7 @@ function DemoLoginPage() {
               role.
             </p>
             <div className="space-y-2">
-              {Object.values(ROLES).map((role) => {
+              {Object.values(ROLES).filter((role) => role !== ROLES.GUEST).map((role) => {
                 const persona = getDemoPersona(role);
                 return (
                   <button

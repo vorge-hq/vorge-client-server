@@ -12,7 +12,8 @@ export const ROLES = Object.freeze({
   APPROVER: "Approver",
   HQ_EXECUTIVE: "HQ Executive",
   ADMIN: "Admin",
-  MITIGATION_OWNER: "Mitigation Owner"
+  MITIGATION_OWNER: "Mitigation Owner",
+  GUEST: "Guest"
 });
 
 export const ROLE_TONE = Object.freeze({
@@ -21,7 +22,8 @@ export const ROLE_TONE = Object.freeze({
   [ROLES.APPROVER]: "bg-violet-50 text-violet-800 border border-violet-200",
   [ROLES.HQ_EXECUTIVE]: "bg-teal-50 text-teal-800 border border-teal-200",
   [ROLES.ADMIN]: "bg-zinc-100 text-zinc-800 border border-zinc-200",
-  [ROLES.MITIGATION_OWNER]: "bg-emerald-50 text-emerald-800 border border-emerald-200"
+  [ROLES.MITIGATION_OWNER]: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+  [ROLES.GUEST]: "bg-stone-100 text-stone-700 border border-stone-200"
 });
 
 const DEMO_USER = Object.freeze({
@@ -84,6 +86,10 @@ export function canSwitchToRole(session, role) {
 export function canDemoSwitchToRole(session, role) {
   assertDemoEnabled();
   if (!session) return false;
+  // Guest is a real server-seeded read-only role, NOT a demo persona (there is
+  // deliberately no DEMO_PERSONAS entry for it). It must never be a demo-switch
+  // target. See docs/plans/guest-viewer-execution-plan.md.
+  if (role === ROLES.GUEST) return false;
   if (session.demo) return Object.values(ROLES).includes(role);
   return canSwitchToRole(session, role);
 }

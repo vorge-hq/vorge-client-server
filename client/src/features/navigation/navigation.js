@@ -24,6 +24,12 @@ const NAVIGATION = Object.freeze({
   ],
   [ROLES.MITIGATION_OWNER]: [
     { label: "My mitigations", to: "/mitigations", icon: "check", showInMobileBar: true }
+  ],
+  // Guest: one entry only — the dashboard, which lists the read-only assessments
+  // the server scoped to this guest. No hardcoded ACTIVE_ASSESSMENT_ID deep link
+  // (that is a fixture id, wrong in prod, and the guest is prod-only).
+  [ROLES.GUEST]: [
+    { label: "Assessments", to: "/dashboard", icon: "home", showInMobileBar: true }
   ]
 });
 

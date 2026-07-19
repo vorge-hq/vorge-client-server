@@ -102,13 +102,21 @@ describe("session helpers", () => {
     expect(isRoleMfaRequired(ROLES.AUTHOR)).toBe(false);
   });
 
-  test("demo personas cover every role and demo switch is unrestricted", () => {
-    Object.values(ROLES).forEach((role) => {
-      expect(DEMO_PERSONAS[role]).toBeDefined();
-      const persona = getDemoPersona(role);
-      expect(persona.userId).toBeTruthy();
-      expect(persona.email).toContain("@");
-    });
+  test("demo personas cover every role EXCEPT Guest; Guest is never a demo switch target", () => {
+    // Guest is a server-seeded read-only role, deliberately NOT a demo persona.
+    Object.values(ROLES)
+      .filter((role) => role !== ROLES.GUEST)
+      .forEach((role) => {
+        expect(DEMO_PERSONAS[role]).toBeDefined();
+        const persona = getDemoPersona(role);
+        expect(persona.userId).toBeTruthy();
+        expect(persona.email).toContain("@");
+      });
+    // Guest has no persona and can never be entered via the demo path.
+    expect(DEMO_PERSONAS[ROLES.GUEST]).toBeUndefined();
+    expect(getDemoPersona(ROLES.GUEST)).toBeNull();
+    expect(canDemoSwitchToRole(demoSession, ROLES.GUEST)).toBe(false);
+
     expect(getDemoPersona("Unknown")).toBeNull();
     expect(canDemoSwitchToRole(demoSession, ROLES.ADMIN)).toBe(true);
     expect(canDemoSwitchToRole(null, ROLES.ADMIN)).toBe(false);

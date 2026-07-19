@@ -19,6 +19,8 @@ import {
   getAssessmentBundle,
   isConflict,
   CONFLICT_RELOAD_MESSAGE,
+  isForbidden,
+  READ_ONLY_MESSAGE,
   createAsset as apiCreateAsset,
   updateAsset as apiUpdateAsset,
   deleteAsset as apiDeleteAsset,
@@ -379,6 +381,7 @@ export function WorkspaceProvider({ children }) {
         return { ok: true, asset: created };
       } catch (error) {
         if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
         return { error: error?.message || "Could not add this asset." };
       }
     }
@@ -409,6 +412,7 @@ export function WorkspaceProvider({ children }) {
       return { ok: true };
     } catch (error) {
       if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
       return { error: error?.message || "Could not save this asset." };
     }
   }, []);
@@ -480,6 +484,7 @@ export function WorkspaceProvider({ children }) {
         return { ok: true };
       } catch (error) {
         if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
         return { error: error?.message || "Could not delete this asset." };
       }
     }
@@ -527,6 +532,7 @@ export function WorkspaceProvider({ children }) {
         return { ok: true, threat: created };
       } catch (error) {
         if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
         return { error: error?.message || "Could not add this threat." };
       }
     }
@@ -555,6 +561,7 @@ export function WorkspaceProvider({ children }) {
       return { ok: true };
     } catch (error) {
       if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
       return { error: error?.message || "Could not save this threat." };
     }
   }, []);
@@ -580,6 +587,7 @@ export function WorkspaceProvider({ children }) {
         return { ok: true };
       } catch (error) {
         if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
         return { error: error?.message || "Could not delete this threat." };
       }
     }
@@ -684,6 +692,7 @@ export function WorkspaceProvider({ children }) {
         return { ok: true };
       } catch (error) {
         if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+        if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
         return { error: error?.message || "Could not update this link." };
       }
     }
@@ -805,6 +814,7 @@ export function WorkspaceProvider({ children }) {
       return { ok: true };
     } catch (error) {
       if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
       return { error: error?.message || "Could not save this evaluation." };
     }
   }, []);
@@ -838,6 +848,7 @@ export function WorkspaceProvider({ children }) {
       return { ok: true };
     } catch (error) {
       if (isConflict(error)) return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+      if (isForbidden(error)) return { error: READ_ONLY_MESSAGE, forbidden: true };
       return { error: error?.message || "Could not save contributors." };
     }
   }, []);
@@ -893,7 +904,13 @@ export function WorkspaceProvider({ children }) {
         activeAssessmentId: assessmentId,
         assessmentsById: {
           ...current.assessmentsById,
-          [assessmentId]: { ...(current.assessmentsById[assessmentId] || {}), ...mapped }
+          [assessmentId]: {
+            ...(current.assessmentsById[assessmentId] || {}),
+            ...mapped,
+            // Server-computed permissions (incl. canExport — G1). Consumed by the
+            // shell to hide affordances a role can't use (e.g. Guest export).
+            permissions: bundle.permissions || null
+          }
         },
         assets: (bundle.assets || []).map(toClientAsset),
         threats: (bundle.threats || []).map(toClientThreat),
@@ -945,6 +962,9 @@ export function WorkspaceProvider({ children }) {
         } catch (error) {
           if (isConflict(error)) {
             return { error: CONFLICT_RELOAD_MESSAGE, conflict: true };
+          }
+          if (isForbidden(error)) {
+            return { error: READ_ONLY_MESSAGE, forbidden: true };
           }
           return { error: error?.message || "Could not save this section." };
         }

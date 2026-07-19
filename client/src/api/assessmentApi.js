@@ -152,3 +152,12 @@ export const CONFLICT_RELOAD_MESSAGE =
 export function isConflict(error) {
   return error?.status === 409 && error?.code === "LOCK_VERSION_CONFLICT";
 }
+
+export const READ_ONLY_MESSAGE = "Your role can't make changes here — nothing was saved.";
+
+// True when an ApiError is a role/permission denial (a read-only Guest, or any
+// role attempting a write it isn't allowed). The server is the source of truth;
+// the client surfaces this cleanly instead of a false "saved".
+export function isForbidden(error) {
+  return error?.status === 403;
+}

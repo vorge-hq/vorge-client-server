@@ -1,3 +1,44 @@
+2026-07-18 — Guest read-only side-quest: G1–G6 BUILT (Opus), pending F-G gate
+  Server-enforced, self-serve, shared READ-ONLY guest on the REAL client
+  (`VITE_ENABLE_DEMO=false`) + real API/DB — not the fixture demo. Built the full
+  playbook G1–G6 on `feature/guest-readonly`; each block stopped at a local commit.
+  G1 (cc0f03a): `ROLES.GUEST` (server constants + client session); permissionService
+    canReadAssessment allows Guest; NEW canExportAssessment excludes Guest (== old
+    section-access for all six pre-existing roles); export route swapped to it.
+  G2 (a1919c4): opt-in seed gated on `SEED_GUEST_PASSWORD` (unset → warn + skip, no
+    guessable default); deterministic user …207 + Guest assignment …1012 at Bonny
+    only; MFA cols null so reseed resets hostile enrollment. seed() exported +
+    require.main-guarded so the G-S battery can drive it. Integration fixture guestA1.
+  G3 (0cd816f): security core. `middleware/rejectGuest.js`; mounted on all 5 AI
+    routes (before validateRequest + the aiEnabled check → 403 regardless of body/AI
+    flag) and on mfa/enroll-start+verify (shared-account TOTP-hijack closed). Single
+    source of truth `tests/guestDenyManifest.js`; `guestDenyCoverage.test.js` does
+    set-equality vs the live router (a new unlisted mutating data route fails CI).
+    Full integration deny matrix (26 routes, exact codes) + access/isolation battery
+    (login MFA-exempt, scoped reads, 404 isolation, export block, no escalation via
+    switch-role/forged-claim, MFA-enroll block). Brief correction verified: the AI
+    routes were already Author-gated (deny was incidental) — G3 makes it by-construction.
+    Mitigations log denies via 404 MITIGATION_NOT_FOUND (scoped getter), not a role 403.
+  G4 (c05e6ee): client role plumbing — session badge + canDemoSwitchToRole excludes
+    Guest; NAVIGATION[GUEST] single /dashboard entry; `GuestDashboard.jsx` (read-only
+    list, View links only, zero write CTAs); demo role-picker filters out Guest.
+    App.jsx unchanged (/dashboard un-gated dispatches GuestDashboard; /mitigations,
+    /admin already exclude non-matching roles).
+  G5 (bcb25a4): honest read-only workspace — bound GUEST_BANNER_COPY banner; export
+    tool gated on server permissions.canExport (threaded into bundle hydration, not a
+    role sprinkle); `isForbidden`/`READ_ONLY_MESSAGE` added to all 10 write catch-sites
+    → clean 403, never a false "saved" (mirrors the isConflict/409 pattern).
+  G6: full battery green — 443 unit / 278 integration / 219 client. NOT ticked done.
+  **STOP for the F-G Fable adversarial gate.** After F-G passes and the owner pushes,
+  the owner runs the staging-seed runbook (set `SEED_GUEST_PASSWORD`, seed staging).
+  Ops: `.env.example` gains `SEED_GUEST_PASSWORD` — proposed, NOT committed (owner adds).
+  Key files: server `services/{constants,permissionService,mfaPolicy}.js`,
+  `middleware/rejectGuest.js`, `modules/{assessments,auth}/routes.js`, `db/seed.js`,
+  `tests/guestDeny*` + `tests/integration/guest*`; client `auth/session.js`,
+  `features/navigation/navigation.js`, `pages/dashboards/GuestDashboard.jsx`,
+  `pages/auth/LoginPage.jsx`, `layouts/AssessmentShell.jsx`, `api/assessmentApi.js`,
+  `features/assessmentWorkspace/WorkspaceContext.jsx` (+ colocated *.test).
+
 2026-07-18 — Guest read-only side-quest: Phase 0 plan (Fable-authored, plan-only)
   Owner side-quest: a self-serve, shared, READ-ONLY guest login on the REAL client
   (`VITE_ENABLE_DEMO=false`) + real API/DB — server-enforced, not client-faked, NOT

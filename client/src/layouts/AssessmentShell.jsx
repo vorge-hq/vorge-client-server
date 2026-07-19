@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Activity, BookOpen, Check, Download, FileSearch, Layers, Lock, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { ROLES } from "../auth/session";
 import { Banner } from "../components/Banner";
 import { StateChip } from "../components/Chip";
 import { Icon } from "../components/icons";
@@ -15,6 +16,11 @@ import {
   isSection6Complete
 } from "../features/assessmentWorkspace/assessmentModel";
 import { useWorkspace } from "../features/assessmentWorkspace/WorkspaceContext";
+
+// Bound copy — the §Guest RTL battery asserts this verbatim. Do not reword
+// without updating docs/test-specs.md §Guest and the G-RTL4 test.
+export const GUEST_BANNER_COPY =
+  "You're exploring Vorge as a read-only guest — changes aren't saved.";
 
 function SectionRail({
   assessmentId,
@@ -210,6 +216,12 @@ export function AssessmentShell({
         </div>
       </header>
 
+      {session.actingRole === ROLES.GUEST ? (
+        <Banner tone="info" title="Read-only guest">
+          {GUEST_BANNER_COPY}
+        </Banner>
+      ) : null}
+
       {sentBack ? (
         <Banner
           tone={sentBack.kind === "approver-reject" ? "danger" : "warn"}
@@ -301,7 +313,9 @@ export function AssessmentShell({
               <ToolButton Icon={BookOpen} label="Library suggestions" onClick={onOpenLibrary} />
               <ToolButton Icon={FileSearch} label="Audit log" onClick={onOpenAudit} />
               <ToolButton Icon={Layers} label="Assessment history" onClick={onOpenVersions} />
-              <ToolButton Icon={Download} label="Export document" onClick={onOpenExport} />
+              {assessment.permissions?.canExport !== false ? (
+                <ToolButton Icon={Download} label="Export document" onClick={onOpenExport} />
+              ) : null}
             </div>
           </div>
 
